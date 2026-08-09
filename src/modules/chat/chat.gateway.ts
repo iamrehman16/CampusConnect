@@ -22,7 +22,10 @@ import { DeleteMessageDto } from './dto/delete-message.dto';
 import { MarkSeenDto } from './dto/mark-seen.dto';
 
 @WebSocketGateway({
-  cors: { origin: '*' },
+  cors: {
+    origin: ['http://localhost:5173', process.env.FRONTEND_URL].filter(Boolean),
+    credentials: true,
+  },
   namespace: '/chat',
 })
 @UseFilters(WsExceptionFilter)
@@ -36,7 +39,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly chatService: ChatService,
     private readonly wsJwtGuard: WsJwtGuard,
-  ) {}
+  ) { }
 
   async handleConnection(socket: Socket) {
     try {
