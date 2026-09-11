@@ -13,9 +13,11 @@ interface UseDrainQueueOptions {
 
 export function useDrainQueue({ refs, setStreamingBubble, setIsStreaming }: UseDrainQueueOptions) {
   const queryClient = useQueryClient();
-  const { accRef, queueRef, renderRef, flushRef, pollCancelRef } = refs;
+  const { accRef, queueRef, renderRef, flushRef, pollCancelRef, citationsRef } = refs;
 
   const startDrainInterval = useCallback(() => {
+    let frameCount = 0;
+
     const drainFrame = () => {
       if (queueRef.current.length === 0) {
         flushRef.current = requestAnimationFrame(drainFrame);
@@ -33,7 +35,18 @@ export function useDrainQueue({ refs, setStreamingBubble, setIsStreaming }: UseD
       }
 
       renderRef.current += newChars;
-      setStreamingBubble((prev) => prev ? { ...prev, content: renderRef.current } : prev);
+      frameCount++;
+
+      // Batch state updates to roughly 20fps or on word boundaries to prevent 
+      // excessive Markdown re-parsing jank, while keeping the typewriter feel
+      if (
+        newChars.includes(" ") || 
+        newChars.includes("\n") || 
+        frameCount % 3 === 0 || 
+        queueRef.current.length === 0
+      ) {
+        setStreamingBubble((prev) => prev ? { ...prev, content: renderRef.current } : prev);
+      }
 
       flushRef.current = requestAnimationFrame(drainFrame);
     };
@@ -55,11 +68,17 @@ export function useDrainQueue({ refs, setStreamingBubble, setIsStreaming }: UseD
     if (flushRef.current !== null) cancelAnimationFrame(flushRef.current!);
     setConversation(queryClient, (prev) => [
       ...prev,
-      { id: assistantBubbleId, role: "assistant" as const, content: accRef.current, isPending: false },
+      { 
+        id: assistantBubbleId, 
+        role: "assistant" as const, 
+        content: accRef.current, 
+        isPending: false,
+        citations: citationsRef.current
+      },
     ]);
     setStreamingBubble(null);
     setIsStreaming(false);
-  }, [queryClient, accRef, flushRef, setStreamingBubble, setIsStreaming]);
+  }, [queryClient, accRef, flushRef, citationsRef, setStreamingBubble, setIsStreaming]);
 
   const waitForDrainThenCommit = useCallback((assistantBubbleId: string) => {
     const poll = () => {
@@ -79,11 +98,17 @@ export function useDrainQueue({ refs, setStreamingBubble, setIsStreaming }: UseD
     queueRef.current = [];
     setConversation(queryClient, (prev) => [
       ...prev,
-      { id: assistantBubbleId, role: "assistant" as const, content: renderRef.current, isPending: false },
+      { 
+        id: assistantBubbleId, 
+        role: "assistant" as const, 
+        content: renderRef.current, 
+        isPending: false,
+        citations: citationsRef.current
+      },
     ]);
     setStreamingBubble(null);
     setIsStreaming(false);
-  }, [queryClient, renderRef, flushRef, queueRef, pollCancelRef, setStreamingBubble, setIsStreaming]);
+  }, [queryClient, renderRef, flushRef, queueRef, pollCancelRef, citationsRef, setStreamingBubble, setIsStreaming]);
 
   // Stop while fetch is done but animation still playing — skip remaining animation
   const flushAndCommit = useCallback((assistantBubbleId: string) => {

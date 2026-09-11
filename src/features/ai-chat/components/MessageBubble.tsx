@@ -1,6 +1,7 @@
 import { Box, keyframes } from "@mui/material";
 import { ThinkingBubble } from "./ThinkingBubble";
 import { CitationsChip } from "./CitationChip";
+import { MarkdownMessage } from "./MarkdownMessage";
 import type { ConversationMessage } from "../types/ai-chat.dto";
 
 const fadeSlideIn = keyframes`
@@ -53,7 +54,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           {message.isPending && !message.content ? (
             <ThinkingBubble />
           ) : (
-            message.content
+            <MarkdownMessage content={message.content} isUser={isUser} />
           )}
         </Box>
 

@@ -8,6 +8,7 @@ export function useStreamRefs() {
   const flushRef  = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const fetchCompleteRef = useRef(false); // true once event.type === "done" received
   const pollCancelRef    = useRef(false); // cancels waitForDrainThenCommit poll
+  const citationsRef     = useRef<any[] | undefined>(undefined); // tracks citations payload
 
   const reset = useCallback(() => {
     accRef.current         = "";
@@ -15,8 +16,9 @@ export function useStreamRefs() {
     renderRef.current      = "";
     fetchCompleteRef.current = false;
     pollCancelRef.current    = false;
+    citationsRef.current     = undefined;
     // flushRef cleared by clearInterval inside commit fns, not here
   }, []);
 
-  return { accRef, queueRef, renderRef, flushRef, fetchCompleteRef, pollCancelRef, reset };
+  return { accRef, queueRef, renderRef, flushRef, fetchCompleteRef, pollCancelRef, citationsRef, reset };
 }

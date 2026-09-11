@@ -94,6 +94,7 @@ export function useStreamMessage() {
             accRef.current += event.token;
             queueRef.current.push(...event.token.split(""));
           } else if (event.type === "citations") {
+            refs.citationsRef.current = event.citations;
             setStreamingBubble((prev) =>
               prev ? { ...prev, citations: event.citations } : prev,
             );
