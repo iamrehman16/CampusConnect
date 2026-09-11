@@ -9,7 +9,7 @@ import { CommonModule } from '../../common/common.module';
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
-    CommonModule
+    CommonModule,
   ],
   controllers: [UserController, UserAdminController],
   providers: [UserService],

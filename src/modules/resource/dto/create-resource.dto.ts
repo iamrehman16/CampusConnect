@@ -1,6 +1,13 @@
 import {
-  IsString, IsNumber, IsIn, IsEnum,
-  MaxLength, Min, Max, IsArray, IsOptional,
+  IsString,
+  IsNumber,
+  IsIn,
+  IsEnum,
+  MaxLength,
+  Min,
+  Max,
+  IsArray,
+  IsOptional,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ResourceType } from '../enums/resource-types.enum';
@@ -38,27 +45,27 @@ export class CreateResourceDto {
 
   // --- Cloudinary upload result (client sends after direct upload) ---
   @IsString()
-  publicId: string;           // Cloudinary: public_id
+  publicId: string; // Cloudinary: public_id
 
   @IsString()
-  secureUrl: string;          // Cloudinary: secure_url
+  secureUrl: string; // Cloudinary: secure_url
 
   @IsString()
   cloudinarySignature: string; // Cloudinary: signature — used for server-side verification
 
   @Type(() => Number)
   @IsNumber()
-  version: number;            // Cloudinary: version — used in signature verification
+  version: number; // Cloudinary: version — used in signature verification
 
   @IsString()
-  format: string;             // Cloudinary: format (e.g. 'pdf', 'png')
+  format: string; // Cloudinary: format (e.g. 'pdf', 'png')
 
   @Type(() => Number)
   @IsNumber()
-  bytes: number;              // Cloudinary: bytes
+  bytes: number; // Cloudinary: bytes
 
   @IsString()
-  originalName: string;       // original filename — for inferFileType fallback
+  originalName: string; // original filename — for inferFileType fallback
 
   @IsIn(['image', 'raw'])
   cloudinaryResourceType: 'image' | 'raw';

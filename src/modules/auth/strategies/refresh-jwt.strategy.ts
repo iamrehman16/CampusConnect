@@ -8,23 +8,29 @@ import { Request } from 'express';
 import { AuthService } from '../auth.service';
 
 @Injectable()
-export class RefreshJWTStrategy extends PassportStrategy(Strategy,"refresh-jwt") {
+export class RefreshJWTStrategy extends PassportStrategy(
+  Strategy,
+  'refresh-jwt',
+) {
   constructor(
     @Inject(refreshJwtConfig.KEY)
     refreshJwtConfiguration: ConfigType<typeof refreshJwtConfig>,
-    private authService:AuthService,
+    private authService: AuthService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       secretOrKey: refreshJwtConfiguration.secret as string,
-      ignoreExpiration:false,
-      passReqToCallback:true,
+      ignoreExpiration: false,
+      passReqToCallback: true,
     });
   }
 
-  validate(req:Request,payload: AuthJwtPayload) {
-    const refreshToken = req.get("authorization")?.replace("Bearer","").trim()!;
+  validate(req: Request, payload: AuthJwtPayload) {
+    const refreshToken = req
+      .get('authorization')
+      ?.replace('Bearer', '')
+      .trim()!;
     const userId = payload.sub;
-    return this.authService.validateRefreshToken(userId,refreshToken);
+    return this.authService.validateRefreshToken(userId, refreshToken);
   }
 }

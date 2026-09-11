@@ -15,10 +15,10 @@ export class IngestionService {
     private readonly documentParserService: DocumentParserService,
     private readonly embeddingService: EmbeddingService,
     private readonly vectorStoreService: VectorStoreService,
-    private readonly chunkingService: ChunkingService
+    private readonly chunkingService: ChunkingService,
   ) {}
 
-  async ingest(resource:  IngestResourceJobPayload): Promise<void> {
+  async ingest(resource: IngestResourceJobPayload): Promise<void> {
     const resourceId = resource.resourceId;
     this.logger.log(`Starting ingestion for resource: ${resourceId}`);
 

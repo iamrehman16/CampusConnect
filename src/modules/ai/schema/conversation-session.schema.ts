@@ -25,4 +25,5 @@ export class ConversationSession {
   recentMessages: ChatMessage[];
 }
 
-export const ConversationSessionSchema = SchemaFactory.createForClass(ConversationSession);
+export const ConversationSessionSchema =
+  SchemaFactory.createForClass(ConversationSession);

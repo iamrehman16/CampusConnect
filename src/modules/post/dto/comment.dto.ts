@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, MinLength, MaxLength, isString, isNotEmpty } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  MinLength,
+  MaxLength,
+  isString,
+  isNotEmpty,
+} from 'class-validator';
 
 export class CreateCommentDto {
   @IsString()
@@ -8,8 +15,7 @@ export class CreateCommentDto {
   content: string;
 }
 
-
-export class UpdateCommentDto{
+export class UpdateCommentDto {
   @IsString()
   @IsNotEmpty()
   @MinLength(1, { message: 'Comment cannot be empty' })

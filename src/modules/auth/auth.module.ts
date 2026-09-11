@@ -18,22 +18,22 @@ import { RolesGuard } from './guards/roles.guard';
     UserModule,
     JwtModule.registerAsync(jwtConfig.asProvider()),
     ConfigModule.forFeature(jwtConfig),
-    ConfigModule.forFeature(refreshJwtConfig)
+    ConfigModule.forFeature(refreshJwtConfig),
   ],
   controllers: [AuthController],
   providers: [
-    AuthService, 
+    AuthService,
     LocalStrategy,
     JWTStrategy,
     RefreshJWTStrategy,
     {
-      provide:APP_GUARD,
-      useClass:JwtAuthGuard
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
     },
     {
-      provide:APP_GUARD,
-      useClass:RolesGuard
-    }
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
   ],
 })
 export class AuthModule {}

@@ -40,17 +40,14 @@ export class DocumentParserService {
       formData.append('file', buffer, { filename });
       formData.append('result_type', 'markdown');
 
-      const response = await nodeFetch(
-        `${this.LLAMA_PARSE_BASE_URL}/upload`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${this.aiCfg.llamaCloudApiKey}`,
-            ...formData.getHeaders(),
-          },
-          body: formData,
+      const response = await nodeFetch(`${this.LLAMA_PARSE_BASE_URL}/upload`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.aiCfg.llamaCloudApiKey}`,
+          ...formData.getHeaders(),
         },
-      );
+        body: formData,
+      });
 
       if (response.ok) {
         const data = (await response.json()) as { id: string };

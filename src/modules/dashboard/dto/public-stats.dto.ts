@@ -1,18 +1,15 @@
-import { IsNumber } from "class-validator";
+import { IsNumber } from 'class-validator';
 
-export class PublicStatsDto{
+export class PublicStatsDto {
+  @IsNumber()
+  totalUsers: number;
 
+  @IsNumber()
+  availableMentors: number;
 
-    @IsNumber()
-    totalUsers:number;
+  @IsNumber()
+  totalResources: number;
 
-    @IsNumber()
-    availableMentors:number;
-    
-    @IsNumber()
-    totalResources:number;
-
-    @IsNumber()
-    postsThisMonth:number;
-
+  @IsNumber()
+  postsThisMonth: number;
 }

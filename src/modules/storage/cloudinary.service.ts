@@ -5,19 +5,17 @@ import {
 } from '@nestjs/common';
 import { v2 as cloudinarySDK } from 'cloudinary';
 
-import {ConfigType } from '@nestjs/config';
-import cloudinaryConfig from './config/cloudinary.config'
+import { ConfigType } from '@nestjs/config';
+import cloudinaryConfig from './config/cloudinary.config';
 
 @Injectable()
 export class CloudinaryService {
-
   private readonly cloudinary = cloudinarySDK;
 
   constructor(
     @Inject(cloudinaryConfig.KEY)
     private resourceCfg: ConfigType<typeof cloudinaryConfig>,
   ) {}
-
 
   generateSignature(paramsToSign: Record<string, string | number>): string {
     return this.cloudinary.utils.api_sign_request(

@@ -24,10 +24,6 @@ import jwtConfig from '../auth/config/jwt.config';
     CommonModule,
   ],
   controllers: [ChatController],
-  providers: [
-    ChatGateway,
-    ChatService,
-    WsJwtGuard,
-  ],
+  providers: [ChatGateway, ChatService, WsJwtGuard],
 })
 export class ChatModule {}

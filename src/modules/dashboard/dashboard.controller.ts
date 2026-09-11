@@ -5,7 +5,7 @@ import { Role } from '../auth/decorators/role.decorator';
 import { CurrentUser } from '../auth/types/current-user';
 
 @Controller('dashboard')
-@Role(Roles.ADMIN,Roles.CONTRIBUTOR, Roles.STUDENT)
+@Role(Roles.ADMIN, Roles.CONTRIBUTOR, Roles.STUDENT)
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 

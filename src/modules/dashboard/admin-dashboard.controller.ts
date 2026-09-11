@@ -16,13 +16,12 @@ export class AdminDashboardController {
   }
 
   @Get('resources/analytics')
-  getResourceAnalytics(){
+  getResourceAnalytics() {
     return this.dashboardService.getResourceAnalytics();
   }
 
   @Get('users/growth')
-  getUserGrowth(){
+  getUserGrowth() {
     return this.dashboardService.getUserGrowth();
   }
-
 }

@@ -6,5 +6,5 @@ export enum ResourceType {
   PAST_PAPER = 'PastPaper',
   BOOK = 'Book',
   RESEARCH_PAPER = 'ResearchPaper',
-  OTHER = 'Other'
+  OTHER = 'Other',
 }

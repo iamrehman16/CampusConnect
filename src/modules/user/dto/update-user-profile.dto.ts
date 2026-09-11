@@ -1,7 +1,14 @@
-import { IsEmail, IsInt, IsOptional, IsString, Max, Min, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  MinLength,
+} from 'class-validator';
 
 export class UpdateUserProfileDto {
-
   @IsOptional()
   @IsString()
   name?: string;
@@ -26,5 +33,5 @@ export class UpdateUserProfileDto {
   @IsInt()
   @Min(1)
   @Max(8)
-  semester?:number
+  semester?: number;
 }

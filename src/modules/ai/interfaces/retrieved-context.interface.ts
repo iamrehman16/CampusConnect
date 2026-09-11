@@ -16,7 +16,7 @@ export interface RetrievedContext {
   pageNumber: number;
   title: string;
   resourceId: string;
-  semester: number;   
-  course: string;     
+  semester: number;
+  course: string;
   score: number;
 }

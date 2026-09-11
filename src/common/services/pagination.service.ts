@@ -26,28 +26,26 @@ export class PaginationService {
     const limit = dto.limit ?? 10;
     const skip = (page - 1) * limit;
 
-    const [data,total] = await Promise.all([
-        model.find(filter).sort(sort).skip(skip).limit(limit).lean().exec(),
-        model.countDocuments(filter).lean().exec()
+    const [data, total] = await Promise.all([
+      model.find(filter).sort(sort).skip(skip).limit(limit).lean().exec(),
+      model.countDocuments(filter).lean().exec(),
     ]);
 
     return {
-        data,
-        total,
-        page,
-        limit,
-        totalPage: Math.ceil(total/limit)
-    }
-
+      data,
+      total,
+      page,
+      limit,
+      totalPage: Math.ceil(total / limit),
+    };
   }
-
 
   async paginateWithPopulate<T>(
     model: Model<T>,
     dto: BaseQueryDto,
     queryBuilder: IQueryBuilder<any>,
     sortBuilder: ISortBuilder,
-    populate: PopulateOptions|PopulateOptions[],
+    populate: PopulateOptions | PopulateOptions[],
   ): Promise<PaginatedResult<T>> {
     const filter = queryBuilder.build(dto);
     const sort = sortBuilder.build(dto);
@@ -55,21 +53,24 @@ export class PaginationService {
     const limit = dto.limit ?? 10;
     const skip = (page - 1) * limit;
 
-    const [data,total] = await Promise.all([
-        model.find(filter).sort(sort).skip(skip).limit(limit).populate(populate).lean().exec(),
-        model.countDocuments(filter).lean().exec()
+    const [data, total] = await Promise.all([
+      model
+        .find(filter)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .populate(populate)
+        .lean()
+        .exec(),
+      model.countDocuments(filter).lean().exec(),
     ]);
 
     return {
-        data,
-        total,
-        page,
-        limit,
-        totalPage: Math.ceil(total/limit)
-    }
-
+      data,
+      total,
+      page,
+      limit,
+      totalPage: Math.ceil(total / limit),
+    };
   }
-
-
-
 }

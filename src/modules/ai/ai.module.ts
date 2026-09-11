@@ -36,6 +36,6 @@ import { RetrievalService } from './services/retrieval.service';
     ChunkingService,
     RetrievalService,
   ],
-  exports: [AiChatService,IngestionService],
+  exports: [AiChatService, IngestionService],
 })
 export class AiModule {}

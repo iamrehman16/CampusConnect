@@ -20,7 +20,6 @@ export class Conversation {
 
   createdAt: Date;
   updatedAt: Date;
-
 }
 
 export const ConversationSchema = SchemaFactory.createForClass(Conversation);

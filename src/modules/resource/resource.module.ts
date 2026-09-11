@@ -15,7 +15,9 @@ import { QueuesModule } from '../queues/queues.module';
     ConfigModule.forFeature(resourceConfig),
     StorageModule,
     CommonModule,
-    MongooseModule.forFeature([{ name: Resource.name, schema: ResourceSchema }]),
+    MongooseModule.forFeature([
+      { name: Resource.name, schema: ResourceSchema },
+    ]),
     QueuesModule,
   ],
   controllers: [ResourceController, ResourceAdminController],

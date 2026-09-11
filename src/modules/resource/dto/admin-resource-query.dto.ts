@@ -1,4 +1,3 @@
-import { ResourceQueryDto } from "./resource-query.dto";
+import { ResourceQueryDto } from './resource-query.dto';
 
-
-export class AdminResourceQueryDto extends ResourceQueryDto{}
+export class AdminResourceQueryDto extends ResourceQueryDto {}

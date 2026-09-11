@@ -5,7 +5,7 @@ import { RetrievedContext } from '../interfaces/retrieved-context.interface';
 
 @Injectable()
 export class RetrievalService {
-  private readonly SCORE_THRESHOLD = 0.75;
+  private readonly SCORE_THRESHOLD = 0.6;
   private readonly TOP_K = 5;
 
   constructor(
@@ -20,6 +20,11 @@ export class RetrievalService {
       vector,
       {},
       this.TOP_K,
+    );
+
+    console.log(
+      '[DIAGNOSTIC] Raw retrieval scores before threshold:',
+      results.map((r) => ({ score: r.score, resource: r.payload?.title })),
     );
 
     return results

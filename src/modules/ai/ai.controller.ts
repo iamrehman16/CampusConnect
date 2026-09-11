@@ -28,7 +28,9 @@ export class AiController {
         res.write(`data: ${JSON.stringify(event.data)}\n\n`);
       },
       error: (err) => {
-        res.write(`data: ${JSON.stringify({ type: 'error', message: err.message })}\n\n`);
+        res.write(
+          `data: ${JSON.stringify({ type: 'error', message: err.message })}\n\n`,
+        );
         res.end();
       },
       complete: () => {

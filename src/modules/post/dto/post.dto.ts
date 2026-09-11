@@ -24,7 +24,7 @@ export class UpdatePostDto {
   content?: string;
 }
 
-export class PostStats{
-  total:number = 0;
-  recent:number = 0;
+export class PostStats {
+  total: number = 0;
+  recent: number = 0;
 }
