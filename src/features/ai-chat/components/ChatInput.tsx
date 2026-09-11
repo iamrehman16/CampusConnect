@@ -1,5 +1,5 @@
 // src/features/ai-chat/components/ChatInput.tsx
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Box, IconButton, Typography, TextField } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import StopIcon from '@mui/icons-material/Stop';
@@ -25,12 +25,17 @@ export function ChatInput({
 }: ChatInputProps) {
   const [value, setValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const appliedPrefillRef = useRef<string | undefined>(undefined);
 
-  if (prefillValue !== undefined && prefillValue !== value) {
-    setValue(prefillValue);
-    onPrefillConsumed?.();
-    setTimeout(() => textareaRef.current?.focus(), 0);
-  }
+  useEffect(() => {
+    if (prefillValue !== undefined && prefillValue !== appliedPrefillRef.current) {
+      appliedPrefillRef.current = prefillValue;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setValue(prefillValue);
+      onPrefillConsumed?.();
+      textareaRef.current?.focus();
+    }
+  }, [prefillValue, onPrefillConsumed]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setValue(e.target.value);

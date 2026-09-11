@@ -78,12 +78,26 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
   // ── Bootstrap: check stored tokens on mount ──────────────────────
   useEffect(() => {
-    const accessToken = tokenStorage.getAccessToken();
-    if (accessToken) {
-      fetchProfile().finally(() => setIsLoading(false));
-    } else {
-      setIsLoading(false);
-    }
+    const initAuth = async () => {
+      const accessToken = tokenStorage.getAccessToken();
+      
+      if (!accessToken) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        await fetchProfile();
+      } catch (error) {
+        console.error("Auth initialization failed:", error);
+        tokenStorage.clearTokens();
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void initAuth();
   }, [fetchProfile]);
 
   return (

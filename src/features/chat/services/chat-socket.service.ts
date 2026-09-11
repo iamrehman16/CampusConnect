@@ -1,3 +1,4 @@
+import toast from "react-hot-toast";
 import { io, Socket } from "socket.io-client";
 import { config } from "@/shared/constants/config";
 import type {
@@ -33,6 +34,10 @@ class ChatSocketService {
 
     this.socket.on("connect_error", (err) => {
       console.error("[ChatSocket] connection error:", err.message);
+    });
+
+    this.socket.on("chat_error", (err: { message: string }) => {
+      toast.error(err.message);
     });
 
     return this.socket;

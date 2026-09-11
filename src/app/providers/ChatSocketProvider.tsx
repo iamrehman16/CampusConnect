@@ -22,6 +22,7 @@ export function ChatSocketProvider({
   useEffect(() => {
     if (!token) {
       chatSocketService.disconnect();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsConnected(false);
       return;
     }
@@ -32,6 +33,7 @@ export function ChatSocketProvider({
 
     socket.on("connect", handleConnect);
     socket.on("disconnect", handleDisconnect);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsConnected(socket.connected);
 
     return () => {
