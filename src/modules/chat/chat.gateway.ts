@@ -39,7 +39,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly chatService: ChatService,
     private readonly wsJwtGuard: WsJwtGuard,
-  ) { }
+  ) {}
 
   async handleConnection(socket: Socket) {
     try {
@@ -82,15 +82,23 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() dto: CreateMessageDto,
   ) {
     const senderId = socket.data.userId;
-
-    const message = await this.chatService.createMessageIdempotent(
-      dto,
-      senderId,
-    );
-
-    socket.to(dto.conversationId).emit('new_message', message);
-
-    return message;
+    try {
+      const message = await this.chatService.createMessageIdempotent(
+        dto,
+        senderId,
+      );
+      socket.to(dto.conversationId).emit('new_message', message);
+      return message;
+    } catch (err) {
+      this.logger.error(
+        `Error in handleSendMessage for user ${senderId}:`,
+        err,
+      );
+      socket.emit('chat_error', {
+        message: 'Failed to send message',
+        clientId: dto.clientId,
+      });
+    }
   }
 
   @UseGuards(WsJwtGuard)
@@ -100,15 +108,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() conversationId: string,
   ) {
     const userId = socket.data.userId;
-
-    await this.chatService.markSeen(conversationId, userId);
-
-    const dto: MarkSeenDto = {
-      conversationId,
-      seenBy: userId,
-    };
-
-    this.server.to(conversationId).emit('messages_seen', dto);
+    try {
+      await this.chatService.markSeen(conversationId, userId);
+      const dto: MarkSeenDto = { conversationId, seenBy: userId };
+      this.server.to(conversationId).emit('messages_seen', dto);
+    } catch (err) {
+      this.logger.error(`Error in handleMarkSeen for user ${userId}:`, err);
+      socket.emit('chat_error', { message: 'Failed to update message status' });
+    }
   }
 
   @UseGuards(WsJwtGuard)
@@ -118,19 +125,24 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() dto: DeleteMessageDto,
   ) {
     const userId = socket.data.userId;
-
-    await this.chatService.deleteMessage(
-      dto.messageId,
-      dto.conversationId,
-      userId,
-    );
-
-    const deleteDto: DeleteMessageDto = {
-      messageId: dto.messageId,
-      conversationId: dto.conversationId,
-    };
-
-    this.server.to(dto.conversationId).emit('message_deleted', deleteDto);
+    try {
+      await this.chatService.deleteMessage(
+        dto.messageId,
+        dto.conversationId,
+        userId,
+      );
+      const deleteDto: DeleteMessageDto = {
+        messageId: dto.messageId,
+        conversationId: dto.conversationId,
+      };
+      this.server.to(dto.conversationId).emit('message_deleted', deleteDto);
+    } catch (err) {
+      this.logger.error(
+        `Error in handleDeleteMessage for user ${userId}:`,
+        err,
+      );
+      socket.emit('chat_error', { message: 'Failed to delete message' });
+    }
   }
 
   //private helpers
