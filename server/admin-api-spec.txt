@@ -1,0 +1,146 @@
+# Admin API Specification (Resource & User Modules)
+**Date Updated**: March 17, 2026
+**Target Audience**: Frontend Engineering Team
+
+## ⚠️ MANDATORY FRONTEND ARCHITECTURAL DIRECTIVE
+1. **Service Cleanup**: Immediately remove all administrative functions (Approve, Reject, Delete, List Users, etc.) from standard feature services (`feature/user`, `feature/resource`).
+2. **Domain Isolation**: Create a dedicated `feature/admin` directory. All administrative API calls must reside here.
+3. **Dedicated Services**: Implement `AdminUserService` and `AdminResourceService` within the `feature/admin` module. This ensures proper lazy-loading and bundle isolation for non-admin users.
+
+---
+
+## Common Data Shapes
+
+### User Schema (Admin View)
+```typescript
+interface User {
+  _id: string;
+  email: string;
+  name?: string;
+  role: "Student" | "Contributor" | "Admin";
+  academicInfo?: string;
+  expertise?: string;
+  contributionScore: number;
+  accountStatus: "Active" | "Suspended";
+  createdAt: string; // ISO Date string
+  updatedAt: string; // ISO Date string
+}
+```
+
+### Resource Schema (Admin View)
+```typescript
+interface Resource {
+  _id: string;
+  title: string;
+  description?: string;
+  subject: string;
+  course: string;
+  semester: number;
+  resourceType: "Notes" | "Slides" | "Assignment" | "Lab" | "PastPaper" | "Book" | "ResearchPaper" | "Other";
+  fileType: "PDF" | "DOC" | "PPT" | "IMAGE" | "ZIP" | "OTHER";
+  fileFormat: string;
+  fileSize: number;
+  fileUrl: string;
+  uploadedBy?: string; // User ID
+  approvalStatus: "Pending" | "Approved" | "Rejected";
+  rejectionReason?: string;
+  downloads: number;
+  tags: string[];
+  isDeleted: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+---
+
+## User Management Endpoints (Admin)
+**Base Path**: `/admin/users`
+
+### 1. Create User (System-wide)
+- **POST** `/admin/users`
+- **Payload**: `AdminCreateUserDto`
+- **Response**: `User`
+
+### 2. List All Users
+- **GET** `/admin/users`
+- **Response**: `User[]`
+
+### 3. Get User Detail
+- **GET** `/admin/users/:id`
+- **Response**: `User`
+
+### 4. Administrative User Update
+- **PATCH** `/admin/users/:id`
+- **Payload**: `Partial<AdminCreateUserDto>`
+- **Response**: `User`
+
+### 5. Change User Role
+- **PATCH** `/admin/users/:id/role`
+- **Payload**: `{ role: "Student" | "Contributor" | "Admin" }`
+- **Response**: `User`
+
+### 6. Remove User (Permanent)
+- **DELETE** `/admin/users/:id`
+- **Response**: Status 200 OK
+
+---
+
+## Resource Moderation Endpoints (Admin)
+**Base Path**: `/admin/resources`
+
+### 1. Administrative Resource Update
+- **PATCH** `/admin/resources/:id`
+- **Payload**: `Partial<ResourceMetadata>`
+- **Response**: `Resource`
+
+### 2. Moderated Deletion
+- **DELETE** `/admin/resources/:id`
+- **Response**: `{ message: "Resource deleted successfully" }`
+
+### 3. Approval Action
+- **PATCH** `/admin/resources/:id/approve`
+- **Response**: `Resource` (status: "Approved")
+
+### 4. Rejection Action (Requires Reason)
+- **PATCH** `/admin/resources/:id/reject`
+- **Payload**: `{ reason: string }`
+- **Response**: `Resource` (status: "Rejected")
+
+---
+
+## Error Handling Standards
+All responses follow the standard NestJS Error format:
+```typescript
+{
+  statusCode: number;   // 400, 401, 403, 404, 500
+  message: string | string[]; // Detailed validation or business error
+  error: string;        // Error title (e.g. "Bad Request")
+}
+```
+- **401**: Missing or expired JWT.
+- **403**: Insufficient privileges (User is not "Admin").
+- **404**: Resource/User ID does not exist in the active database.
+
+---
+
+## Dashboard Endpoints (Admin Overview)
+**Base Path**: `/admin/dashboard`
+
+### 1. Get Overview Statistics
+- **GET** `/admin/dashboard/stats`
+- **Response**:
+```typescript
+{
+  users: {
+    total: number;
+    contributors: number;
+  };
+  resources: {
+    total: number;
+    pending: number;
+    uploadedPastWeek: number;
+  };
+  timestamp: string; // ISO Date
+}
+```

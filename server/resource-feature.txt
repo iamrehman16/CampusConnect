@@ -1,0 +1,136 @@
+# Resource Feature API Documentation
+
+## Enums
+- **ResourceType**: `Notes`, `Slides`, `Assignment`, `Lab`, `PastPaper`, `Book`, `ResearchPaper`, `Other`
+- **ApprovalStatus**: `Pending`, `Approved`, `Rejected`
+- **FileType**: `PDF`, `DOC`, `PPT`, `IMAGE`, `ZIP`, `OTHER`
+- **ResourceSort**: `newest`, `oldest`, `popular`, `downloads`
+
+## Shapes
+
+### Resource Object (Response)
+```typescript
+{
+  _id: string;
+  title: string;
+  description?: string;
+  subject: string;
+  course: string;
+  semester: number;
+  resourceType: ResourceType;
+  fileType: FileType;
+  fileFormat: string;
+  fileSize: number;
+  fileUrl: string;
+  uploadedBy?: string; // User ID
+  approvalStatus: ApprovalStatus;
+  rejectionReason?: string;
+  upvotes: string[]; // User IDs
+  downloads: number;
+  tags: string[];
+  isDeleted: boolean;
+  createdAt: string; // ISO Date
+  updatedAt: string; // ISO Date
+}
+```
+
+### Paginated Response
+```typescript
+{
+  data: Resource[];
+  total: number;
+  page: number;
+  limit: number;
+}
+```
+
+### Error Shape (Standard NestJS)
+```typescript
+{
+  statusCode: number;
+  message: string | string[];
+  error?: string;
+}
+```
+
+## Endpoints
+
+### 1. Create Resource
+- **Method**: `POST /resources`
+- **Auth**: Admin, Contributor
+- **Body**: `Multipart/form-data`
+  - `file`: File (Required)
+  - `title`: string (max 200, Required)
+  - `description`: string (max 2000, Optional)
+  - `subject`: string (Required)
+  - `course`: string (Required)
+  - `semester`: number (1-8, Required)
+  - `resourceType`: ResourceType (Required)
+  - `tags`: string or string[] (Optional, comma-separated if string)
+- **Response**: `Resource`
+- **Errors**: 400 (Validation), 401 (Unauthorized), 403 (Forbidden), 500 (Upload/DB)
+
+### 2. List Resources
+- **Method**: `GET /resources`
+- **Auth**: Public
+- **Query Params**:
+  - `search`: string (Optional)
+  - `type`: ResourceType (Optional)
+  - `semester`: number (Optional)
+  - `sort`: ResourceSort (Optional, default: `newest`)
+  - `page`: number (Optional, default: 1)
+  - `limit`: number (Optional, default: 12, max: 50)
+- **Response**: `PaginatedResponse<Resource>`
+- **Errors**: 400 (Validation)
+
+### 3. Get Resource Details
+- **Method**: `GET /resources/:id`
+- **Auth**: Public
+- **Params**: `id` (MongoId)
+- **Response**: `Resource`
+- **Errors**: 400 (Invalid ID), 404 (Not Found)
+
+### 4. Download Resource
+- **Method**: `GET /resources/:id/download`
+- **Auth**: Public
+- **Params**: `id` (MongoId)
+- **Response**: Redirect to download URL
+- **Errors**: 400 (Invalid ID), 404 (Not Found)
+
+### 5. Update Resource (Admin)
+- **Method**: `PATCH /resources/:id`
+- **Auth**: Admin
+- **Params**: `id` (MongoId)
+- **Body**: Partial<CreateBody> (without file)
+- **Response**: `Resource`
+- **Errors**: 400, 401, 403, 404
+
+### 6. Update Own Resource
+- **Method**: `PATCH /resources/:id/my`
+- **Auth**: Contributor
+- **Params**: `id` (MongoId)
+- **Body**: Partial<CreateBody> (without file)
+- **Response**: `Resource`
+- **Errors**: 400, 401, 403, 404 (if not owner or not found)
+
+### 7. Delete Resource
+- **Method**: `DELETE /resources/:id`
+- **Auth**: Admin
+- **Params**: `id` (MongoId)
+- **Response**: `{ message: "Resource deleted successfully" }`
+- **Errors**: 400, 401, 403, 404
+
+### 8. Approve Resource
+- **Method**: `PATCH /resources/:id/approve`
+- **Auth**: Admin
+- **Params**: `id` (MongoId)
+- **Response**: `Resource`
+- **Errors**: 400 (If not pending), 401, 403, 404
+
+### 9. Reject Resource
+- **Method**: `PATCH /resources/:id/reject`
+- **Auth**: Admin
+- **Params**: `id` (MongoId)
+- **Body**: `{ reason: string }` (max 500, Required)
+- **Response**: `Resource`
+- **Errors**: 400 (If not pending), 401, 403, 404

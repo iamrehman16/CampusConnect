@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Module Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: sans-serif; display: flex; flex-direction: column; gap: 20px; padding: 20px; background: #f4f7f6; margin: 0; }
+        .config-bar { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; gap: 20px; align-items: flex-end; flex-wrap: wrap; }
+        .clients-container { display: flex; gap: 20px; flex-wrap: wrap; }
+        .client-box { background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 8px; flex: 1; min-width: 450px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
+        .messages-display { height: 200px; overflow-y: auto; border: 1px solid #e0e0e0; background: #fafafa; padding: 10px; margin: 10px 0; border-radius: 4px; flex-shrink: 0; }
+        .message-item { padding: 8px; margin-bottom: 8px; border-radius: 4px; font-size: 13px; }
+        .message-item.sent { background: #d4edda; border-left: 3px solid #28a745; }
+        .message-item.received { background: #cfe2ff; border-left: 3px solid #0d6efd; }
+        .message-item.system { background: #fff3cd; border-left: 3px solid #ffc107; color: #856404; }
+        .message-time { font-size: 11px; color: #666; margin-top: 4px; }
+        .logs { height: 200px; overflow-y: auto; border: 1px solid #eee; background: #fafafa; padding: 10px; margin-top: 10px; font-size: 12px; border-radius: 4px; flex-grow: 1; }
+        .log-entry { padding: 8px; border-bottom: 1px solid #eee; }
+        .controls { display: grid; gap: 10px; margin-bottom: 10px; }
+        .input-group { display: flex; flex-direction: column; }
+        label { font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #666; text-transform: uppercase; }
+        input { padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        button { padding: 10px 15px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; font-weight: bold; transition: background 0.2s; }
+        button:hover { background: #0056b3; }
+        button:active { transform: scale(0.98); }
+        button.secondary { background: #6c757d; }
+        button.secondary:hover { background: #5a6268; }
+        .status { font-weight: bold; margin-bottom: 10px; font-size: 14px; }
+        .status.connected { color: #28a745; }
+        .status.disconnected { color: #dc3545; }
+        hr { border: 0; border-top: 1px solid #eee; margin: 15px 0; }
+        pre { white-space: pre-wrap; word-wrap: break-word; margin: 0; }
+        .message-input-group { display: flex; gap: 5px; }
+        .message-input-group input { flex: 1; }
+        .message-input-group button { flex: 0 0 auto; }
+    </style>
+</head>
+<body>
+
+<h1>Chat Gateway Debugger</h1>
+
+<div class="config-bar">
+    <div class="input-group">
+        <label>Server Port:</label>
+        <input type="number" id="serverPort" value="3100" style="width: 80px;">
+    </div>
+    <div class="input-group" style="flex-grow: 1; min-width: 300px;">
+        <label>Common Conversation ID (MongoId):</label>
+        <input type="text" id="commonConversationId" placeholder="Paste conversation ID here...">
+    </div>
+    <div style="font-size: 11px; color: #888;">
+        Namespace: <strong>/chat</strong><br>
+        Transport: <strong>WebSocket only</strong>
+    </div>
+</div>
+
+<div class="clients-container">
+    <!-- CLIENT A -->
+    <div class="client-box" id="clientA">
+        <h3>User A</h3>
+        <div id="statusA" class="status disconnected">● Disconnected</div>
+        <div class="controls">
+            <div class="input-group">
+                <label>JWT Token A:</label>
+                <input type="text" id="tokenA" placeholder="User A Token">
+            </div>
+            <div style="display: flex; gap: 5px;">
+                <button style="flex: 1;" onclick="handleConnect(event, 'A')">Connect</button>
+                <button class="secondary" onclick="handleDisconnect(event, 'A')">Disconnect</button>
+            </div>
+            <hr>
+            <button class="secondary" onclick="handleJoinRoom(event, 'A')">Join Room</button>
+            <label style="margin-top: 10px;">Messages:</label>
+            <div class="messages-display" id="messagesA"></div>
+            <div class="message-input-group">
+                <input type="text" id="msgA" placeholder="Type a message..." onkeypress="handleKeyPress(event, 'A')">
+                <button onclick="handleSendMessage(event, 'A')">Send</button>
+                <button class="secondary" onclick="handleMarkSeen(event, 'A')">Mark Seen</button>
+            </div>
+        </div>
+        <label style="margin-top: 10px;">Event Logs:</label>
+        <div class="logs" id="logsA"></div>
+    </div>
+
+    <!-- CLIENT B -->
+    <div class="client-box" id="clientB">
+        <h3>User B</h3>
+        <div id="statusB" class="status disconnected">● Disconnected</div>
+        <div class="controls">
+            <div class="input-group">
+                <label>JWT Token B:</label>
+                <input type="text" id="tokenB" placeholder="User B Token">
+            </div>
+            <div style="display: flex; gap: 5px;">
+                <button style="flex: 1;" onclick="handleConnect(event, 'B')">Connect</button>
+                <button class="secondary" onclick="handleDisconnect(event, 'B')">Disconnect</button>
+            </div>
+            <hr>
+            <button class="secondary" onclick="handleJoinRoom(event, 'B')">Join Room</button>
+            <label style="margin-top: 10px;">Messages:</label>
+            <div class="messages-display" id="messagesB"></div>
+            <div class="message-input-group">
+                <input type="text" id="msgB" placeholder="Type a message..." onkeypress="handleKeyPress(event, 'B')">
+                <button onclick="handleSendMessage(event, 'B')">Send</button>
+                <button class="secondary" onclick="handleMarkSeen(event, 'B')">Mark Seen</button>
+            </div>
+        </div>
+        <label style="margin-top: 10px;">Event Logs:</label>
+        <div class="logs" id="logsB"></div>
+    </div>
+</div>
+
+<script>
+    const sockets = { A: null, B: null };
+    const userIds = { A: null, B: null };
+
+    function log(user, message, data = null) {
+        const logsDiv = document.getElementById(`logs${user}`);
+        const entry = document.createElement('div');
+        entry.className = 'log-entry';
+        
+        const timestamp = new Date().toLocaleTimeString();
+        let html = `<span style="color: #888;">[${timestamp}]</span> <strong>${message}</strong>`;
+        
+        if (data) {
+            html += `<pre style="color: #444; margin-top: 5px; font-size: 11px;">${JSON.stringify(data, null, 2)}</pre>`;
+        }
+        
+        entry.innerHTML = html;
+        logsDiv.prepend(entry);
+    }
+
+    function displayMessage(user, content, sender, type = 'received') {
+        const messagesDiv = document.getElementById(`messages${user}`);
+        const messageEl = document.createElement('div');
+        messageEl.className = `message-item ${type}`;
+        
+        const timestamp = new Date().toLocaleTimeString();
+        const senderLabel = type === 'sent' ? 'You' : (sender || 'Unknown');
+        
+        messageEl.innerHTML = `
+            <strong>${senderLabel}:</strong> ${content}
+            <div class="message-time">${timestamp}</div>
+        `;
+        
+        messagesDiv.appendChild(messageEl);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function updateStatus(user, connected) {
+        const statusDiv = document.getElementById(`status${user}`);
+        statusDiv.textContent = connected ? '● Connected' : '● Disconnected';
+        statusDiv.className = `status ${connected ? 'connected' : 'disconnected'}`;
+    }
+
+    function handleConnect(event, user) {
+        event.preventDefault();
+        const token = document.getElementById(`token${user}`).value.trim();
+        const port = document.getElementById('serverPort').value;
+        
+        if (!token) return alert(`Please enter a token for User ${user}`);
+        if (!port) return alert('Please enter a server port');
+
+        if (sockets[user]) sockets[user].disconnect();
+
+        const url = `http://localhost:${port}/chat`;
+        log(user, `Attempting connection to ${url}...`);
+        
+        // Extract user ID from JWT (decode the payload)
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            userIds[user] = payload.sub || payload.id || payload.userId;
+            log(user, `Decoded user ID: ${userIds[user]}`);
+        } catch (e) {
+            log(user, 'Warning: Could not decode JWT token');
+        }
+        
+        sockets[user] = io(url, {
+            auth: { token },
+            transports: ['websocket'],
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000
+        });
+
+        sockets[user].on('connect', () => {
+            updateStatus(user, true);
+            log(user, 'Connection established successfully!');
+            displayMessage(user, 'Connected to chat gateway', 'System', 'system');
+        });
+
+        sockets[user].on('disconnect', (reason) => {
+            updateStatus(user, false);
+            log(user, `Disconnected. Reason: ${reason}`);
+            displayMessage(user, `Disconnected: ${reason}`, 'System', 'system');
+        });
+
+        sockets[user].on('connect_error', (err) => {
+            log(user, `CONNECTION ERROR: ${err.message}`, err);
+            displayMessage(user, `Connection error: ${err.message}`, 'System', 'system');
+        });
+
+        sockets[user].on('new_message', (data) => {
+            log(user, 'EVENT: new_message', data);
+            const isSent = data.sender === userIds[user];
+            const senderName = isSent ? 'You' : 'Other User';
+            displayMessage(user, data.content, senderName, isSent ? 'sent' : 'received');
+        });
+
+        sockets[user].on('messages_seen', (data) => {
+            log(user, 'EVENT: messages_seen', data);
+            displayMessage(user, `Messages marked as seen by ${data.seenBy}`, 'System', 'system');
+        });
+
+        sockets[user].on('message_deleted', (data) => {
+            log(user, 'EVENT: message_deleted', data);
+            displayMessage(user, `Message deleted: ${data.messageId}`, 'System', 'system');
+        });
+
+        sockets[user].on('exception', (data) => {
+            log(user, 'EXCEPTION from Gateway', data);
+            displayMessage(user, `Error: ${data.message || JSON.stringify(data)}`, 'System', 'system');
+        });
+    }
+
+    function handleDisconnect(event, user) {
+        event.preventDefault();
+        if (sockets[user]) {
+            sockets[user].disconnect();
+            log(user, 'Manually disconnected');
+        }
+    }
+
+    function handleJoinRoom(event, user) {
+        event.preventDefault();
+        const conversationId = document.getElementById('commonConversationId').value.trim();
+        if (!conversationId) return alert('Please enter a Conversation ID');
+        if (!sockets[user] || !sockets[user].connected) return alert(`User ${user} is not connected`);
+
+        log(user, `Emitting join_conversation for: ${conversationId}`);
+        sockets[user].emit('join_conversation', conversationId, (response) => {
+            log(user, 'Join acknowledgment received', response);
+            displayMessage(user, `Joined conversation: ${conversationId}`, 'System', 'system');
+        });
+    }
+
+    function handleSendMessage(event, user) {
+        event.preventDefault();
+        const conversationId = document.getElementById('commonConversationId').value.trim();
+        const content = document.getElementById(`msg${user}`).value.trim();
+        
+        if (!conversationId || !content) return alert('Enter conversation ID and message content');
+        if (!sockets[user] || !sockets[user].connected) return alert(`User ${user} is not connected`);
+
+        const dto = { conversationId, content };
+        log(user, `Emitting send_message`, dto);
+        sockets[user].emit('send_message', dto, (response) => {
+            log(user, 'Send acknowledgment (response)', response);
+            // Don't display here - let the new_message event handle it
+            document.getElementById(`msg${user}`).value = '';
+        });
+    }
+
+    function handleMarkSeen(event, user) {
+        event.preventDefault();
+        const conversationId = document.getElementById('commonConversationId').value.trim();
+        if (!conversationId) return alert('Enter conversation ID');
+        if (!sockets[user] || !sockets[user].connected) return alert(`User ${user} is not connected`);
+
+        log(user, `Emitting mark_seen for: ${conversationId}`);
+        sockets[user].emit('mark_seen', conversationId);
+    }
+
+    function handleKeyPress(event, user) {
+        if (event.key === 'Enter') {
+            handleSendMessage(event, user);
+        }
+    }
+</script>
+
+</body>
+</html>
