@@ -1,0 +1,5 @@
+# Root-level junk only — client/ and server/ each keep their own .gitignore
+# for their independent build/dependency artifacts.
+.DS_Store
+*.swp
+.idea
