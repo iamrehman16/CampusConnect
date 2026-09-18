@@ -28,11 +28,10 @@ jobs:
       # tsc -p tsconfig.build.json — typecheck and emit in one step
       - run: npm run build
 
-  # Non-blocking until the existing suite is fixed (9/10 suites currently fail
-  # on DI setup, unrelated to this workflow). See BACKLOG.md cleanup PBI.
+  # Required (BACKLOG.md A12, 2026-09-18) — all 15 suites pass.
   test:
+    name: server-test
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
