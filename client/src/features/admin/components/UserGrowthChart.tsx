@@ -3,6 +3,7 @@ import {
   ResponsiveContainer, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
+import type { TooltipValueType } from 'recharts';
 import { useChartTheme } from '../hooks/useChartTheme';
 import { fillMissingDays } from '../utils/fillMissingDays';
 import type { DailyCount } from '../types/admin.dto';
@@ -43,7 +44,7 @@ export default function UserGrowthChart({ data }: Props) {
           axisLine={false}
         />
         <Tooltip
-          formatter={(value: any) => [value ?? 0, 'New users']}
+          formatter={(value: TooltipValueType | undefined) => [value ?? 0, 'New users']}
           labelFormatter={formatDate}
           contentStyle={{
             background: c.tooltipBg,

@@ -1,5 +1,6 @@
 // features/admin/components/ApprovalDonut.tsx
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import type { TooltipValueType } from 'recharts';
 import { useChartTheme } from '../hooks/useChartTheme';
 import type { ApprovalFunnel } from '../types/admin.dto';
 
@@ -31,7 +32,10 @@ export default function ApprovalDonut({ data }: Props) {
           ))}
         </Pie>
         <Tooltip
-          formatter={(value: any, name: any) => [value ?? 0, name]}
+          formatter={(
+            value: TooltipValueType | undefined,
+            name: string | number | undefined,
+          ) => [value ?? 0, name]}
           contentStyle={{
             background: c.tooltipBg,
             border: `1px solid ${c.tooltipBorder}`,

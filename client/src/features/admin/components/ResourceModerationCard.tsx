@@ -104,9 +104,7 @@ export default function ResourceModerationCard({ resource }: Props) {
       <Typography variant="caption" color="text.secondary">
         Uploaded by{' '}
         <Typography component="span" variant="caption" color="text.primary">
-          {typeof resource.uploadedBy === 'object'
-            ? (resource.uploadedBy as any).name
-            : resource.uploadedBy}
+          {resource.uploadedBy.name}
         </Typography>{' '}
         · {new Date(resource.createdAt).toLocaleDateString()}
       </Typography>

@@ -3,6 +3,7 @@ import {
   ResponsiveContainer, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
+import type { TooltipValueType } from 'recharts';
 import { useChartTheme } from '../hooks/useChartTheme';
 import { fillMissingDays } from '../utils/fillMissingDays';
 import type { DailyCount } from '../types/admin.dto';
@@ -36,7 +37,7 @@ export default function UploadsLineChart({ data }: Props) {
           axisLine={false}
         />
         <Tooltip
-          formatter={(value: any) => [value ?? 0, 'Uploads']}
+          formatter={(value: TooltipValueType | undefined) => [value ?? 0, 'Uploads']}
           labelFormatter={formatDate}
           contentStyle={{
             background: c.tooltipBg,

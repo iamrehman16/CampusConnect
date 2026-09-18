@@ -3,6 +3,7 @@ import {
   ResponsiveContainer, BarChart, Bar,
   XAxis, YAxis, Tooltip, Cell,
 } from 'recharts';
+import type { TooltipValueType } from 'recharts';
 import { useChartTheme } from '../hooks/useChartTheme';
 import type { DistributionItem } from '../types/admin.dto';
 
@@ -35,7 +36,7 @@ export default function FileTypeBarChart({ data }: Props) {
           axisLine={false}
         />
         <Tooltip
-          formatter={(value: any) => [value ?? 0, 'Resources']}
+          formatter={(value: TooltipValueType | undefined) => [value ?? 0, 'Resources']}
           contentStyle={{
             background: c.tooltipBg,
             border: `1px solid ${c.tooltipBorder}`,
