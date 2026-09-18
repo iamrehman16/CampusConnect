@@ -13,8 +13,10 @@ import { RegisterUserDto } from './dto/register-user.dto';
 import { Roles } from './enums/user-role.enum';
 import { UserStatus } from './enums/user-status.enum';
 import { AdminCreateUserDto } from './dto/admin-create-user.dto';
-import { UserGrowthDto } from '../dashboard/dto/resource-analytics.dto';
-import { format } from 'path';
+import {
+  DailyCountDto,
+  UserGrowthDto,
+} from '../dashboard/dto/resource-analytics.dto';
 import { UserQueryDto } from './dto/user-query.dto';
 import {
   PaginatedResult,
@@ -48,12 +50,21 @@ export class UserService {
 
     try {
       return await newUser.save();
-    } catch (error: any) {
-      if (error.code === 11000) {
+    } catch (error) {
+      if (this.isDuplicateKeyError(error)) {
         throw new ConflictException('User with this email already exists');
       }
       throw error;
     }
+  }
+
+  private isDuplicateKeyError(err: unknown): boolean {
+    return (
+      typeof err === 'object' &&
+      err !== null &&
+      'code' in err &&
+      (err as { code: unknown }).code === 11000
+    );
   }
 
   async createUserByAdmin(dto: AdminCreateUserDto) {
@@ -190,7 +201,7 @@ export class UserService {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     thirtyDaysAgo.setHours(0, 0, 0, 0);
 
-    const rows = await this.userModel.aggregate([
+    const rows = await this.userModel.aggregate<DailyCountDto>([
       { $match: { createdAt: { $gte: thirtyDaysAgo } } },
       {
         $group: {

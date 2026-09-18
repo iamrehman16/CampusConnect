@@ -2,7 +2,10 @@ import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { QdrantClient } from '@qdrant/js-client-rest';
 import { ConfigType } from '@nestjs/config';
 import aiConfig from '../config/ai.config';
-import { VectorSearchResultDto } from '../dto/vector-search-result.dto';
+import {
+  ResourceChunkPayload,
+  VectorSearchResultDto,
+} from '../dto/vector-search-result.dto';
 
 @Injectable()
 export class VectorStoreService implements OnModuleInit {
@@ -101,7 +104,10 @@ export class VectorStoreService implements OnModuleInit {
     return results.map((r) => ({
       resourceId: r.id as string,
       score: r.score,
-      payload: r.payload ?? {},
+      // Qdrant's client types payload as an untyped record — this cast
+      // assumes it's always the shape IngestionService writes (see
+      // ingestion.service.ts's upsertMany call).
+      payload: (r.payload ?? {}) as unknown as ResourceChunkPayload,
     }));
   }
 }

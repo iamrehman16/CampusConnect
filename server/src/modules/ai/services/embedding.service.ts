@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, TaskType } from '@google/generative-ai';
 import { ConfigType } from '@nestjs/config';
 import aiConfig from '../config/ai.config';
 
@@ -22,7 +22,7 @@ export class EmbeddingService {
 
       const result = await model.embedContent({
         content: { parts: [{ text }], role: 'user' },
-        taskType: 'RETRIEVAL_DOCUMENT' as any,
+        taskType: TaskType.RETRIEVAL_DOCUMENT,
       });
 
       return result.embedding.values;
@@ -42,7 +42,7 @@ export class EmbeddingService {
         texts.map((text) =>
           model.embedContent({
             content: { parts: [{ text }], role: 'user' },
-            taskType: 'RETRIEVAL_DOCUMENT' as any,
+            taskType: TaskType.RETRIEVAL_DOCUMENT,
           }),
         ),
       );
@@ -62,7 +62,7 @@ export class EmbeddingService {
 
       const result = await model.embedContent({
         content: { parts: [{ text }], role: 'user' },
-        taskType: 'RETRIEVAL_QUERY' as any,
+        taskType: TaskType.RETRIEVAL_QUERY,
       });
 
       return result.embedding.values;

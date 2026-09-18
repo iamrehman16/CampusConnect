@@ -6,7 +6,7 @@ import { HydratedDocument } from 'mongoose';
 @Schema({
   timestamps: true,
   toJSON: {
-    transform(doc, ret: any) {
+    transform(doc, ret: Record<string, unknown>) {
       delete ret.password;
       return ret;
     },

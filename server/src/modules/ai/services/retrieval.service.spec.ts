@@ -30,6 +30,10 @@ function result(score: number, title = 'Some Resource'): VectorSearchResultDto {
       resourceId: 'resource-1',
       semester: 3,
       course: 'CS101',
+      chunkIndex: 0,
+      subject: 'Computer Science',
+      resourceType: 'notes',
+      fileType: 'pdf',
     },
   };
 }

@@ -33,10 +33,29 @@ import { Queue } from 'bullmq';
 import { IngestResourceJobPayload } from '../queues/interfaces/ingest-resource-job.interface';
 import {
   ApprovalFunnelDto,
+  DailyCountDto,
+  DistributionItemDto,
   ResourceAnalyticsDto,
+  TopContributorDto,
 } from '../dashboard/dto/resource-analytics.dto';
 
 const UPLOADED_BY_POPULATE = { path: 'uploadedBy', select: 'name email' };
+
+interface ResourceStatsFacetResult {
+  total?: number;
+  pending?: number;
+  uploadedPastWeek?: number;
+}
+
+interface ResourceAnalyticsFacetResult {
+  dailyUploads: DailyCountDto[];
+  approvalFunnel: { _id: ApprovalStatus; count: number }[];
+  byFileType: DistributionItemDto[];
+  bySubject: DistributionItemDto[];
+  bySemester: DistributionItemDto[];
+  approvalTiming: { _id: null; avgMs: number }[];
+  topContributors: TopContributorDto[];
+}
 
 @Injectable()
 export class ResourceService {
@@ -309,29 +328,32 @@ export class ResourceService {
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
     try {
-      const [stats] = await this.resourceModel.aggregate([
-        { $match: { isDeleted: false } },
-        {
-          $facet: {
-            total: [{ $count: 'count' }],
-            pending: [
-              { $match: { approvalStatus: ApprovalStatus.PENDING } },
-              { $count: 'count' },
-            ],
-            uploadedPastWeek: [
-              { $match: { createdAt: { $gte: oneWeekAgo } } },
-              { $count: 'count' },
-            ],
+      const [stats] =
+        await this.resourceModel.aggregate<ResourceStatsFacetResult>([
+          { $match: { isDeleted: false } },
+          {
+            $facet: {
+              total: [{ $count: 'count' }],
+              pending: [
+                { $match: { approvalStatus: ApprovalStatus.PENDING } },
+                { $count: 'count' },
+              ],
+              uploadedPastWeek: [
+                { $match: { createdAt: { $gte: oneWeekAgo } } },
+                { $count: 'count' },
+              ],
+            },
           },
-        },
-        {
-          $project: {
-            total: { $arrayElemAt: ['$total.count', 0] },
-            pending: { $arrayElemAt: ['$pending.count', 0] },
-            uploadedPastWeek: { $arrayElemAt: ['$uploadedPastWeek.count', 0] },
+          {
+            $project: {
+              total: { $arrayElemAt: ['$total.count', 0] },
+              pending: { $arrayElemAt: ['$pending.count', 0] },
+              uploadedPastWeek: {
+                $arrayElemAt: ['$uploadedPastWeek.count', 0],
+              },
+            },
           },
-        },
-      ]);
+        ]);
 
       return stats ?? { total: 0, pending: 0, uploadedPastWeek: 0 };
     } catch {
@@ -345,106 +367,107 @@ export class ResourceService {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     thirtyDaysAgo.setHours(0, 0, 0, 0);
 
-    const [result] = await this.resourceModel.aggregate([
-      { $match: { isDeleted: false } },
-      {
-        $facet: {
-          // --- Daily uploads (last 30 days) ---
-          dailyUploads: [
-            { $match: { createdAt: { $gte: thirtyDaysAgo } } },
-            {
-              $group: {
-                _id: {
-                  $dateToString: { format: '%Y-%m-%d', date: '$createdAt' },
-                },
-                count: { $sum: 1 },
-              },
-            },
-            { $sort: { _id: 1 } },
-            { $project: { _id: 0, date: '$_id', count: 1 } },
-          ],
-
-          // --- Approval funnel ---
-          approvalFunnel: [
-            {
-              $group: {
-                _id: '$approvalStatus',
-                count: { $sum: 1 },
-              },
-            },
-          ],
-
-          // --- By file type ---
-          byFileType: [
-            { $group: { _id: '$fileType', count: { $sum: 1 } } },
-            { $sort: { count: -1 } },
-            { $project: { _id: 0, label: '$_id', count: 1 } },
-          ],
-
-          // --- By subject (top 8) ---
-          bySubject: [
-            { $group: { _id: '$subject', count: { $sum: 1 } } },
-            { $sort: { count: -1 } },
-            { $limit: 8 },
-            { $project: { _id: 0, label: '$_id', count: 1 } },
-          ],
-
-          // --- By semester ---
-          bySemester: [
-            { $group: { _id: '$semester', count: { $sum: 1 } } },
-            { $sort: { _id: 1 } },
-            { $project: { _id: 0, label: { $toString: '$_id' }, count: 1 } },
-          ],
-
-          // --- Avg approval time (approved resources only) ---
-          approvalTiming: [
-            { $match: { approvalStatus: ApprovalStatus.APPROVED } },
-            {
-              $project: {
-                diffMs: {
-                  $subtract: ['$updatedAt', '$createdAt'],
+    const [result] =
+      await this.resourceModel.aggregate<ResourceAnalyticsFacetResult>([
+        { $match: { isDeleted: false } },
+        {
+          $facet: {
+            // --- Daily uploads (last 30 days) ---
+            dailyUploads: [
+              { $match: { createdAt: { $gte: thirtyDaysAgo } } },
+              {
+                $group: {
+                  _id: {
+                    $dateToString: { format: '%Y-%m-%d', date: '$createdAt' },
+                  },
+                  count: { $sum: 1 },
                 },
               },
-            },
-            {
-              $group: {
-                _id: null,
-                avgMs: { $avg: '$diffMs' },
-              },
-            },
-          ],
+              { $sort: { _id: 1 } },
+              { $project: { _id: 0, date: '$_id', count: 1 } },
+            ],
 
-          // --- Top contributors (top 5) ---
-          topContributors: [
-            {
-              $group: {
-                _id: '$uploadedBy',
-                uploads: { $sum: 1 },
+            // --- Approval funnel ---
+            approvalFunnel: [
+              {
+                $group: {
+                  _id: '$approvalStatus',
+                  count: { $sum: 1 },
+                },
               },
-            },
-            { $sort: { uploads: -1 } },
-            { $limit: 5 },
-            {
-              $lookup: {
-                from: 'users',
-                localField: '_id',
-                foreignField: '_id',
-                as: 'user',
+            ],
+
+            // --- By file type ---
+            byFileType: [
+              { $group: { _id: '$fileType', count: { $sum: 1 } } },
+              { $sort: { count: -1 } },
+              { $project: { _id: 0, label: '$_id', count: 1 } },
+            ],
+
+            // --- By subject (top 8) ---
+            bySubject: [
+              { $group: { _id: '$subject', count: { $sum: 1 } } },
+              { $sort: { count: -1 } },
+              { $limit: 8 },
+              { $project: { _id: 0, label: '$_id', count: 1 } },
+            ],
+
+            // --- By semester ---
+            bySemester: [
+              { $group: { _id: '$semester', count: { $sum: 1 } } },
+              { $sort: { _id: 1 } },
+              { $project: { _id: 0, label: { $toString: '$_id' }, count: 1 } },
+            ],
+
+            // --- Avg approval time (approved resources only) ---
+            approvalTiming: [
+              { $match: { approvalStatus: ApprovalStatus.APPROVED } },
+              {
+                $project: {
+                  diffMs: {
+                    $subtract: ['$updatedAt', '$createdAt'],
+                  },
+                },
               },
-            },
-            { $unwind: { path: '$user', preserveNullAndEmptyArrays: false } },
-            {
-              $project: {
-                _id: 0,
-                userId: { $toString: '$_id' },
-                name: '$user.name', // adjust to your User.name field
-                uploads: 1,
+              {
+                $group: {
+                  _id: null,
+                  avgMs: { $avg: '$diffMs' },
+                },
               },
-            },
-          ],
+            ],
+
+            // --- Top contributors (top 5) ---
+            topContributors: [
+              {
+                $group: {
+                  _id: '$uploadedBy',
+                  uploads: { $sum: 1 },
+                },
+              },
+              { $sort: { uploads: -1 } },
+              { $limit: 5 },
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: '_id',
+                  foreignField: '_id',
+                  as: 'user',
+                },
+              },
+              { $unwind: { path: '$user', preserveNullAndEmptyArrays: false } },
+              {
+                $project: {
+                  _id: 0,
+                  userId: { $toString: '$_id' },
+                  name: '$user.name', // adjust to your User.name field
+                  uploads: 1,
+                },
+              },
+            ],
+          },
         },
-      },
-    ]);
+      ]);
 
     // --- Shape the approval funnel from array → object ---
     const funnel: ApprovalFunnelDto = {
