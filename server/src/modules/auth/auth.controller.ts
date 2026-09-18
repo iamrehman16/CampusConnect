@@ -32,7 +32,7 @@ export class AuthController {
 
   @Post('signout')
   async signout(@Req() req: { user: CurrentUser }) {
-    this.authService.signout(req.user.id);
+    return await this.authService.signout(req.user.id);
   }
 
   @Patch('onboarding')

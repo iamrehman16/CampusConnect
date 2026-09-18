@@ -31,8 +31,13 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
     let error: string | undefined;
 
     if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
-      message = (exceptionResponse as any).message || 'Internal Server Error';
-      error = (exceptionResponse as any).error;
+      const body = exceptionResponse as Record<string, unknown>;
+      const bodyMessage = body.message;
+      message =
+        typeof bodyMessage === 'string' || Array.isArray(bodyMessage)
+          ? (bodyMessage as string | string[])
+          : 'Internal Server Error';
+      error = typeof body.error === 'string' ? body.error : undefined;
     } else {
       message = exceptionResponse;
     }
@@ -43,7 +48,7 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
       error: error || this.getHttpStatusName(status),
     };
 
-    if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
+    if (status === (HttpStatus.INTERNAL_SERVER_ERROR as number)) {
       this.logger.error(
         `${request.method} ${request.url}`,
         exception instanceof Error
