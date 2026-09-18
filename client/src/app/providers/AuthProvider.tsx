@@ -26,7 +26,12 @@ interface AuthProviderProps {
 
 export default function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Whether we're loading is knowable synchronously at first render: if
+  // there's no stored token there's nothing to fetch, so start non-loading
+  // instead of flashing true->false once the effect below fires.
+  const [isLoading, setIsLoading] = useState(
+    () => !!tokenStorage.getAccessToken(),
+  );
   const queryClient = useQueryClient();
 
   const isAuthenticated = !!user;
@@ -80,9 +85,9 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const initAuth = async () => {
       const accessToken = tokenStorage.getAccessToken();
-      
+
       if (!accessToken) {
-        setIsLoading(false);
+        // isLoading is already false — computed in the initializer above.
         return;
       }
 

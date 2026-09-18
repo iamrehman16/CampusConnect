@@ -22,8 +22,9 @@ export function ChatSocketProvider({
   useEffect(() => {
     if (!token) {
       chatSocketService.disconnect();
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsConnected(false);
+      // isConnected is already false here: either it's the initial render
+      // (useState default), or the previous effect's cleanup already reset
+      // it when token changed — no synchronous set needed.
       return;
     }
 
@@ -33,6 +34,9 @@ export function ChatSocketProvider({
 
     socket.on("connect", handleConnect);
     socket.on("disconnect", handleDisconnect);
+    // socket.connected can only be known after connect() runs as a side
+    // effect (it may synchronously reuse an already-connected singleton),
+    // so this can't be moved into useState's initializer.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsConnected(socket.connected);
 
