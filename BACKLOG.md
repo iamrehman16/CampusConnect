@@ -222,7 +222,7 @@ pattern, gave `aggregate()` an explicit `<DailyCountDto>` param.
 via new facet-result interfaces instead of letting `any` flow through
 `getStats()`/`getAnalytics()`.
 
-### A8 — Trace and fix RAG citation deduplication end-to-end
+### A8 — Trace and fix RAG citation deduplication end-to-end — DONE (2026-09-18)
 **Effort:** 3
 **Where:** `server/src/modules/ai/services/ai-chat.service.ts`,
 `retrieval.service.ts`
@@ -240,7 +240,19 @@ investigation *and* the fix.
 - Update `CLAUDE.md` §4/§8 to reflect what's actually true once confirmed —
   either restore the "resolved" note with evidence, or document the fix.
 
-### A9 — Resolve `participantsKey` migration status
+**Resolved:** Ground truth was a real bug, not a stale claim. `IngestionService`
+chunks each resource into multiple Qdrant points (same `resourceId`,
+different `pageNumber`); `RetrievalService`'s `TOP_K=5` search can return
+several chunks from the same highly-relevant document, and citation
+construction in both `getChatResponse` and `streamChatResponse` was a
+plain `.map()` with no dedup step — duplicate citations for the same
+resource were reproducible, not hypothetical. Added a shared
+`buildCitations()` helper on `AiChatService` that dedupes by `resourceId`
+(keeping the highest-scoring chunk's page, since `context` is ordered by
+descending score). Covered by `ai-chat.service.spec.ts` (both the REST and
+SSE paths). `CLAUDE.md` §4/§8 updated.
+
+### A9 — Resolve `participantsKey` migration status — DONE (2026-09-18)
 **Effort:** 3
 **Where:** messenger conversation schema (`server/src/modules/chat/schema/`)
 **Why:** `CLAUDE.md` lists this as a known gap but no `participantsKey`
@@ -251,6 +263,26 @@ occurrence exists anywhere in `server/src` — status is genuinely unknown
   old commit messages around the `ConversationSchema` unique index work).
 - Either implement it if still needed, or remove the stale reference from
   `CLAUDE.md` §8 with a one-line note on why it's no longer applicable.
+
+**Resolved:** Never started (confirmed via `git log -S "participantsKey"`
+across the full 138-commit history, including the pre-monorepo merge —
+zero occurrences). But investigating *why* it might have been planned
+surfaced a severe live bug: the existing `{ participants: 1 }, { unique:
+true }` index is a MongoDB multikey index — a unique constraint on an
+array field is enforced per array *element* across the whole collection,
+not per array/pair. **Verified empirically** against a real MongoDB 7
+instance (throwaway Docker container): after `[A,B]` is inserted,
+inserting `[A,C]` (A reused with a *different* partner) also fails
+E11000 — meaning a user could only ever be part of **one conversation,
+system-wide, ever**, not "one conversation per pair" as intended. Fixed
+by adding `participantsKey` (deterministic `"<id1>_<id2>"` string) with
+its own unique (partial) index, updating `findOrCreateConversation`/
+`isDuplicateParticipantsError` to use it, and adding an idempotent
+`ChatService.onModuleInit()` backfill for any pre-existing documents
+missing the field (mirrors `VectorStoreService.ensureCollection()`'s
+existing pattern — no migration framework exists in this project). New
+tests in `chat.service.spec.ts` cover the backfill. `CLAUDE.md` §4/§8
+updated.
 
 ### A10 — Clean client lint to zero, promote `client-ci` lint job to required
 **Effort:** 8
