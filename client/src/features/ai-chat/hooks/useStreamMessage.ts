@@ -95,8 +95,15 @@ export function useStreamMessage() {
             queueRef.current.push(...event.token.split(""));
           } else if (event.type === "citations") {
             refs.citationsRef.current = event.citations;
+            refs.retrievalStatusRef.current = event.retrievalStatus;
             setStreamingBubble((prev) =>
-              prev ? { ...prev, citations: event.citations } : prev,
+              prev
+                ? {
+                    ...prev,
+                    citations: event.citations,
+                    retrievalStatus: event.retrievalStatus,
+                  }
+                : prev,
             );
           } else if (event.type === "done") {
             fetchCompleteRef.current = true; // fetch is complete, only animation remains

@@ -13,7 +13,7 @@ interface UseDrainQueueOptions {
 
 export function useDrainQueue({ refs, setStreamingBubble, setIsStreaming }: UseDrainQueueOptions) {
   const queryClient = useQueryClient();
-  const { accRef, queueRef, renderRef, flushRef, pollCancelRef, citationsRef } = refs;
+  const { accRef, queueRef, renderRef, flushRef, pollCancelRef, citationsRef, retrievalStatusRef } = refs;
 
   const startDrainInterval = useCallback(() => {
     let frameCount = 0;
@@ -71,14 +71,15 @@ export function useDrainQueue({ refs, setStreamingBubble, setIsStreaming }: UseD
       { 
         id: assistantBubbleId, 
         role: "assistant" as const, 
-        content: accRef.current, 
+        content: accRef.current,
         isPending: false,
-        citations: citationsRef.current
+        citations: citationsRef.current,
+        retrievalStatus: retrievalStatusRef.current
       },
     ]);
     setStreamingBubble(null);
     setIsStreaming(false);
-  }, [queryClient, accRef, flushRef, citationsRef, setStreamingBubble, setIsStreaming]);
+  }, [queryClient, accRef, flushRef, citationsRef, retrievalStatusRef, setStreamingBubble, setIsStreaming]);
 
   const waitForDrainThenCommit = useCallback((assistantBubbleId: string) => {
     const poll = () => {
@@ -101,14 +102,15 @@ export function useDrainQueue({ refs, setStreamingBubble, setIsStreaming }: UseD
       { 
         id: assistantBubbleId, 
         role: "assistant" as const, 
-        content: renderRef.current, 
+        content: renderRef.current,
         isPending: false,
-        citations: citationsRef.current
+        citations: citationsRef.current,
+        retrievalStatus: retrievalStatusRef.current
       },
     ]);
     setStreamingBubble(null);
     setIsStreaming(false);
-  }, [queryClient, renderRef, flushRef, queueRef, pollCancelRef, citationsRef, setStreamingBubble, setIsStreaming]);
+  }, [queryClient, renderRef, flushRef, queueRef, pollCancelRef, citationsRef, retrievalStatusRef, setStreamingBubble, setIsStreaming]);
 
   // Stop while fetch is done but animation still playing — skip remaining animation
   const flushAndCommit = useCallback((assistantBubbleId: string) => {

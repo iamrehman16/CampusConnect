@@ -64,6 +64,24 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           message.citations.length > 0 && (
             <CitationsChip citations={message.citations} />
           )}
+
+        {!isUser &&
+          !message.isPending &&
+          (!message.citations || message.citations.length === 0) &&
+          (message.retrievalStatus === "below-threshold" ||
+            message.retrievalStatus === "no-matches") && (
+            <Box
+              sx={{
+                mt: 0.5,
+                fontSize: "0.75rem",
+                color: "text.secondary",
+                fontStyle: "italic",
+              }}
+            >
+              No closely matching resources were found in the knowledge base
+              for this question.
+            </Box>
+          )}
       </Box>
     </Box>
   );

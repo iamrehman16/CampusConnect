@@ -4,11 +4,16 @@ import type {
   ChatMessageDto,
   ChatResponseDto,
   Citation,
+  RetrievalStatus,
 } from "../types/ai-chat.dto";
 
 // SSE event shapes emitted by the backend
 export type SseTokenEvent = { type: "token"; token: string };
-export type SseCitationsEvent = { type: "citations"; citations: Citation[] };
+export type SseCitationsEvent = {
+  type: "citations";
+  citations: Citation[];
+  retrievalStatus: RetrievalStatus;
+};
 export type SseDoneEvent = { type: "done" };
 export type SseErrorEvent = { type: "error"; message: string };
 export type SseEvent =

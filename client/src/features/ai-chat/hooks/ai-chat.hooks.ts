@@ -79,6 +79,7 @@ export function useSendMessage() {
                 ...msg,
                 content: response.answer,
                 citations: response.citations,
+                retrievalStatus: response.retrievalStatus,
                 isPending: false,
               }
             : msg,

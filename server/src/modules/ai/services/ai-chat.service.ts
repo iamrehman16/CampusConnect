@@ -20,10 +20,11 @@ export class AiChatService {
     userId: string,
     message: string,
   ): Promise<ChatResponse> {
-    const [session, context] = await Promise.all([
+    const [session, retrieval] = await Promise.all([
       this.conversationService.getOrCreateSession(userId),
       this.retrievalService.retrieve(message),
     ]);
+    const { context, status: retrievalStatus } = retrieval;
 
     const messages = this.groqService.buildMessages(
       session.summaryBuffer,
@@ -49,17 +50,18 @@ export class AiChatService {
       resourceId: c.resourceId,
     }));
 
-    return { answer, citations };
+    return { answer, citations, retrievalStatus };
   }
 
   async streamChatResponse(
     userId: string,
     message: string,
   ): Promise<Observable<MessageEvent>> {
-    const [session, context] = await Promise.all([
+    const [session, retrieval] = await Promise.all([
       this.conversationService.getOrCreateSession(userId),
       this.retrievalService.retrieve(message),
     ]);
+    const { context, status: retrievalStatus } = retrieval;
 
     const messages = this.groqService.buildMessages(
       session.summaryBuffer,
@@ -94,9 +96,11 @@ export class AiChatService {
               observer.next({ data: { type: 'token', token } } as MessageEvent);
             }
           }
-          // Stream complete — emit citations then done
+          // Stream complete — emit citations (with retrieval status, so an
+          // empty array distinguishes "nothing matched" from "matches were
+          // too weak to trust") then done
           observer.next({
-            data: { type: 'citations', citations },
+            data: { type: 'citations', citations, retrievalStatus },
           } as MessageEvent);
           observer.next({ data: { type: 'done' } } as MessageEvent);
 

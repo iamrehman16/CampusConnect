@@ -1,10 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { EmbeddingService } from './embedding.service';
 import { VectorStoreService } from './vector-store.service';
-import { RetrievedContext } from '../interfaces/retrieved-context.interface';
+import {
+  RetrievalResult,
+  RetrievedContext,
+} from '../interfaces/retrieved-context.interface';
 
 @Injectable()
 export class RetrievalService {
+  private readonly logger = new Logger(RetrievalService.name);
   private readonly SCORE_THRESHOLD = 0.6;
   private readonly TOP_K = 5;
 
@@ -13,7 +17,7 @@ export class RetrievalService {
     private readonly vectorStoreService: VectorStoreService,
   ) {}
 
-  async retrieve(query: string): Promise<RetrievedContext[]> {
+  async retrieve(query: string): Promise<RetrievalResult> {
     const vector = await this.embeddingService.embedQuery(query);
 
     const results = await this.vectorStoreService.search(
@@ -22,12 +26,11 @@ export class RetrievalService {
       this.TOP_K,
     );
 
-    console.log(
-      '[DIAGNOSTIC] Raw retrieval scores before threshold:',
-      results.map((r) => ({ score: r.score, resource: r.payload?.title })),
-    );
+    if (results.length === 0) {
+      return { context: [], status: 'no-matches' };
+    }
 
-    return results
+    const context: RetrievedContext[] = results
       .filter((r) => r.score >= this.SCORE_THRESHOLD)
       .map((r) => ({
         text: r.payload.text,
@@ -38,5 +41,14 @@ export class RetrievalService {
         course: r.payload.course,
         score: r.score,
       }));
+
+    if (context.length === 0) {
+      this.logger.debug(
+        `Retrieval found ${results.length} candidate(s) but none cleared the ${this.SCORE_THRESHOLD} score threshold`,
+      );
+      return { context: [], status: 'below-threshold' };
+    }
+
+    return { context, status: 'ok' };
   }
 }
