@@ -158,7 +158,7 @@ fixed — its prefill-and-focus logic is a proper `useEffect` keyed on
 `prefillValue` with a ref guard, no `setTimeout`/render-phase ref access —
 the backlog description predated that fix; no change made there.
 
-### A6 — Fix floating promises in chat.gateway.ts and ai-chat.service.ts
+### A6 — Fix floating promises in chat.gateway.ts and ai-chat.service.ts — DONE (2026-09-18)
 **Effort:** 3
 **Where:** `server/src/modules/chat/chat.gateway.ts`,
 `server/src/modules/ai/services/ai-chat.service.ts`
@@ -172,7 +172,20 @@ in call sites that aren't Groq itself.
 - `no-floating-promises` (if enabled) or an equivalent manual check passes
   for both files.
 
-### A7 — Type-safety pass: remove `any` from AI/user/resource services
+**Resolved:** `socket.join()` is typed `Promise<void> | void` (a real
+promise on cluster/Redis adapters) but was called unawaited in both
+`handleConnection` and `handleJoinConversation`. Both now `await` it —
+`handleConnection`'s existing try/catch already disconnects on failure,
+and `handleJoinConversation` was made `async` with its own try/catch that
+emits `chat_error` instead of rejecting silently. In
+`ai-chat.service.ts#streamChatResponse`, the async IIFE inside the
+Observable executor is legitimately unawaited (the executor itself must
+stay synchronous) — prefixed with `void` plus a comment, since its own
+try/catch already routes every failure to `observer.error()`. New
+`chat.gateway.spec.ts` covers both join-failure paths and the success
+path.
+
+### A7 — Type-safety pass: remove `any` from AI/user/resource services — DONE (2026-09-18)
 **Effort:** 5
 **Where:** `server/src/modules/ai/services/retrieval.service.ts`,
 `embedding.service.ts`, `server/src/modules/user/user.service.ts`,
@@ -189,6 +202,25 @@ rule in `CLAUDE.md` §3.3.
   the shape genuinely isn't known ahead of time.
 - Server lint error count drops measurably (track before/after count in the
   PR description).
+
+**Resolved:** Lint on `{src,apps,libs,test}/**/*.ts`: 171 -> 136 errors
+(200 -> 165 total problems), 0 new warnings. `user.schema.ts`'s
+`toJSON.transform` ret typed as `Record<string, unknown>`.
+`embedding.service.ts`'s `taskType: '...' as any` replaced with the
+Google SDK's own `TaskType` enum (also a real correctness fix — a
+typo'd string previously type-checked silently as `any`).
+`retrieval.service.ts`'s `any` traced to `VectorSearchResultDto.payload:
+Record<string, any>` — added a `ResourceChunkPayload` interface matching
+what `IngestionService` actually writes to Qdrant; `vector-store.service.ts`
+needed one documented `as unknown as ResourceChunkPayload` boundary cast
+(Qdrant's client only types payload as an untyped record — the one place
+the shape is genuinely unverifiable at compile time). `user.service.ts`:
+dropped an unused `format` import, replaced `catch (error: any)` with a
+typed `isDuplicateKeyError` guard mirroring `chat.service.ts`'s existing
+pattern, gave `aggregate()` an explicit `<DailyCountDto>` param.
+`resource.service.ts`: both `aggregate()` calls got explicit type params
+via new facet-result interfaces instead of letting `any` flow through
+`getStats()`/`getAnalytics()`.
 
 ### A8 — Trace and fix RAG citation deduplication end-to-end
 **Effort:** 3
