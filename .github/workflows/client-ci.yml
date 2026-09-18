@@ -3,21 +3,19 @@ name: client-ci
 on:
   pull_request:
     branches: [main]
-    paths:
-      - "client/**"
-      - ".github/workflows/client-ci.yml"
   push:
     branches: [main]
-    paths:
-      - "client/**"
-      - ".github/workflows/client-ci.yml"
+
+# No path filter: this must run on every PR so it's always present when
+# required by branch protection. A path-filtered required check that never
+# triggers (e.g. a server-only PR) would leave the PR stuck pending forever.
 
 defaults:
   run:
     working-directory: client
 
 jobs:
-  typecheck-and-build:
+  client-typecheck-and-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
