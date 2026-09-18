@@ -104,7 +104,7 @@ include `conversationId`, so a caller that didn't specify one learns which
 thread it landed in. Covered by `conversation.controller.spec.ts` and
 extended `conversation.service.spec.ts`/`ai-chat.service.spec.ts`.
 
-### B3 — Persist full raw message history per thread
+### B3 — Persist full raw message history per thread — DONE (2026-09-18)
 **Effort:** 5
 **Where:** `server/src/modules/ai/services/conversation.service.ts`
 **Why:** Today, once the 6-exchange sliding window fills, the oldest 3
@@ -123,6 +123,22 @@ of it.
   request — this PBI adds persistence alongside it, it doesn't replace it.
 - A thread's full history is retrievable via the API for the frontend to
   render on scroll-back (paginated, not one giant payload).
+
+**Resolved:** `ConversationService#appendMessages` now inserts both
+messages into `AiMessage` via `insertMany`, unconditionally — separate
+from `maybeCompressSummary`'s splice, which still only governs
+`recentMessages`/`summaryBuffer` (the Groq context bound, CLAUDE.md §4,
+untouched). Added `getMessages(userId, conversationId, dto)`
+(ownership-checked, paginated via the existing `PaginationService`,
+newest page first — same convention as the chat module's
+`GetMessagesDto`/`getMessages`), exposed as
+`GET ai/conversations/:id/messages`. The B1 legacy-session migration now
+also seeds `AiMessage` from each session's surviving `recentMessages` —
+text already folded into `summaryBuffer` before this fix stays
+unrecoverable (that's the bug this PBI closes going forward, not
+something to invent for the past), but a migrated thread's still-present
+raw messages no longer start life in `AiMessage` empty. Covered by
+extended `conversation.service.spec.ts`/`conversation.controller.spec.ts`.
 
 ### B4 — Auto-generate conversation titles
 **Effort:** 3
