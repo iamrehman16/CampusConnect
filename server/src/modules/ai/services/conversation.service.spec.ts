@@ -4,6 +4,7 @@ import { ConversationService } from './conversation.service';
 import { AiConversationDocument } from '../schema/ai-conversation.schema';
 import { AiMessageDocument } from '../schema/ai-message.schema';
 import { ConversationSessionDocument } from '../schema/conversation-session.schema';
+import { PaginationService } from '../../../common/services/pagination.service';
 
 type MockQuery<T> = { sort: jest.Mock; lean: jest.Mock } & Promise<T>;
 
@@ -24,6 +25,7 @@ type MockConversationModel = {
 
 type MockMessageModel = {
   deleteMany: jest.Mock;
+  insertMany: jest.Mock;
 };
 
 type MockLegacySessionModel = {
@@ -39,12 +41,17 @@ function buildConversationService(
   },
   messageModel: Partial<MockMessageModel> = {
     deleteMany: jest.fn().mockResolvedValue({ acknowledged: true }),
+    insertMany: jest.fn().mockResolvedValue([]),
+  },
+  paginationService: Partial<PaginationService> = {
+    paginate: jest.fn(),
   },
 ) {
   return new ConversationService(
     conversationModel as unknown as Model<AiConversationDocument>,
     messageModel as unknown as Model<AiMessageDocument>,
     legacySessionModel as unknown as Model<ConversationSessionDocument>,
+    paginationService as PaginationService,
   );
 }
 
@@ -244,15 +251,22 @@ describe('ConversationService#deleteConversation', () => {
 });
 
 describe('ConversationService — legacy session migration', () => {
-  it('migrates each unmigrated ConversationSession into an AiConversation and marks it migrated', async () => {
+  it('migrates each unmigrated ConversationSession into an AiConversation, seeds AiMessage from its surviving recentMessages, and marks it migrated', async () => {
+    const newConversationId = new Types.ObjectId();
     const legacySession = {
       _id: new Types.ObjectId(),
       userId: 'user-1',
       summaryBuffer: 'old summary',
-      recentMessages: [{ role: 'user', content: 'hi', timestamp: new Date() }],
+      recentMessages: [
+        { role: 'user', content: 'hi', timestamp: new Date() },
+        { role: 'assistant', content: 'hello', timestamp: new Date() },
+      ],
     };
     const conversationModel: Partial<MockConversationModel> = {
-      create: jest.fn().mockResolvedValue({}),
+      create: jest.fn().mockResolvedValue({ _id: newConversationId }),
+    };
+    const messageModel: Partial<MockMessageModel> = {
+      insertMany: jest.fn().mockResolvedValue([]),
     };
     const legacySessionModel: Partial<MockLegacySessionModel> = {
       find: jest.fn().mockReturnValue(chainableQuery([legacySession])),
@@ -261,6 +275,7 @@ describe('ConversationService — legacy session migration', () => {
     const service = buildConversationService(
       conversationModel,
       legacySessionModel,
+      messageModel,
     );
 
     await service.onModuleInit();
@@ -274,6 +289,14 @@ describe('ConversationService — legacy session migration', () => {
       summaryBuffer: 'old summary',
       recentMessages: legacySession.recentMessages,
     });
+    expect(messageModel.insertMany).toHaveBeenCalledWith([
+      { conversationId: newConversationId, role: 'user', content: 'hi' },
+      {
+        conversationId: newConversationId,
+        role: 'assistant',
+        content: 'hello',
+      },
+    ]);
     const updateOneMock = legacySessionModel.updateOne as jest.Mock;
     expect(updateOneMock).toHaveBeenCalledTimes(1);
     const [filterArg, updateArg] = updateOneMock.mock.calls[0] as [
@@ -282,6 +305,34 @@ describe('ConversationService — legacy session migration', () => {
     ];
     expect(filterArg).toEqual({ _id: legacySession._id });
     expect(updateArg.migratedAt).toBeInstanceOf(Date);
+  });
+
+  it('skips AiMessage seeding when the legacy session has no recentMessages left', async () => {
+    const legacySession = {
+      _id: new Types.ObjectId(),
+      userId: 'user-1',
+      summaryBuffer: 'everything already summarized',
+      recentMessages: [],
+    };
+    const conversationModel: Partial<MockConversationModel> = {
+      create: jest.fn().mockResolvedValue({ _id: new Types.ObjectId() }),
+    };
+    const messageModel: Partial<MockMessageModel> = {
+      insertMany: jest.fn(),
+    };
+    const legacySessionModel: Partial<MockLegacySessionModel> = {
+      find: jest.fn().mockReturnValue(chainableQuery([legacySession])),
+      updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),
+    };
+    const service = buildConversationService(
+      conversationModel,
+      legacySessionModel,
+      messageModel,
+    );
+
+    await service.onModuleInit();
+
+    expect(messageModel.insertMany).not.toHaveBeenCalled();
   });
 
   it('does nothing when every legacy session is already migrated', async () => {
@@ -300,5 +351,92 @@ describe('ConversationService — legacy session migration', () => {
     await service.onModuleInit();
 
     expect(conversationModel.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('ConversationService#appendMessages', () => {
+  it('persists both messages to AiMessage in full, independent of the sliding-window summary', async () => {
+    const conversationId = new Types.ObjectId();
+    const conversation = {
+      _id: conversationId,
+      summaryBuffer: '',
+      recentMessages: [],
+      save: jest.fn().mockResolvedValue(undefined),
+    } as unknown as AiConversationDocument;
+    const messageModel: Partial<MockMessageModel> = {
+      insertMany: jest.fn().mockResolvedValue([]),
+    };
+    const service = buildConversationService({}, undefined, messageModel);
+
+    await service.appendMessages(
+      conversation,
+      'user question',
+      'assistant answer',
+      jest.fn(),
+    );
+
+    expect(messageModel.insertMany).toHaveBeenCalledWith([
+      { conversationId, role: 'user', content: 'user question' },
+      { conversationId, role: 'assistant', content: 'assistant answer' },
+    ]);
+  });
+});
+
+describe('ConversationService#getMessages', () => {
+  it('throws NotFoundException on a thread the user does not own', async () => {
+    const conversationModel: Partial<MockConversationModel> = {
+      findOne: jest.fn().mockResolvedValue(null),
+    };
+    const service = buildConversationService(conversationModel);
+
+    await expect(
+      service.getMessages('user-1', 'not-mine', { page: 1, limit: 10 }),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it("paginates an owned thread's messages, newest first", async () => {
+    const conversationId = new Types.ObjectId();
+    const conversationModel: Partial<MockConversationModel> = {
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ _id: conversationId, userId: 'user-1' }),
+    };
+    const paginatedResult = {
+      data: [],
+      total: 0,
+      page: 1,
+      limit: 10,
+      totalPage: 0,
+    };
+    const paginationService: Partial<PaginationService> = {
+      paginate: jest.fn().mockResolvedValue(paginatedResult),
+    };
+    const service = buildConversationService(
+      conversationModel,
+      undefined,
+      undefined,
+      paginationService,
+    );
+
+    const result = await service.getMessages(
+      'user-1',
+      conversationId.toString(),
+      {
+        page: 1,
+        limit: 10,
+      },
+    );
+
+    expect(result).toBe(paginatedResult);
+    const paginateMock = paginationService.paginate as jest.Mock;
+    expect(paginateMock).toHaveBeenCalledTimes(1);
+    const [, , queryBuilder, sortBuilder] = paginateMock.mock.calls[0] as [
+      unknown,
+      unknown,
+      { build: () => { conversationId: Types.ObjectId } },
+      { build: () => { createdAt: number } },
+    ];
+    expect(queryBuilder.build()).toEqual({ conversationId });
+    expect(sortBuilder.build()).toEqual({ createdAt: -1 });
   });
 });

@@ -15,6 +15,11 @@ import {
   ConversationSession,
   ConversationSessionDocument,
 } from '../schema/conversation-session.schema';
+import {
+  PaginatedResult,
+  PaginationService,
+} from '../../../common/services/pagination.service';
+import { BaseQueryDto } from '../../../common/dto/base-query.dto';
 
 @Injectable()
 export class ConversationService implements OnModuleInit {
@@ -29,6 +34,7 @@ export class ConversationService implements OnModuleInit {
     private readonly messageModel: Model<AiMessageDocument>,
     @InjectModel(ConversationSession.name)
     private readonly legacySessionModel: Model<ConversationSessionDocument>,
+    private readonly paginationService: PaginationService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -49,12 +55,25 @@ export class ConversationService implements OnModuleInit {
       .lean();
 
     for (const session of pending) {
-      await this.conversationModel.create({
+      const conversation = await this.conversationModel.create({
         userId: session.userId,
         title: 'Migrated conversation',
         summaryBuffer: session.summaryBuffer,
         recentMessages: session.recentMessages,
       });
+      // Only recentMessages survive on a legacy session — anything already
+      // folded into summaryBuffer by the old sliding-window splice() is
+      // unrecoverable raw text (the bug B3 fixes going forward). Seed what
+      // we still have so this thread's history isn't empty on day one.
+      if (session.recentMessages.length > 0) {
+        await this.messageModel.insertMany(
+          session.recentMessages.map((m) => ({
+            conversationId: conversation._id,
+            role: m.role,
+            content: m.content,
+          })),
+        );
+      }
       await this.legacySessionModel.updateOne(
         { _id: session._id },
         { migratedAt: new Date() },
@@ -115,6 +134,19 @@ export class ConversationService implements OnModuleInit {
     );
 
     await this.maybeCompressSummary(conversation, summarizeFn);
+
+    // Full raw history, independent of what maybeCompressSummary just
+    // spliced out of recentMessages into summaryBuffer — that splice
+    // bounds Groq's context window (CLAUDE.md §4), it doesn't govern what's
+    // retrievable for scroll-back (BACKLOG.md B3).
+    await this.messageModel.insertMany([
+      { conversationId: conversation._id, role: 'user', content: userMessage },
+      {
+        conversationId: conversation._id,
+        role: 'assistant',
+        content: assistantMessage,
+      },
+    ]);
 
     await conversation.save();
   }
@@ -191,10 +223,35 @@ export class ConversationService implements OnModuleInit {
   }
 
   /**
+   * Ownership-checked. Paginated so a long thread's history is never
+   * shipped as one giant payload (BACKLOG.md B3) — newest page first,
+   * matching the chat module's GetMessagesDto/getMessages convention.
+   */
+  async getMessages(
+    userId: string,
+    conversationId: string,
+    dto: BaseQueryDto,
+  ): Promise<PaginatedResult<AiMessageDocument>> {
+    const conversation = await this.conversationModel.findOne({
+      _id: conversationId,
+      userId,
+    });
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    return this.paginationService.paginate(
+      this.messageModel,
+      dto,
+      { build: () => ({ conversationId: conversation._id }) },
+      { build: () => ({ createdAt: -1 }) },
+    );
+  }
+
+  /**
    * Ownership-checked delete. Removes the thread's AiMessage docs too —
-   * the schema-only AiMessage collection isn't written to yet (that's
-   * B3), but this keeps the delete path correct in advance rather than
-   * leaving an orphan-cleanup gap to rediscover later.
+   * every message from here on is persisted via appendMessages
+   * (BACKLOG.md B3), so this is a real cascade, not a preemptive no-op.
    */
   async deleteConversation(
     userId: string,

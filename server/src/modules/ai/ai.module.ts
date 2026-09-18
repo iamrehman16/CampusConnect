@@ -22,6 +22,7 @@ import {
 import { AiMessage, AiMessageSchema } from './schema/ai-message.schema';
 import { ChunkingService } from './services/chunking.service';
 import { RetrievalService } from './services/retrieval.service';
+import { CommonModule } from '../../common/common.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { RetrievalService } from './services/retrieval.service';
       { name: AiConversation.name, schema: AiConversationSchema },
       { name: AiMessage.name, schema: AiMessageSchema },
     ]),
+    CommonModule,
   ],
   controllers: [AiController, ConversationController],
   providers: [

@@ -41,6 +41,30 @@ describe('ConversationController', () => {
     );
   });
 
+  it("getMessages delegates to ConversationService.getMessages with the caller's id, thread id, and pagination dto", async () => {
+    const paginatedResult = {
+      data: [],
+      total: 0,
+      page: 1,
+      limit: 10,
+      totalPage: 0,
+    };
+    const conversationService: Partial<ConversationService> = {
+      getMessages: jest.fn().mockResolvedValue(paginatedResult),
+    };
+    const controller = buildController(conversationService);
+    const dto = { page: 1, limit: 10 };
+
+    const result = await controller.getMessages(mockRequest(), 'thread-1', dto);
+
+    expect(conversationService.getMessages).toHaveBeenCalledWith(
+      'user-1',
+      'thread-1',
+      dto,
+    );
+    expect(result).toBe(paginatedResult);
+  });
+
   it('rename delegates to ConversationService.renameConversation with id, conversationId, and title', async () => {
     const conversationService: Partial<ConversationService> = {
       renameConversation: jest.fn().mockResolvedValue({}),

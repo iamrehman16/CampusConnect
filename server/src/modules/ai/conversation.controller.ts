@@ -6,12 +6,14 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
 } from '@nestjs/common';
 import { ConversationService } from './services/conversation.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { RenameConversationDto } from './dto/rename-conversation.dto';
 import { ParseMongoIdPipe } from '../../common/pipes/is-mongo-id.pipe';
+import { BaseQueryDto } from '../../common/dto/base-query.dto';
 import { AuthenticatedRequest } from './ai.controller';
 
 @Controller('ai/conversations')
@@ -26,6 +28,15 @@ export class ConversationController {
   @Get()
   list(@Req() req: AuthenticatedRequest) {
     return this.conversationService.listConversations(req.user.id);
+  }
+
+  @Get(':id/messages')
+  getMessages(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseMongoIdPipe) id: string,
+    @Query() dto: BaseQueryDto,
+  ) {
+    return this.conversationService.getMessages(req.user.id, id, dto);
   }
 
   @Patch(':id')
