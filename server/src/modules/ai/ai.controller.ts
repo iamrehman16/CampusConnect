@@ -1,7 +1,10 @@
 import { Body, Controller, Delete, Post, Req, Res } from '@nestjs/common';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { ChatMessageDto } from './dto/chat-message.dto';
 import { AiChatService } from './services/ai-chat.service';
+import { CurrentUser } from '../auth/types/current-user';
+
+export type AuthenticatedRequest = Request & { user: CurrentUser };
 
 @Controller('ai')
 export class AiController {
@@ -9,7 +12,7 @@ export class AiController {
 
   @Post('chat/stream')
   async stream(
-    @Req() req,
+    @Req() req: AuthenticatedRequest,
     @Body() chatMessageDto: ChatMessageDto,
     @Res() res: Response,
   ): Promise<void> {
@@ -28,11 +31,10 @@ export class AiController {
         if (res.writableEnded) return;
         res.write(`data: ${JSON.stringify(event.data)}\n\n`);
       },
-      error: (err) => {
+      error: (err: unknown) => {
         if (res.writableEnded) return;
-        res.write(
-          `data: ${JSON.stringify({ type: 'error', message: err.message })}\n\n`,
-        );
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        res.write(`data: ${JSON.stringify({ type: 'error', message })}\n\n`);
         res.end();
       },
       complete: () => {
@@ -50,7 +52,10 @@ export class AiController {
   }
 
   @Post('chat')
-  async chat(@Req() req, @Body() chatMessageDto: ChatMessageDto) {
+  async chat(
+    @Req() req: AuthenticatedRequest,
+    @Body() chatMessageDto: ChatMessageDto,
+  ) {
     const answer = await this.aiChatService.getChatResponse(
       req.user.id,
       chatMessageDto.message,
@@ -59,7 +64,7 @@ export class AiController {
   }
 
   @Delete('chat/session')
-  async clearSession(@Req() req) {
+  async clearSession(@Req() req: AuthenticatedRequest) {
     await this.aiChatService.clearSession(req.user.id);
     return { message: 'Session cleared' };
   }
