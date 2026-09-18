@@ -72,7 +72,7 @@ behavior on the new data model until B2 wires real thread selection
 through from the client. Covered by `conversation.service.spec.ts`
 (ownership enforcement, fallback/create, migration idempotency).
 
-### B2 — Thread CRUD API (create / list / rename / delete)
+### B2 — Thread CRUD API (create / list / rename / delete) — DONE (2026-09-18)
 **Effort:** 5
 **Where:** `server/src/modules/ai/` controller + service, depends on B1
 **Why:** Once threads exist as a data model, you need endpoints to manage
@@ -83,6 +83,26 @@ them — this is the server-side counterpart to the sidebar UI in B7.
 - `chat/stream` and `chat` endpoints accept a `conversationId` and operate
   on that thread's history instead of the old singleton session.
 - Deleting a thread removes its messages too (no orphaned `AiMessage` docs).
+
+**Resolved:** Added `ConversationController` (`ai/conversations` —
+`POST`/`GET`/`PATCH :id`/`DELETE :id`), all routed through
+`ConversationService`'s existing ownership-scoped methods
+(`createConversation`, `listConversations`, `renameConversation`,
+`deleteConversation`); auth is enforced by the global `JwtAuthGuard`
+already applied to every route (`AuthModule`'s `APP_GUARD`), matching the
+rest of this module — no per-route `@UseGuards` needed. `deleteConversation`
+also runs `messageModel.deleteMany({ conversationId })` — currently a
+no-op since B3 hasn't wired message persistence into `AiMessage` yet, but
+means the delete path is already correct once B3 lands, instead of leaving
+an orphan-cleanup gap to rediscover later. `ChatMessageDto` gained an
+optional `conversationId` (`@IsMongoId()`), threaded through
+`AiChatService.getChatResponse`/`streamChatResponse` into
+`getOrCreateConversation` — omitting it still falls back to the user's
+most-recently-updated thread (the B1 bridge), so existing callers are
+unaffected. Both the REST response and the SSE `citations` event now
+include `conversationId`, so a caller that didn't specify one learns which
+thread it landed in. Covered by `conversation.controller.spec.ts` and
+extended `conversation.service.spec.ts`/`ai-chat.service.spec.ts`.
 
 ### B3 — Persist full raw message history per thread
 **Effort:** 5
