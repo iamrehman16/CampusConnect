@@ -31,7 +31,7 @@ data model would just get thrown away.
 Sequencing matters here more than in Epic A — B1 and B2 are the foundation
 everything else sits on; do them first and in order.
 
-### B1 — Design & migrate the conversation-thread data model
+### B1 — Design & migrate the conversation-thread data model — DONE (2026-09-18)
 **Effort:** 8
 **Where:** `server/src/modules/ai/` (new `AiConversation`/`AiMessage`
 schemas, replacing or supplementing `conversation-session.schema.ts`)
@@ -50,6 +50,27 @@ this epic depends on this changing first.
   own threads) — this is new; the old model never needed it.
 - `getOrCreateSession`/`clearSession` equivalents are reworked around
   `conversationId` instead of `userId` alone.
+
+**Resolved:** Added `AiConversation` (thread doc: `userId`, `title`,
+`summaryBuffer`, `recentMessages`) and `AiMessage` (`conversationId`,
+`role`, `content`, `createdAt` — schema only, unwired until B3 persists
+full raw history). `ConversationService.getOrCreateConversation(userId,
+conversationId?)` replaces `getOrCreateSession`: a passed `conversationId`
+is looked up scoped to `userId` and throws `NotFoundException` if it
+doesn't belong to that user (new — the singleton model had no ownership
+check to get wrong). `clearConversation(userId, conversationId)` is the
+`clearSession` equivalent, same ownership check. Legacy
+`ConversationSession` docs are migrated on `ConversationService`'s
+`onModuleInit` — each becomes one `AiConversation`, idempotently (tracked
+via a `migratedAt` marker so re-running on every boot is safe), and the
+legacy docs are kept, not deleted, so the migration is auditable.
+`AiController`'s `chat`/`chat/stream`/`clearSession` routes don't send a
+`conversationId` yet (no client UI for threads), so
+`getOrCreateConversation` falls back to the user's most-recently-updated
+thread when none is given — preserves today's one-thread-per-user
+behavior on the new data model until B2 wires real thread selection
+through from the client. Covered by `conversation.service.spec.ts`
+(ownership enforcement, fallback/create, migration idempotency).
 
 ### B2 — Thread CRUD API (create / list / rename / delete)
 **Effort:** 5
