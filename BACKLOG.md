@@ -299,6 +299,65 @@ non-component values alongside components).
 - Do this in logical sub-commits (per-directory or per-rule), not one giant
   commit — still one *concern* per commit even if it takes several.
 
+**Status:** DONE (2026-09-18)
+**Resolved:** `npm run lint` in `client/` went from 65 problems (60 errors,
+5 warnings) to 0, in 9 sub-commits. `continue-on-error` removed from
+`client-ci.yml`'s `lint` job; branch protection still only requires
+`client-typecheck-and-build`/`server-typecheck-and-build` (checked via
+`gh api .../branches/main/protection`) — adding `lint` as required is a
+GitHub admin action, left for the repo owner.
+
+Beyond the react-refresh/any-type cleanup called out above (AuthContext,
+ChatSocketContext, and SuspenseWrapper split into sibling files; Recharts
+Tooltip formatters and onboarding form `Control<any>` typed properly), the
+pass surfaced several real bugs that `any`/effect patterns had been
+masking:
+- **`useToggleUpvote`'s optimistic update was a complete no-op.** It wrote
+  `isUpvoted`/`upvoteCount` onto the cached `Post`, but `Post` has no such
+  fields — `PostCard` derives `isUpvoted` from `post.upvotes.includes(
+  currentUserId)`. Typing `updatePostInCache` away from `any` forced this
+  into the open; fixed to toggle membership in `upvotes` itself. The
+  mutation's `onError` rollback also paired a single-query `getQueryData`
+  with a multi-query `setQueriesData`, which would stomp every matching
+  query with one query's snapshot — switched to per-query
+  `getQueriesData`/`setQueryData` pairs.
+- **`ProfilePage.tsx`/`PublicProfilePage.tsx`** passed a responsive
+  `{ xs, sm }` object to MUI `Container`'s `disableGutters`, which is a
+  plain `boolean` — the object was always truthy, so gutters were
+  unconditionally disabled regardless of breakpoint (harmless here since
+  the inner layout already handles responsive padding itself, but not what
+  the responsive-looking code implied). Replaced with the boolean
+  shorthand.
+- **`chat-socket-hooks.ts`** used `user?._id!` — a non-null assertion on an
+  *optional-chained* access is a no-op at runtime (if `user` is null, `?.`
+  already short-circuits to `undefined`; `!` only silences TypeScript).
+  Moved the assertion onto `user` so a violated invariant throws instead of
+  silently producing an `undefined` sender id downstream.
+- **`ConversationPage.tsx`**'s `messages` array was recomputed fresh every
+  render (`?? []` always allocates), so the `useMemo` keyed on it for
+  `latestMessage` never actually memoized. Wrapped the `messages`
+  derivation itself in a `useMemo`.
+- Five `react-hooks/set-state-in-effect` violations
+  (`usePwaInstall.ts`, `EditResourceModal.tsx`, `ResourcePage.tsx`,
+  `ProfileSettingsTab.tsx`) were the same class of bug as A5: state synced
+  from a prop/external check via an effect calling `setState`
+  synchronously. `usePwaInstall.ts` took the A5 lazy-initializer fix
+  (value known synchronously at mount); the other three sync state from a
+  prop that can change after mount, so they took React's "adjust state
+  during render" pattern instead (compare an id against a tracked
+  "last synced" id, `setState` inline if it changed) — same effect, one
+  fewer render than an Effect-based sync, and (for `EditResourceModal`)
+  no longer clobbers in-progress edits on an unrelated refetch of the same
+  resource.
+- Set `ignoreRestSiblings: true` on `@typescript-eslint/no-unused-vars`
+  project-wide — the correct option for the `{ node, ...props }`
+  destructure-to-exclude pattern used throughout `MarkdownMessage.tsx`'s
+  react-markdown overrides (and elsewhere), rather than an eslint-disable
+  per line.
+
+No changes to the `useStreamRefs`/`useDrainQueue`/`useStreamMessage` split
+or any other `CLAUDE.md` §4 decision.
+
 ### A11 — Clean server lint to zero, promote `server-ci` lint job to required
 **Status:** DONE (2026-09-18)
 **Effort:** 8
