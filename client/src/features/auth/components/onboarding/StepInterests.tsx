@@ -2,9 +2,10 @@ import { Box, Chip, Typography } from "@mui/material";
 import { Controller } from "react-hook-form";
 import type { Control } from "react-hook-form";
 import { INTEREST_OPTIONS, EXPERTISE_OPTIONS } from "./onboarding.constants";
+import type { FormValues } from "../../pages/OnboardingPage";
 
 interface StepInterestsProps {
-  control: Control<any>;
+  control: Control<FormValues>;
 }
 
 export function StepInterests({ control }: StepInterestsProps) {

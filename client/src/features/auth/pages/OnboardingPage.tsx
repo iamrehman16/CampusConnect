@@ -16,7 +16,7 @@ import {
 
 // ── Types ────────────────────────────────────────────────────────────
 
-type FormValues = CompleteOnboardingRequest & {
+export type FormValues = CompleteOnboardingRequest & {
   displayName: string;
   bio: string;
 };
@@ -51,7 +51,7 @@ export default function OnboardingPage() {
   ];
 
   const handleNext = async () => {
-    const valid = await trigger(STEP_FIELDS[activeStep] as any);
+    const valid = await trigger(STEP_FIELDS[activeStep]);
     if (valid) setActiveStep((s) => s + 1);
   };
 

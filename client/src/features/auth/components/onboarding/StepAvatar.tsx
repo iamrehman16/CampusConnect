@@ -2,9 +2,10 @@ import { Box, Typography, alpha, useTheme } from "@mui/material";
 import { Controller } from "react-hook-form";
 import type { Control } from "react-hook-form";
 import { AVATARS, AVATAR_IMAGES } from "./onboarding.constants";
+import type { FormValues } from "../../pages/OnboardingPage";
 
 interface StepAvatarProps {
-  control: Control<any>;
+  control: Control<FormValues>;
 }
 
 export function StepAvatar({ control }: StepAvatarProps) {

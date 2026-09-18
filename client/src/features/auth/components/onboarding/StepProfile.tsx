@@ -1,9 +1,10 @@
 import { Box, TextField, Typography } from "@mui/material";
 import { Controller } from "react-hook-form";
 import type { Control } from "react-hook-form";
+import type { FormValues } from "../../pages/OnboardingPage";
 
 interface StepProfileProps {
-  control: Control<any>;
+  control: Control<FormValues>;
   userName: string;
 }
 

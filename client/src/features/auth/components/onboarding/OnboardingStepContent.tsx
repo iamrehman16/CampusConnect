@@ -4,10 +4,11 @@ import { StepProfile } from "./StepProfile";
 import { StepAcademic } from "./StepAcademic";
 import { StepInterests } from "./StepInterests";
 import { StepAvatar } from "./StepAvatar";
+import type { FormValues } from "../../pages/OnboardingPage";
 
 interface OnboardingStepContentProps {
   activeStep: number;
-  control: Control<any>;
+  control: Control<FormValues>;
   userName: string;
 }
 

@@ -2,9 +2,10 @@ import { Box, TextField, ToggleButton, Typography, useTheme } from "@mui/materia
 import { Controller } from "react-hook-form";
 import type { Control } from "react-hook-form";
 import { DEPARTMENTS, SEMESTERS } from "./onboarding.constants";
+import type { FormValues } from "../../pages/OnboardingPage";
 
 interface StepAcademicProps {
-  control: Control<any>;
+  control: Control<FormValues>;
 }
 
 export function StepAcademic({ control }: StepAcademicProps) {
