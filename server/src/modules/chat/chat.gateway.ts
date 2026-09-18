@@ -1,4 +1,5 @@
 import {
+  Logger,
   UseFilters,
   UseGuards,
   UsePipes,
@@ -34,6 +35,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
+  private readonly logger = new Logger(ChatGateway.name);
   private connectedUsers = new Map<string, Set<string>>();
 
   constructor(
