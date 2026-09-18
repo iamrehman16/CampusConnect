@@ -1,66 +1,428 @@
-# CampusConnect Backlog - Audit Summary
+# CampusConnect Backlog
 
-**Summary:** 12 BREAKS, 34 SMELL, 22 NICE-TO-HAVE (Estimated based on audit findings).
+PBIs, not tasks. Each is sized to be handed to Claude Code as a self-contained
+prompt — enough context to start cold, not a design doc. Work one at a time,
+one committed fix/feature per PBI (see `CLAUDE.md` §3.2). Pick the top unstarted
+item in whichever epic you're focused on; don't jump epics mid-PBI.
 
-## Critical Issues (Context)
+**Effort scale** (rough, solo-dev-with-Claude-Code calibrated):
+- `3` — half a day to a day. One focused area, one commit, low ambiguity.
+- `5` — one to two days. Touches a few files or one schema change.
+- `8` — three-plus days / a small design pass first. Foundational or cross-cutting.
 
-### 1. Synchronous setState in AuthProvider
-- **File:** `CampusConnect-Client/src/app/providers/AuthProvider.tsx:83`
-- **Context:**
-```typescript
-  useEffect(() => {
-    const accessToken = tokenStorage.getAccessToken();
-    if (accessToken) {
-      fetchProfile().finally(() => setIsLoading(false)); // <- Issue here
-    } else {
-      setIsLoading(false);
-    }
-  }, [fetchProfile]);
-```
-
-### 2. Ref Access during Render in ChatInput
-- **File:** `CampusConnect-Client/src/features/ai-chat/components/ChatInput.tsx:32`
-- **Context:**
-```typescript
-  if (prefillValue !== undefined && prefillValue !== value) {
-    setValue(prefillValue);
-    onPrefillConsumed?.();
-    setTimeout(() => textareaRef.current?.focus(), 0); // <- Issue here
-  }
-```
-
-### 3. Floating Promises (Examples in ai/chat)
-- **Files:** Many (e.g., `src/main.ts`, `src/modules/ai/services/ai-chat.service.ts`)
-- **Context:** Functions return promises that are not awaited or caught. Example in `ai-chat.service.ts`:
-```typescript
-  // Missing await or .catch handler
-  await this.conversationService.appendMessages(...); // often called without explicit promise handling in some flow paths
-```
+Nothing below `3` belongs here — smaller chores go straight into a commit,
+not the backlog.
 
 ---
 
-## BREAKS (Crashes, Silent Failures)
+## Epic A — Code health & CI gate cleanup
 
-### Module: Auth
-- `AuthProvider.tsx`: Synchronous setState in useEffect (Cascading renders).
-- `ChatSocketProvider.tsx`: Synchronous setState in useEffect.
+Goal: get `lint` and `test` CI jobs (currently advisory, see `CLAUDE.md` §5)
+clean enough to flip to required. Do these before or interleaved with Epic B —
+shipping memory features on top of ~200 known lint errors and a broken test
+suite just grows the pile.
 
-### Module: AI Chat
-- `ChatInput.tsx`: Ref access during render.
-- `useStreamMessage.ts`: Floating promises in streaming flow.
+### A1 — Fix SSE stream header-sent crash risk
+**Effort:** 3
+**Where:** `server/src/modules/ai/ai.controller.ts` (`chat/stream` handler)
+**Why:** The `error` callback and `req.on('close')` handler both call
+`res.write()`/`res.end()` unconditionally. If the client disconnects and then
+the observable errors (or `complete` already ended the response), Node throws
+`ERR_HTTP_HEADERS_SENT`. Confirmed still open — see `CLAUDE.md` §8.
+**Acceptance criteria:**
+- Guard every `res.write`/`res.end` call in the stream handler with a
+  `res.writableEnded` / `res.headersSent` check.
+- Unsubscribe the observable on `req.on('close')` instead of just ending the
+  response, so a late `next`/`error` after disconnect is a no-op, not a crash.
+- Add a test (or manual repro note in the PR) showing a mid-stream disconnect
+  no longer throws.
 
-### Module: Chat
-- `chat.gateway.ts`: Floating promises in socket event handlers.
+### A2 — Fix conversation-creation race condition (E11000 unhandled)
+**Effort:** 3
+**Where:** `server/src/modules/chat/chat.service.ts#findOrCreateConversation`
+**Why:** Check-then-create with no try/catch around `.create()`. Two
+concurrent "start conversation" requests for the same pair both pass the
+`findOne` check; the second `.create()` throws unhandled on the unique
+`participants` index. Confirmed still open — see `CLAUDE.md` §8. Note the
+existing `isDuplicateClientIdError` pattern in the same file for messages —
+mirror that approach (catch E11000, re-fetch, return the winner) rather than
+adding a pre-check query, per the intentional-decisions convention in §4.
+**Acceptance criteria:**
+- Concurrent `findOrCreateConversation` calls for the same pair never throw;
+  both resolve to the same conversation document.
+- Add a test that fires two concurrent creates and asserts one result.
 
-## SMELL (Fragile Code)
+### A3 — Harden GroqService external calls
+**Effort:** 5
+**Where:** `server/src/modules/ai/services/groq.service.ts`
+**Why:** New finding — `generateResponse`, `summarize`, and `generateStream`
+all call `groq.chat.completions.create` with zero error handling: no
+try/catch, no timeout, no rate-limit (429) handling. A Groq outage or
+rate-limit currently surfaces as an unhandled rejection, violating the
+no-silent-failures / explicit-error-handling rule in `CLAUDE.md` §3.3.
+**Acceptance criteria:**
+- Each Groq call site has explicit error handling: typed error surfaced to
+  the caller (not swallowed), with enough log context to debug (which call,
+  which user/session, what Groq returned).
+- Add a timeout so a hung Groq request doesn't hang the SSE stream forever.
+- 429/5xx from Groq degrades gracefully (e.g. a user-facing "try again"
+  event on the stream) instead of an unhandled rejection.
 
-### Module: AI
-- Widespread `any` typing in `retrieval.service.ts`, `embedding.service.ts`.
+### A4 — Retrieval empty-result signal + drop debug logging
+**Effort:** 3
+**Where:** `server/src/modules/ai/services/retrieval.service.ts`
+**Why:** New findings — line ~25-28 has a leftover `console.log` dumping raw
+Qdrant scores on every query (dead debug code). Separately, the hardcoded
+`SCORE_THRESHOLD = 0.6` has no fallback: when nothing clears it,
+`buildMessages` silently sends no RAG context and the user has no way to
+know retrieval came up empty vs. wasn't attempted.
+**Acceptance criteria:**
+- Remove the debug `console.log` (or replace with a proper log-level call if
+  the score visibility is actually useful — your call, but it can't be a
+  bare `console.log` in a service per §3.3).
+- `RetrievalService` returns an explicit "no results cleared threshold"
+  signal (not just an empty array indistinguishable from "no documents
+  exist at all"), and `AiChatService`/the frontend surface that distinction
+  to the user (e.g. "no matching resources found" vs. silence).
 
-### Module: Resource
-- `resource.service.ts`: Unsafe member access on `any` results from DB queries.
+### A5 — Fix React correctness bugs (sync setState + ref-access-in-render)
+**Effort:** 3
+**Where:** `client/src/app/providers/AuthProvider.tsx`,
+`ChatSocketProvider.tsx`, `client/src/features/ai-chat/components/ChatInput.tsx`
+**Why:** Already documented in the old audit (kept here, restructured as a
+PBI): synchronous `setState` inside `useEffect` in both providers causes
+cascading renders; `ChatInput` does ref access + `setTimeout` during a
+render-phase conditional instead of an effect. Same category of bug across
+three files — one PBI, one pass.
+**Acceptance criteria:**
+- `AuthProvider`/`ChatSocketProvider`: state that can be computed on first
+  render is initialized in `useState`'s initializer, not set synchronously
+  inside an effect.
+- `ChatInput`: the prefill-and-focus logic moves into a proper `useEffect`
+  keyed on `prefillValue`, not inline in the render body.
+- No new ESLint `react-hooks/*` violations introduced; ideally the ones in
+  these three files disappear.
 
-## FEATURE
+### A6 — Fix floating promises in chat.gateway.ts and ai-chat.service.ts
+**Effort:** 3
+**Where:** `server/src/modules/chat/chat.gateway.ts`,
+`server/src/modules/ai/services/ai-chat.service.ts`
+**Why:** Documented in the old audit. Un-awaited/un-caught promises in
+socket event handlers and the streaming flow mean a rejection disappears
+silently instead of being logged or surfaced — same root issue as A3, just
+in call sites that aren't Groq itself.
+**Acceptance criteria:**
+- Every promise-returning call in these two files is either `await`ed inside
+  a try/catch, or explicitly `.catch()`-handled with a log statement.
+- `no-floating-promises` (if enabled) or an equivalent manual check passes
+  for both files.
 
-- Wire chat error events to optimistic message rollback by clientId — currently shows generic toast only, doesn't reconcile the specific failed message in the UI.
+### A7 — Type-safety pass: remove `any` from AI/user/resource services
+**Effort:** 5
+**Where:** `server/src/modules/ai/services/retrieval.service.ts`,
+`embedding.service.ts`, `server/src/modules/user/user.service.ts`,
+`server/src/modules/user/schemas/user.schema.ts`,
+`server/src/modules/resource/resource.service.ts`
+**Why:** Widespread `any` typing flagged in the original audit and visible
+directly in the server lint output (`no-unsafe-member-access`,
+`no-unsafe-assignment`, `no-unsafe-return` — e.g.
+`user.schema.ts:10-11`, `user.service.ts:52,205`). Violates the no-`any`
+rule in `CLAUDE.md` §3.3.
+**Acceptance criteria:**
+- No `any` remains in the five files above; replace with real types,
+  Mongoose-generated document types, or `unknown` + a narrowing guard where
+  the shape genuinely isn't known ahead of time.
+- Server lint error count drops measurably (track before/after count in the
+  PR description).
 
+### A8 — Trace and fix RAG citation deduplication end-to-end
+**Effort:** 3
+**Where:** `server/src/modules/ai/services/ai-chat.service.ts`,
+`retrieval.service.ts`
+**Why:** `CLAUDE.md` §4 claims citations are built "with deduplication," but
+citation construction is a plain `.map()` over retrieved context with no
+`Set`/`filter` dedup step anywhere in either file (reopened in §8 this
+session). Either the same document chunk can appear as a duplicate citation
+today, or dedup happens somewhere not yet found — this PBI is the
+investigation *and* the fix.
+**Acceptance criteria:**
+- Trace the actual citation path and determine ground truth: is there a
+  duplicate-citation bug right now or not?
+- If yes: dedupe by source document (not by chunk) before returning
+  citations to the client.
+- Update `CLAUDE.md` §4/§8 to reflect what's actually true once confirmed —
+  either restore the "resolved" note with evidence, or document the fix.
+
+### A9 — Resolve `participantsKey` migration status
+**Effort:** 3
+**Where:** messenger conversation schema (`server/src/modules/chat/schema/`)
+**Why:** `CLAUDE.md` lists this as a known gap but no `participantsKey`
+occurrence exists anywhere in `server/src` — status is genuinely unknown
+(never started, renamed, or scrapped). Needs a decision, not just code.
+**Acceptance criteria:**
+- Determine what this migration was originally for (check git history /
+  old commit messages around the `ConversationSchema` unique index work).
+- Either implement it if still needed, or remove the stale reference from
+  `CLAUDE.md` §8 with a one-line note on why it's no longer applicable.
+
+### A10 — Clean client lint to zero, promote `client-ci` lint job to required
+**Effort:** 8
+**Where:** `client/` (~60 errors as of Sept 2026, `npm run lint`)
+**Why:** Blocks flipping `lint` from advisory to required per `CLAUDE.md` §5.
+Includes real bugs beyond A5 (e.g. `no-explicit-any` in
+`FileTypeBarChart.tsx`, `ApprovalDonut.tsx`; react-refresh violations in
+`router.tsx`, `ChatSocketProvider.tsx`, `AuthProvider.tsx` from exporting
+non-component values alongside components).
+**Acceptance criteria:**
+- `npm run lint` in `client/` exits 0.
+- `.github/workflows/client-ci.yml`'s `lint` job has `continue-on-error`
+  removed and is added to `main`'s required status checks.
+- Do this in logical sub-commits (per-directory or per-rule), not one giant
+  commit — still one *concern* per commit even if it takes several.
+
+### A11 — Clean server lint to zero, promote `server-ci` lint job to required
+**Effort:** 8
+**Where:** `server/` (~127 errors as of Sept 2026, `npx eslint
+"{src,apps,libs,test}/**/*.ts"`)
+**Why:** Same as A10, server side. Substantially overlaps with A7's `any`
+cleanup — do A7 first, then mop up whatever lint errors remain.
+**Acceptance criteria:**
+- Direct `eslint` invocation (not `npm run lint`, which has `--fix` baked
+  in — see the note in `server-ci.yml`) exits 0.
+- `.github/workflows/server-ci.yml`'s `lint` job has `continue-on-error`
+  removed and is added to `main`'s required status checks.
+
+### A12 — Fix server test suite DI setup, promote `server-ci` test job to required
+**Effort:** 5
+**Where:** `server/test/`, `server/src/**/*.spec.ts`
+**Why:** 9 of 10 test suites currently fail at `TestingModuleBuilder.compile`
+— provider resolution errors, not assertion failures. Something structural
+(missing mock providers, a module import gap) broke across nearly the whole
+suite, likely from a dependency or module wiring change that predates CI.
+**Acceptance criteria:**
+- `npm test` in `server/` passes for all existing suites (or a suite is
+  deliberately deleted with a reason, not silently left broken).
+- `.github/workflows/server-ci.yml`'s `test` job has `continue-on-error`
+  removed and is added to `main`'s required status checks.
+
+### A13 — Messenger: reconcile failed messages by clientId instead of generic toast
+**Effort:** 3
+**Where:** `client/src/features/messenger/` (or wherever the messenger chat
+UI lives), `server/src/modules/chat/`
+**Why:** Carried over from the original audit. When a message send fails,
+the UI currently shows a generic error toast instead of reconciling the
+specific failed message — the optimistic message stays stuck in "sending"
+state instead of rolling back or offering retry. This is the messenger
+(peer-to-peer) chat module, not the AI chat covered in Epic B.
+**Acceptance criteria:**
+- A failed send event is matched back to its optimistic message via
+  `clientId` and that specific message is marked failed (with a retry
+  affordance), not just a toast disconnected from which message failed.
+- Works alongside the existing `isDuplicateClientIdError` dedup pattern
+  (`CLAUDE.md` §4) without fighting it — a retried send reuses or
+  regenerates `clientId` deliberately, not accidentally.
+
+---
+
+## Epic B — Long-term memory chat (RAG-integrated)
+
+Goal: replace the current single lifelong per-user session with a real
+Claude.ai/ChatGPT-style chat experience — multiple named threads, full
+history retained, cross-session recall, and RAG retrieval that actually
+understands follow-up questions. This is the epic that has to land *before*
+the RAG-first UI redesign (Epic C) — a redesign built on a one-thread-forever
+data model would just get thrown away.
+
+Sequencing matters here more than in Epic A — B1 and B2 are the foundation
+everything else sits on; do them first and in order.
+
+### B1 — Design & migrate the conversation-thread data model
+**Effort:** 8
+**Where:** `server/src/modules/ai/` (new `AiConversation`/`AiMessage`
+schemas, replacing or supplementing `conversation-session.schema.ts`)
+**Why:** `ConversationSession` has a unique index on `userId` — one document
+per user, ever (`conversation-session.schema.ts:9`). There is no thread
+concept: a user cannot have multiple named conversations. Everything else in
+this epic depends on this changing first.
+**Acceptance criteria:**
+- New schema(s) support many threads per user: `AiConversation` (id, userId,
+  title, createdAt, updatedAt, summaryBuffer) and `AiMessage` (conversationId,
+  role, content, createdAt) or equivalent — your call on exact shape, but it
+  must support N threads per user and full message history per thread.
+- Migration path for existing singleton `ConversationSession` docs: each
+  becomes one `AiConversation` for its user (don't just drop existing state).
+- Ownership is enforced at the query level (a user can only read/write their
+  own threads) — this is new; the old model never needed it.
+- `getOrCreateSession`/`clearSession` equivalents are reworked around
+  `conversationId` instead of `userId` alone.
+
+### B2 — Thread CRUD API (create / list / rename / delete)
+**Effort:** 5
+**Where:** `server/src/modules/ai/` controller + service, depends on B1
+**Why:** Once threads exist as a data model, you need endpoints to manage
+them — this is the server-side counterpart to the sidebar UI in B7.
+**Acceptance criteria:**
+- Endpoints: create thread, list a user's threads (sorted by
+  `updatedAt`), rename, delete. All auth-guarded and ownership-checked.
+- `chat/stream` and `chat` endpoints accept a `conversationId` and operate
+  on that thread's history instead of the old singleton session.
+- Deleting a thread removes its messages too (no orphaned `AiMessage` docs).
+
+### B3 — Persist full raw message history per thread
+**Effort:** 5
+**Where:** `server/src/modules/ai/services/conversation.service.ts`
+**Why:** Today, once the 6-exchange sliding window fills, the oldest 3
+exchanges are `splice()`d out and folded into `summaryBuffer` — the raw text
+is gone forever (`conversation.service.ts`, `RECENT_LIMIT`/
+`SUMMARIZE_BATCH` logic). That's fine for *context-window* purposes but
+wrong for a "long-term memory" product feature: a user should be able to
+scroll up and see what they actually said, not a lossy AI-generated summary
+of it.
+**Acceptance criteria:**
+- Every message is persisted to `AiMessage` (from B1) in full, independent
+  of what the sliding-window/summary logic keeps "in context" for the next
+  Groq call.
+- The sliding-window + summarization mechanism (`CLAUDE.md` §4, don't
+  refactor its *purpose*) continues to bound what's sent to Groq per
+  request — this PBI adds persistence alongside it, it doesn't replace it.
+- A thread's full history is retrievable via the API for the frontend to
+  render on scroll-back (paginated, not one giant payload).
+
+### B4 — Auto-generate conversation titles
+**Effort:** 3
+**Where:** server `AiConversation` creation flow, depends on B1/B2
+**Why:** ChatGPT/Claude-style sidebars show a short generated title per
+thread, not "New chat" forever. Cheap single-call feature once B1 exists.
+**Acceptance criteria:**
+- After the first exchange in a new thread, one cheap LLM call (same 8B
+  model already used for summary compression, per `CLAUDE.md` §4) generates
+  a short title, saved onto the `AiConversation` doc.
+- Title generation failure doesn't block or error the chat response — it's
+  a nice-to-have side effect, not on the critical path (explicit error
+  handling, not silent, but non-fatal — falls back to a default like the
+  first few words of the user's message).
+
+### B5 — Contextualize follow-up queries before RAG retrieval
+**Effort:** 5
+**Where:** `server/src/modules/ai/services/retrieval.service.ts:17`,
+`ai-chat.service.ts`
+**Why:** Confirmed gap — `retrieval.service.ts` embeds only the raw
+current-turn message, ignoring `summaryBuffer`/`recentMessages` entirely. A
+follow-up like "what about chapter 3" has no antecedent when embedded alone,
+so retrieval quality degrades on multi-turn conversations — directly
+relevant to "long-term memory that seamlessly integrates into the RAG
+knowledge base."
+**Acceptance criteria:**
+- Before embedding, the query is rewritten/expanded using recent
+  conversation context (either a cheap LLM rewrite step, or a simpler
+  heuristic — your call, but naive raw-query embedding on turn 2+ isn't
+  acceptable).
+- Measurable improvement: pick 3-5 realistic multi-turn test conversations
+  and confirm retrieval returns relevant chunks on follow-ups where it
+  previously wouldn't (document before/after in the PR).
+
+### B6 — Vector-backed cross-session long-term memory
+**Effort:** 8
+**Where:** new service alongside `VectorStoreService`, `RetrievalService`,
+`AiChatService`
+**Why:** This is the centerpiece of the epic — the actual "long-term memory"
+part, as opposed to B1-B5 which are the plumbing it needs to sit on. Right
+now recall is exactly one rolling summary string plus 6 exchanges; nothing
+survives across sessions except that summary. Claude.ai/ChatGPT's "memory"
+retrieves relevant facts from *past conversations*, not just the current
+one.
+**Acceptance criteria:**
+- Key facts/summaries from completed or aging threads get embedded and
+  stored in a separate Qdrant collection (or namespaced within the existing
+  one — your call, but don't conflate it with document-RAG vectors) keyed
+  by user.
+- At query time, this cross-session memory is retrieved alongside
+  document-RAG context (respecting the existing `SCORE_THRESHOLD`-style
+  relevance gate from A4) and injected into `buildMessages` distinctly from
+  document citations — a memory recall isn't a document citation, don't
+  conflate them in the UI either.
+- Respect the MongoDB-ObjectId-to-UUID conversion convention (`CLAUDE.md`
+  §4) for any new Qdrant point IDs.
+- Explicit error handling on this new external-call path per §3.3 — a
+  memory-store failure degrades to "no memory recall this turn," not a
+  broken chat response.
+
+### B7 — Frontend: conversation history sidebar
+**Effort:** 8
+**Where:** `client/src/features/ai-chat/`, depends on B1/B2
+**Why:** No thread-list UI exists at all today — `ai-chat.cache.ts` has one
+fixed query key for the whole app, one global conversation. This is the
+visible, "inspired by Claude/ChatGPT" part of the epic.
+**Acceptance criteria:**
+- Sidebar listing the user's threads (title, recency), matching the
+  existing streaming-hook architecture (`useStreamRefs`/`useDrainQueue`/
+  `useStreamMessage` — don't recombine them, per `CLAUDE.md` §4).
+- Create new thread, switch threads, rename, delete — wired to B2's API.
+- TanStack Query cache keyed per-`conversationId`, not the single global key
+  in `ai-chat.cache.ts` today.
+
+### B8 — Sync client history with server on load (single source of truth)
+**Effort:** 5
+**Where:** `client/src/features/ai-chat/hooks/useChatPageInit.ts` (or
+equivalent), depends on B2/B3
+**Why:** Confirmed gap — the client never fetches server-side history on
+mount; it relies solely on the IndexedDB-persisted TanStack Query cache. The
+server's `summaryBuffer`/thread state and what the client displays are two
+unsynced stores today: clear browser storage or switch devices and you see
+an empty chat while the server-side memory silently keeps influencing
+answers.
+**Acceptance criteria:**
+- On opening a thread, the client fetches history from the server (B3's
+  paginated endpoint) as the source of truth; IndexedDB/query-cache
+  persistence becomes an offline-read cache layered on top of that, not the
+  primary store.
+- Verify: clear browser storage, reload, open an existing thread — full
+  history reappears from the server, not just from cache.
+
+### B9 — Token-budget hardening for the assembled context
+**Effort:** 5
+**Where:** `server/src/modules/ai/services/groq.service.ts#buildMessages`,
+depends on B5/B6
+**Why:** Once B5 (query rewriting) and B6 (cross-session memory) both add
+more content into the same `buildMessages` call that already assembles
+`[system, summary?, ragContext?, recentMessages, query]`, there's a real
+risk of exceeding Groq's context window on a long thread with a lot of
+recalled memory — this wasn't a concern in the old fixed 6-exchange design
+but becomes one once memory is unbounded input.
+**Acceptance criteria:**
+- Token-count the assembled message array before sending; if over budget,
+  drop lowest-priority content first (long-term memory recall before
+  document RAG context before recent exchanges — your call on priority
+  order, but document the reasoning).
+- No silent truncation — if content gets dropped, that's a debug-loggable
+  event per §3.3, not invisible.
+
+---
+
+## Epic C — RAG-first UI redesign
+
+**Blocked on Epic B.** Don't start scoping this precisely until B7/B8 ship —
+sizing a redesign against a data model and sidebar UX that doesn't exist yet
+is guessing, not planning. These three are placeholders to hold the shape of
+the epic, not ready-to-execute PBIs. Re-scope each with real effort numbers
+once Epic B is functional.
+
+### C1 — Redesign navigation/IA around chat as the primary surface
+**Where:** `client/src/app/router.tsx`, top-level layout
+**Why:** Once long-term memory/threads work (Epic B), chat stops being "one
+feature among several" and becomes the thing CampusConnect is about —
+navigation and the landing experience should reflect that instead of
+treating AI chat as a side tab.
+
+### C2 — Surface resource discovery inline in chat (not a separate feed)
+**Where:** `client/src/features/ai-chat/`, `client/src/features/resource/`
+**Why:** If chat is primary, resource browsing/contributor feed should show
+up as part of the chat experience (inline resource cards from citations,
+"related resources" surfaced conversationally) rather than a separate page
+users have to leave chat to visit.
+
+### C3 — Persistent chat-first responsive layout
+**Where:** client top-level layout/theme
+**Why:** Desktop layout akin to Claude.ai/ChatGPT (persistent sidebar +
+main chat pane) rather than the current tab-based structure; needs a mobile
+equivalent too. Depends entirely on what B7's sidebar ends up looking like.
