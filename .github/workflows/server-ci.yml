@@ -43,13 +43,11 @@ jobs:
       - run: npm ci
       - run: npm test -- --ci
 
-  # Non-blocking until the existing lint debt (~127 errors) is cleaned up.
-  # See BACKLOG.md for the cleanup PBI; flip this to required once it's green.
+  # Required (BACKLOG.md A11, 2026-09-18) — server lint is clean.
   # Runs eslint directly (not `npm run lint`) because that script uses --fix,
   # which silently patches files instead of reporting them in CI.
   lint:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
