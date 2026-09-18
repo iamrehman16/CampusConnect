@@ -416,7 +416,7 @@ suite, likely from a dependency or module wiring change that predates CI.
 - `.github/workflows/server-ci.yml`'s `test` job has `continue-on-error`
   removed and is added to `main`'s required status checks.
 
-### A13 — Messenger: reconcile failed messages by clientId instead of generic toast
+### A13 — Messenger: reconcile failed messages by clientId instead of generic toast — DONE (2026-09-18)
 **Effort:** 3
 **Where:** `client/src/features/messenger/` (or wherever the messenger chat
 UI lives), `server/src/modules/chat/`
@@ -432,6 +432,38 @@ state instead of rolling back or offering retry. This is the messenger
 - Works alongside the existing `isDuplicateClientIdError` dedup pattern
   (`CLAUDE.md` §4) without fighting it — a retried send reuses or
   regenerates `clientId` deliberately, not accidentally.
+
+**Resolved:** Traced the full send flow before changing anything —
+`useChatSocket` (client/src/features/chat/hooks/chat-socket-hooks.ts) and
+its cache updaters (`chat-cache.updaters.ts`) already had complete
+clientId-keyed optimistic-message reconciliation: `appendOptimistic` on
+send, `promoteMessage`/`markFailed`/`markPending` keyed by `clientId`, a
+6s `SEND_TIMEOUT_MS` fallback, and a retry affordance in
+`MessageStatusIcon.tsx` wired to `retryMessage`, which correctly reuses
+the *same* `clientId` on retry (not a fresh one) — verified this is the
+right call given `isDuplicateClientIdError`: if the original send
+actually succeeded server-side but the client missed the ack, retrying
+with the same `clientId` lets the server's existing E11000 dedup return
+the already-created message instead of creating a duplicate; regenerating
+would have defeated that protection.
+
+The actual gap: `chat.gateway.ts`'s `send_message` handler already
+emitted a `chat_error` event with the failed message's `clientId` on
+failure — but `chat-socket.service.ts`'s listener discarded it and just
+fired `toast.error(err.message)`, generic and disconnected from which
+message failed, exactly as this PBI's title described. The message itself
+sat showing "sending" (relying only on the 6s client-side timeout) even
+though the server already knew synchronously. Fixed by: (1) adding
+`conversationId` alongside `clientId` to the server's `chat_error`
+payload (server/src/modules/chat/chat.gateway.ts) so the client can route
+it to the right cached message list, (2) a new `onSendMessageError`
+listener in `chat-socket.service.ts` that only fires for
+clientId-bearing errors (the generic toast now only fires for errors
+*without* a clientId — join/markSeen/delete failures, which have no
+specific message to reconcile), and (3) wiring that listener in
+`useChatSocket` to immediately clear the pending timeout and call the
+existing `cache.markFailed()` — same reconciliation path the timeout
+fallback used, just instant instead of 6s later.
 
 ---
 
