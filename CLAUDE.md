@@ -99,8 +99,10 @@ code cold might flag them as anti-patterns — they are not.
 - **MongoDB ObjectIds are converted to UUIDs via MD5 hashing** before being
   used as Qdrant point IDs. Qdrant requires UUID or integer point IDs.
 - **Groq is explicitly instructed not to cite inline.** Citations are built
-  programmatically from retrieved context with deduplication, not parsed out
-  of the model's text output.
+  programmatically from retrieved context, not parsed out of the model's
+  text output. Deduplication (by `resourceId`, via `AiChatService`'s
+  private `buildCitations()`) was missing until BACKLOG.md A8 (2026-09-18)
+  — see §8's former "reopened" note, now resolved.
 - **Chat context uses a 6-exchange sliding window** with single-call summary
   compression via an 8B model, rather than sending full history.
 - **`getCollections()` workaround** exists in `VectorStoreService` for a
@@ -115,9 +117,13 @@ code cold might flag them as anti-patterns — they are not.
 - **Chat message de-duplication** relies on catching MongoDB's `E11000`
   duplicate-key error (`isDuplicateClientIdError` in `ChatService`) rather
   than a pre-check query — this is intentional, not a missed validation step.
-- **`ConversationSchema` has a unique index on `participants`**, enforcing
-  exactly one conversation per pair of users at the database level rather
-  than in application logic.
+- **`ConversationSchema` has a unique (partial) index on `participantsKey`**
+  — a deterministic sorted-pair string, not the `participants` array
+  itself — enforcing exactly one conversation per pair of users at the
+  database level rather than in application logic. (A unique index
+  directly on the `participants` array would be a MongoDB multikey index,
+  enforcing uniqueness per array *element* across the whole collection,
+  not per pair — see §8's A9 note for how this was found and fixed.)
 - **`DocumentParserService` polls LlamaParse with retry logic and streams
   `FormData` directly**, deliberately avoiding temp file storage during
   ingestion. Don't "simplify" this into a synchronous single-call pattern —
@@ -193,14 +199,26 @@ a PR outside that path leaves the PR stuck "pending" forever.
   existing `isDuplicateClientIdError` pattern (new
   `isDuplicateParticipantsError` helper). Regression covered in
   `chat.service.spec.ts`.
-- **`participantsKey` migration** — status unclear. No occurrences of
-  `participantsKey` found anywhere in `server/src`. Either never started or
-  the field was renamed; don't assume either way — check with the
-  developer before treating this as done or as a live task.
-- **RAG citation dedup — reopened.** §4 claims citations are built "with
-  deduplication," but `ai-chat.service.ts`'s citation construction is a
-  plain `.map()` over retrieved context, and no dedup step (`Set`, `filter`,
-  etc.) exists there or in `retrieval.service.ts`. Either the claim in §4 is
-  stale or the dedup lives somewhere not yet found — needs a real look, not
-  covered by this pass. Don't remove this note until someone traces the
-  actual citation path end to end.
+- **`participantsKey` migration** — implemented (BACKLOG.md A9,
+  2026-09-18). It had never been started (confirmed via `git log -S` across
+  the full 138-commit history, including the pre-monorepo merge). Turned
+  out to matter more than "unclear status" suggested: the unique index it
+  was presumably meant to fix — `{ participants: 1 }, { unique: true }` —
+  is a MongoDB multikey index, meaning uniqueness was enforced per array
+  *element* across the whole collection, not per pair. Verified
+  empirically (Docker `mongo:7`): a user could only ever be in **one**
+  conversation, system-wide, ever. `ConversationSchema` now has
+  `participantsKey` (a deterministic sorted-pair string) with its own
+  unique index (partial, to tolerate pre-existing docs missing the field);
+  `ChatService.onModuleInit()` backfills it for any legacy documents. See
+  `chat.service.ts`/`conversation.schema.ts`.
+- **RAG citation dedup** — fixed (BACKLOG.md A8, 2026-09-18). Traced end to
+  end: the §4 claim was false — `ai-chat.service.ts`'s citation
+  construction was a plain `.map()` with no dedup step, and since
+  `IngestionService` chunks each resource into multiple Qdrant points and
+  `RetrievalService`'s `TOP_K=5` can return several chunks from the same
+  document, duplicate citations (same `resourceId`, different pages) were
+  a real, reproducible bug, not a hypothetical one. Now deduped by
+  `resourceId` via a shared `buildCitations()` helper (keeps the
+  highest-scoring chunk's page), used by both `getChatResponse` and
+  `streamChatResponse`. Covered by `ai-chat.service.spec.ts`.
