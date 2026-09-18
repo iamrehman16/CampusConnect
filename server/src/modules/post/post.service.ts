@@ -20,6 +20,11 @@ import { Roles } from '../user/enums/user-role.enum';
 import { PostQueryBuilder } from './queries/build-post-query';
 import { PostQueryDto } from './dto/post-query.dto';
 
+interface PostStatsFacetResult {
+  total: Array<{ count: number }>;
+  recent: Array<{ count: number }>;
+}
+
 @Injectable()
 export class PostService {
   private readonly queryBuilder = new PostQueryBuilder();
@@ -71,7 +76,7 @@ export class PostService {
     id: string,
     dto: UpdatePostDto,
     userId: string,
-    userRole: string,
+    userRole: Roles,
   ) {
     const isAdmin = userRole === Roles.ADMIN;
 
@@ -106,7 +111,7 @@ export class PostService {
     return updatedPost;
   }
 
-  async deletePost(id: string, userId: string, userRole: string) {
+  async deletePost(id: string, userId: string, userRole: Roles) {
     const isAdmin = userRole === Roles.ADMIN;
 
     const result = await this.postModel
@@ -214,7 +219,7 @@ export class PostService {
         ? error
         : new InternalServerErrorException('Comment failed');
     } finally {
-      session.endSession();
+      await session.endSession();
     }
   }
 
@@ -236,7 +241,7 @@ export class PostService {
   async getPostStats() {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    const stats = await this.postModel.aggregate([
+    const stats = await this.postModel.aggregate<PostStatsFacetResult>([
       { $match: { isDeleted: false } },
       {
         $facet: {
@@ -261,7 +266,7 @@ export class PostService {
     id: string,
     dto: UpdateCommentDto,
     userId: string,
-    userRole: string,
+    userRole: Roles,
   ) {
     const isAdmin = userRole === Roles.ADMIN;
 
@@ -286,7 +291,7 @@ export class PostService {
     return updatedComment;
   }
 
-  async deleteComment(id: string, userId: string, userRole: string) {
+  async deleteComment(id: string, userId: string, userRole: Roles) {
     const isAdmin = userRole === Roles.ADMIN;
 
     const session = await this.connection.startSession();
@@ -323,7 +328,7 @@ export class PostService {
       await session.abortTransaction();
       throw error;
     } finally {
-      session.endSession();
+      await session.endSession();
     }
   }
 
@@ -377,7 +382,7 @@ export class PostService {
       await session.abortTransaction();
       throw error;
     } finally {
-      session.endSession();
+      await session.endSession();
     }
   }
 
