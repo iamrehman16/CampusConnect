@@ -187,14 +187,12 @@ a PR outside that path leaves the PR stuck "pending" forever.
   `res.write()`/`res.end()` call with `res.writableEnded`, and
   `req.on('close')` unsubscribes the observable instead of just ending the
   response. Regression covered by `ai.controller.spec.ts`.
-- **E11000 handling missing on `conversations`** — confirmed. In
-  `server/src/modules/chat/chat.service.ts#findOrCreateConversation`, the
-  check-then-create (`findOne` then `.create()`) has no try/catch. Two
-  concurrent "start conversation" requests for the same pair can both pass
-  the `findOne` check, then the second `.create()` throws unhandled on the
-  unique `participants` index (§4). Note this is a different code path from
-  the message-level `isDuplicateClientIdError` dedup, which does exist and
-  works as intended.
+- **E11000 handling on `conversations`** — fixed (BACKLOG.md A2).
+  `findOrCreateConversation` now catches the E11000 on the unique
+  `participants` index and re-fetches/returns the winner, mirroring the
+  existing `isDuplicateClientIdError` pattern (new
+  `isDuplicateParticipantsError` helper). Regression covered in
+  `chat.service.spec.ts`.
 - **`participantsKey` migration** — status unclear. No occurrences of
   `participantsKey` found anywhere in `server/src`. Either never started or
   the field was renamed; don't assume either way — check with the

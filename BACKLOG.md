@@ -45,7 +45,7 @@ regression cases: late emission after disconnect, `close` firing after
 `complete`, and error arriving after disconnect — none write to or re-end
 the response. `CLAUDE.md` §8 updated to reflect the fix.
 
-### A2 — Fix conversation-creation race condition (E11000 unhandled)
+### A2 — Fix conversation-creation race condition (E11000 unhandled) — DONE (2026-09-18)
 **Effort:** 3
 **Where:** `server/src/modules/chat/chat.service.ts#findOrCreateConversation`
 **Why:** Check-then-create with no try/catch around `.create()`. Two
@@ -59,6 +59,14 @@ adding a pre-check query, per the intentional-decisions convention in §4.
 - Concurrent `findOrCreateConversation` calls for the same pair never throw;
   both resolve to the same conversation document.
 - Add a test that fires two concurrent creates and asserts one result.
+
+**Resolved:** `findOrCreateConversation` now wraps `.create()` in a
+try/catch; on E11000 (new `isDuplicateParticipantsError` helper, mirroring
+`isDuplicateClientIdError`) it re-queries by the sorted `participants` pair
+and returns the winner instead of throwing. New test in
+`chat.service.spec.ts` fires two concurrent calls against a mocked model
+that rejects the second `create()` with E11000 and asserts both resolve to
+the same document. `CLAUDE.md` §8 updated to reflect the fix.
 
 ### A3 — Harden GroqService external calls
 **Effort:** 5
