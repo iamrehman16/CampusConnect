@@ -143,16 +143,16 @@ a PR outside that path leaves the PR stuck "pending" forever.
   (`tsc -b` / `tsc -p tsconfig.build.json`), so this is typecheck+build in
   one step. Branch protection on `main` requires both, blocks force-push and
   branch deletion.
-- **Server `lint` is clean** (BACKLOG.md A11, 2026-09-18) — its
-  `server-ci.yml` job no longer has `continue-on-error`, but branch
-  protection on `main` hasn't been updated yet to add it to
-  `required_status_checks` (a manual GitHub admin step).
-- **Still advisory, not yet gating:** `lint` (client) and `test` (server).
-  These run and report on every PR so regressions are visible, but a
-  failure doesn't block merge. This is temporary, not a policy choice — as
-  of Sept 2026 there's pre-existing debt (client lint errors, 9/10 server
-  test suites failing on DI setup) that predates the CI setup. Each gets a
-  `BACKLOG.md` cleanup PBI; once a workflow's job is clean, remove its
+- **Client and server `lint` are both clean** (BACKLOG.md A10/A11,
+  2026-09-18) — neither `client-ci.yml` nor `server-ci.yml`'s `lint` job
+  has `continue-on-error` anymore, but branch protection on `main` hasn't
+  been updated yet to add either to `required_status_checks` (a manual
+  GitHub admin step).
+- **Still advisory, not yet gating:** `test` (server). It runs and reports
+  on every PR so regressions are visible, but a failure doesn't block
+  merge. This is temporary, not a policy choice — as of Sept 2026, 9/10
+  server test suites fail on DI setup, predating the CI setup
+  (`BACKLOG.md` A12). Once that job is clean, remove its
   `continue-on-error: true` to make it required.
 - Don't add more required checks casually — each one is a thing that can
   block you at 2am before the open house. Promote a check to required only
