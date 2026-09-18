@@ -403,7 +403,7 @@ update (GitHub admin action, not done here) to add the server `lint`
 check to `required_status_checks` — currently only
 `client-typecheck-and-build`/`server-typecheck-and-build` are required.
 
-### A12 — Fix server test suite DI setup, promote `server-ci` test job to required
+### A12 — Fix server test suite DI setup, promote `server-ci` test job to required — DONE (2026-09-18)
 **Effort:** 5
 **Where:** `server/test/`, `server/src/**/*.spec.ts`
 **Why:** 9 of 10 test suites currently fail at `TestingModuleBuilder.compile`
@@ -415,6 +415,27 @@ suite, likely from a dependency or module wiring change that predates CI.
   deliberately deleted with a reason, not silently left broken).
 - `.github/workflows/server-ci.yml`'s `test` job has `continue-on-error`
   removed and is added to `main`'s required status checks.
+
+**Resolved:** Root cause was uniform, not suite-specific: all 9 failing
+suites (`cloudinary.service`, `chat.controller`, `chat.service` [top block
+only — its other two describes already used direct construction from A9],
+`auth.service`, `resource.service`, `user.service`, `auth.controller`,
+`resource.controller`, `user.controller`) were unmodified Nest-CLI scaffold
+tests — `Test.createTestingModule({ providers: [X] })` / `{ controllers:
+[X], providers: [Y] }` with zero mocked constructor dependencies, so
+`compile()` failed resolving injection tokens (`@InjectModel`, config
+`KEY`s, other services) before any test body ran. No suite needed deleting
+— all were trivially fixable. Fixed uniformly by replacing the NestJS
+`TestingModule` machinery with direct constructor instantiation
+(`new XService(mockDep1, mockDep2, ...)`), matching the pattern already
+established this session in `chat.service.spec.ts`/`groq.service.spec.ts`/
+`retrieval.service.spec.ts`/`ai-chat.service.spec.ts` — NestJS DI is
+unnecessary overhead for a unit test that only needs a real instance with
+typed stub dependencies. No production code was touched; this was purely
+test-infrastructure debt, no real application bugs were uncovered in the
+process. `npm test` now passes 15/15 suites, 29/29 tests. Six commits, one
+per module (storage, chat, auth, resource, user, plus the CI workflow
+change). `server-ci.yml`'s `test` job no longer has `continue-on-error`.
 
 ### A13 — Messenger: reconcile failed messages by clientId instead of generic toast — DONE (2026-09-18)
 **Effort:** 3
