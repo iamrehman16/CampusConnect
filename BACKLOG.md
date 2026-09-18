@@ -140,7 +140,7 @@ something to invent for the past), but a migrated thread's still-present
 raw messages no longer start life in `AiMessage` empty. Covered by
 extended `conversation.service.spec.ts`/`conversation.controller.spec.ts`.
 
-### B4 — Auto-generate conversation titles
+### B4 — Auto-generate conversation titles — DONE (2026-09-18)
 **Effort:** 3
 **Where:** server `AiConversation` creation flow, depends on B1/B2
 **Why:** ChatGPT/Claude-style sidebars show a short generated title per
@@ -153,6 +153,19 @@ thread, not "New chat" forever. Cheap single-call feature once B1 exists.
   a nice-to-have side effect, not on the critical path (explicit error
   handling, not silent, but non-fatal — falls back to a default like the
   first few words of the user's message).
+
+**Resolved:** Added `GroqService.generateTitle` (fast model, same one used
+for summary compression) and `ConversationService.maybeGenerateTitle`,
+called fire-and-forget (`void`) from `getChatResponse`/`streamChatResponse`
+right after the first exchange's `appendMessages`. Guarded by a new
+exported `DEFAULT_CONVERSATION_TITLE` constant from the schema — only
+fires while the thread still has that default, so a user-renamed title
+(B2) is never overwritten, and the `updateOne` filters on that same title
+so the guard holds even under a concurrent call. `maybeGenerateTitle`
+never throws: a failed Groq call is logged, then falls back to the first
+six words of the user's message (or the default title itself, if that's
+blank too). Covered by `groq.service.spec.ts` and extended
+`conversation.service.spec.ts`/`ai-chat.service.spec.ts`.
 
 ### B5 — Contextualize follow-up queries before RAG retrieval
 **Effort:** 5
