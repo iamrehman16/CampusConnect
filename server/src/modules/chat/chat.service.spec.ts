@@ -1,6 +1,35 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { Types } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { ChatService } from './chat.service';
+import { ConversationDocument } from './schema/conversation.schema';
+import { MessageDocument } from './schema/message.schema';
+import { PaginationService } from '../../common/services/pagination.service';
+
+type MockQuery = {
+  populate: jest.Mock;
+  select: jest.Mock;
+  lean: jest.Mock;
+  exec: jest.Mock;
+};
+
+function chainable(result: unknown): MockQuery {
+  const query = {} as MockQuery;
+  query.populate = jest.fn().mockReturnValue(query);
+  query.select = jest.fn().mockReturnValue(query);
+  query.lean = jest.fn().mockReturnValue(query);
+  query.exec = jest.fn().mockResolvedValue(result);
+  return query;
+}
+
+function duplicateKeyError(field: string): Error & {
+  code: number;
+  keyPattern: Record<string, number>;
+} {
+  return Object.assign(new Error('E11000 duplicate key error'), {
+    code: 11000,
+    keyPattern: { [field]: 1 },
+  });
+}
 
 describe('ChatService', () => {
   let service: ChatService;
@@ -18,28 +47,29 @@ describe('ChatService', () => {
   });
 });
 
+type MockConversationModel = {
+  findOne: jest.Mock;
+  create: jest.Mock;
+  findById: jest.Mock;
+  find: jest.Mock;
+  updateOne: jest.Mock;
+};
+
+function buildChatService(conversationModel: Partial<MockConversationModel>) {
+  return new ChatService(
+    conversationModel as unknown as Model<ConversationDocument>,
+    {} as unknown as Model<MessageDocument>,
+    {} as unknown as PaginationService,
+  );
+}
+
 describe('ChatService#findOrCreateConversation', () => {
-  function chainable(result: unknown) {
-    const query: any = {};
-    query.populate = jest.fn().mockReturnValue(query);
-    query.lean = jest.fn().mockReturnValue(query);
-    query.exec = jest.fn().mockResolvedValue(result);
-    return query;
-  }
-
-  function duplicateParticipantsError() {
-    const err: any = new Error('E11000 duplicate key error');
-    err.code = 11000;
-    err.keyPattern = { participantsKey: 1 };
-    return err;
-  }
-
   it('returns the winner instead of throwing when two concurrent creates race on the unique participants index', async () => {
     const currentUserId = new Types.ObjectId().toString();
     const participantId = new Types.ObjectId().toString();
     const winningConversation = { _id: new Types.ObjectId(), participants: [] };
 
-    const conversationModel: any = {
+    const conversationModel: MockConversationModel = {
       findOne: jest
         .fn()
         // both concurrent calls miss the existing-conversation check
@@ -50,17 +80,17 @@ describe('ChatService#findOrCreateConversation', () => {
       create: jest
         .fn()
         .mockResolvedValueOnce({ _id: winningConversation._id })
-        .mockRejectedValueOnce(duplicateParticipantsError()),
+        .mockRejectedValueOnce(duplicateKeyError('participantsKey')),
       findById: jest.fn().mockReturnValue(chainable(winningConversation)),
+      find: jest.fn(),
+      updateOne: jest.fn(),
     };
 
-    const chatService = new ChatService(
-      conversationModel,
-      {} as any,
-      {} as any,
-    );
+    const chatService = buildChatService(conversationModel);
 
-    const dto = { participantId } as any;
+    const dto = { participantId } as Parameters<
+      typeof chatService.findOrCreateConversation
+    >[1];
 
     const [first, second] = await Promise.all([
       chatService.findOrCreateConversation(currentUserId, dto),
@@ -73,29 +103,17 @@ describe('ChatService#findOrCreateConversation', () => {
 });
 
 describe('ChatService#onModuleInit — participantsKey backfill', () => {
-  function chainable(result: unknown) {
-    const query: any = {};
-    query.select = jest.fn().mockReturnValue(query);
-    query.lean = jest.fn().mockReturnValue(query);
-    query.exec = jest.fn().mockResolvedValue(result);
-    return query;
-  }
-
   it('backfills participantsKey on legacy conversation docs missing it', async () => {
     const a = new Types.ObjectId();
     const b = new Types.ObjectId();
     const legacyDoc = { _id: new Types.ObjectId(), participants: [b, a] };
 
-    const conversationModel: any = {
+    const conversationModel: Partial<MockConversationModel> = {
       find: jest.fn().mockReturnValue(chainable([legacyDoc])),
       updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),
     };
 
-    const chatService = new ChatService(
-      conversationModel,
-      {} as any,
-      {} as any,
-    );
+    const chatService = buildChatService(conversationModel);
     await chatService.onModuleInit();
 
     expect(conversationModel.find).toHaveBeenCalledWith({
@@ -112,16 +130,12 @@ describe('ChatService#onModuleInit — participantsKey backfill', () => {
   });
 
   it('does nothing when no legacy docs are missing participantsKey', async () => {
-    const conversationModel: any = {
+    const conversationModel: Partial<MockConversationModel> = {
       find: jest.fn().mockReturnValue(chainable([])),
       updateOne: jest.fn(),
     };
 
-    const chatService = new ChatService(
-      conversationModel,
-      {} as any,
-      {} as any,
-    );
+    const chatService = buildChatService(conversationModel);
     await chatService.onModuleInit();
 
     expect(conversationModel.updateOne).not.toHaveBeenCalled();

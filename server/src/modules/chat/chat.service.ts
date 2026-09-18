@@ -262,11 +262,24 @@ export class ChatService implements OnModuleInit {
     return receiverId.toString();
   }
 
-  private isDuplicateClientIdError(err: any): boolean {
-    return err?.code === 11000 && err?.keyPattern?.clientId;
+  private isDuplicateKeyErrorOn(err: unknown, field: string): boolean {
+    if (typeof err !== 'object' || err === null) return false;
+    const candidate = err as { code?: unknown; keyPattern?: unknown };
+    if (candidate.code !== 11000) return false;
+    if (
+      typeof candidate.keyPattern !== 'object' ||
+      candidate.keyPattern === null
+    ) {
+      return false;
+    }
+    return field in candidate.keyPattern;
   }
 
-  private isDuplicateParticipantsError(err: any): boolean {
-    return err?.code === 11000 && err?.keyPattern?.participantsKey;
+  private isDuplicateClientIdError(err: unknown): boolean {
+    return this.isDuplicateKeyErrorOn(err, 'clientId');
+  }
+
+  private isDuplicateParticipantsError(err: unknown): boolean {
+    return this.isDuplicateKeyErrorOn(err, 'participantsKey');
   }
 }
