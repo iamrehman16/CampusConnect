@@ -1,9 +1,9 @@
-import type { InfiniteData } from "@tanstack/react-query";
+import type { InfiniteData, QueryClient } from "@tanstack/react-query";
 import type { PaginatedResult } from "@/shared/types/api.types";
 import type { Message } from "../types/chat-dto";
 import { chatKeys } from "../hooks/chat-keys";
 
-export const chatCacheUpdaters = (queryClient: any) => ({
+export const chatCacheUpdaters = (queryClient: QueryClient) => ({
   // Optimistic append — called immediately on send, before server reply
   appendOptimistic(message: Message) {
     queryClient.setQueryData(

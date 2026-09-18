@@ -15,7 +15,11 @@ export function useChatSocket() {
   const queryClient = useQueryClient();
   const { isConnected } = useChatSocketContext();
   const { user } = useAuth();
-  const currentUserId = user?._id!;
+  // Hook is only ever mounted under ProtectedRoute, so user is guaranteed
+  // non-null here — asserted on `user`, not on the optional-chained access,
+  // so a violation of that guarantee throws immediately instead of
+  // silently producing an `undefined` sender id.
+  const currentUserId = user!._id;
   const cache = useMemo(() => chatCacheUpdaters(queryClient), [queryClient]);
 
   const pendingTimeouts = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -53,7 +57,7 @@ export function useChatSocket() {
           cache.promoteMessage(dto.conversationId, serverMessage);
         });
         startSendTimeout(clientId, dto.conversationId);
-      } catch (error) {
+      } catch {
         cache.markFailed(dto.conversationId, clientId);
       }
     },

@@ -50,11 +50,14 @@ export default function ConversationPage() {
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useMessagesQuery(activeConversationId ?? "");
-  const messages =
-    data?.pages
-      .slice()
-      .reverse()
-      .flatMap((p) => [...p.data].reverse()) ?? [];
+  const messages = useMemo(
+    () =>
+      data?.pages
+        .slice()
+        .reverse()
+        .flatMap((p) => [...p.data].reverse()) ?? [],
+    [data],
+  );
   const latestMessage = useMemo(
     () => messages[messages.length - 1],
     [messages],
