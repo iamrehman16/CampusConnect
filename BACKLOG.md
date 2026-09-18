@@ -68,7 +68,7 @@ and returns the winner instead of throwing. New test in
 that rejects the second `create()` with E11000 and asserts both resolve to
 the same document. `CLAUDE.md` §8 updated to reflect the fix.
 
-### A3 — Harden GroqService external calls
+### A3 — Harden GroqService external calls — DONE (2026-09-18)
 **Effort:** 5
 **Where:** `server/src/modules/ai/services/groq.service.ts`
 **Why:** New finding — `generateResponse`, `summarize`, and `generateStream`
@@ -83,6 +83,19 @@ no-silent-failures / explicit-error-handling rule in `CLAUDE.md` §3.3.
 - Add a timeout so a hung Groq request doesn't hang the SSE stream forever.
 - 429/5xx from Groq degrades gracefully (e.g. a user-facing "try again"
   event on the stream) instead of an unhandled rejection.
+
+**Resolved:** Each of `generateResponse`/`summarize`/`generateStream` now
+wraps its `create()` call in try/catch, logs via Nest's `Logger` with
+operation + status context, and rethrows a typed `GroqServiceError`
+(`operation`, `retryable` derived from 429/5xx). All three calls pass a
+configurable `GROQ_TIMEOUT_MS` (default 30s, documented in
+`.env.example`). In `ai-chat.service.ts#streamChatResponse`, the
+`generateStream()` call moved inside the observable's executor so a
+Groq failure there reaches `observer.error()` — which the A1 fix already
+turns into a graceful SSE `error` event — instead of rejecting after
+headers are flushed. Covered by `groq.service.spec.ts` (5 cases:
+success + timeout param, 429 retryable, 400 non-retryable, generic
+failure, 5xx retryable on the stream path).
 
 ### A4 — Retrieval empty-result signal + drop debug logging
 **Effort:** 3
