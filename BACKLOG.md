@@ -300,9 +300,11 @@ non-component values alongside components).
   commit — still one *concern* per commit even if it takes several.
 
 ### A11 — Clean server lint to zero, promote `server-ci` lint job to required
+**Status:** DONE (2026-09-18)
 **Effort:** 8
-**Where:** `server/` (~127 errors as of Sept 2026, `npx eslint
-"{src,apps,libs,test}/**/*.ts"`)
+**Where:** `server/` (178 problems / 143 errors at session start — the
+BACKLOG note's "~127 errors" was stale; A7 had already cut it from the
+original ~200/171, but 178/143 was the real starting count for this PBI)
 **Why:** Same as A10, server side. Substantially overlaps with A7's `any`
 cleanup — do A7 first, then mop up whatever lint errors remain.
 **Acceptance criteria:**
@@ -310,6 +312,37 @@ cleanup — do A7 first, then mop up whatever lint errors remain.
   in — see the note in `server-ci.yml`) exits 0.
 - `.github/workflows/server-ci.yml`'s `lint` job has `continue-on-error`
   removed and is added to `main`'s required status checks.
+
+**Resolved:** `npx eslint "{src,apps,libs,test}/**/*.ts"` now exits 0
+(from 178 problems / 143 errors). Worked in ~8 sub-commits by
+module/rule-type. Most fixes were mechanical `any` → real-type/`unknown`
+narrowing (JWT payloads, socket.io `Socket.data`, Mongoose aggregate
+results, exception response bodies), but a few were genuine bugs the
+lint noise had been masking:
+- `auth.controller.ts`'s `signout()` was `async` with no `await` — it
+  called `authService.signout()` and discarded the promise, so a
+  failure to invalidate the refresh token on signout was silently
+  swallowed and the client always got a 200 regardless.
+- Three `session.endSession()` calls in `post.service.ts`'s
+  transactional methods (`createComment`, `deleteComment`,
+  `adminDeleteComment`) ran in a `finally` block without `await` — the
+  method could return/rethrow before the session was actually released
+  back to the driver's pool.
+- `post.service.ts`'s `updatePost`/`deletePost`/`updateComment`/
+  `deleteComment` took `userRole: string` and compared it against the
+  `Roles` enum — every real caller passes `req.user.role` (typed
+  `Roles`), so the `string` param was a type hole with no legitimate
+  string use case. Narrowed to `userRole: Roles`.
+- `main.ts`'s `bootstrap()` floating promise had no failure handling —
+  a startup crash before `app.listen()` would previously fail silently.
+- New shared `AppSocket` type (`server/src/modules/chat/types/app-socket.d.ts`)
+  replaces untyped `Socket` across the chat gateway/guard/filter, narrowing
+  `socket.data` to `{ userId?: string }` instead of `any`.
+`.github/workflows/server-ci.yml`'s `lint` job no longer has
+`continue-on-error`. Branch protection on `main` still needs a manual
+update (GitHub admin action, not done here) to add the server `lint`
+check to `required_status_checks` — currently only
+`client-typecheck-and-build`/`server-typecheck-and-build` are required.
 
 ### A12 — Fix server test suite DI setup, promote `server-ci` test job to required
 **Effort:** 5
