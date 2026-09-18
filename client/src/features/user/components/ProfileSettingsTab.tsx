@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Box,
   Button,
@@ -42,18 +42,20 @@ const ProfileSettingsTab: React.FC<ProfileSettingsTabProps> = ({
     expertise: user?.expertise ?? "",
     semester: user?.semester ?? "",
   });
+  // Tracks which user id `form` was last synced from, so the form resets
+  // once the initially-null user data loads (adjusting state during render,
+  // not in an Effect, per React's "you might not need an effect" guidance).
+  const [syncedUserId, setSyncedUserId] = useState<string | null>(null);
 
-  // Sync when user data loads
-  useEffect(() => {
-    if (user) {
-      setForm({
-        name: user.name ?? "",
-        academicInfo: user.academicInfo ?? "",
-        expertise: user.expertise ?? "",
-        semester: user.semester ?? "",
-      });
-    }
-  }, [user?.name, user?.academicInfo, user?.expertise, user?.semester]);
+  if (user && user.id !== syncedUserId) {
+    setSyncedUserId(user.id);
+    setForm({
+      name: user.name ?? "",
+      academicInfo: user.academicInfo ?? "",
+      expertise: user.expertise ?? "",
+      semester: user.semester ?? "",
+    });
+  }
 
   const isDirty =
     form.name !== (user?.name ?? "") ||

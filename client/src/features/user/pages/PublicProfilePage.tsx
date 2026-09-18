@@ -95,7 +95,7 @@ const PublicProfilePage: React.FC = () => {
   return (
     <PageContainer>
       <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
-        <Container maxWidth="md" disableGutters={{ xs: true, sm: false } as any}>
+        <Container maxWidth="md" disableGutters>
         {/* Back button */}
         <Box sx={{ px: { xs: 2, sm: 0 }, py: { xs: 1.5, sm: 2 } }}>
           <Button

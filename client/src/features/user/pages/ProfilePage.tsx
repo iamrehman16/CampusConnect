@@ -120,7 +120,7 @@ const ProfilePage: React.FC = () => {
       }}
     >
       <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
-      <Container maxWidth="md" disableGutters={{ xs: true, sm: false } as any}>
+      <Container maxWidth="md" disableGutters>
         {/* ── Hero ─────────────────────────────────────────────────────── */}
         <ProfileHero
           user={profileView}
