@@ -1,13 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  Query,
-  UseGuards,
-  Req,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Req } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { StartConversationDto } from './dto/start-conversation.dto';
 import { CurrentUser } from '../auth/types/current-user';

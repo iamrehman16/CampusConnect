@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { DocumentParserService } from './document-parser.service';
 import { EmbeddingService } from './embedding.service';
 import { VectorStoreService } from './vector-store.service';
-import { Resource } from '../../resource/schemas/resource.schema';
 import { createHash } from 'crypto';
 import { ChunkingService } from './chunking.service';
 import { IngestResourceJobPayload } from '../../queues/interfaces/ingest-resource-job.interface';

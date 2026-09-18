@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
-import { ChatMessage, MessageRole } from '../interfaces/conversation.interface';
+import { ChatMessage } from '../interfaces/conversation.interface';
 
 export type ConversationSessionDocument = ConversationSession & Document;
 

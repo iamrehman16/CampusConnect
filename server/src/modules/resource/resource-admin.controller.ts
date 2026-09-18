@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Body,
-  Patch,
-  Param,
-  Get,
-  Query,
-  Req,
-} from '@nestjs/common';
+import { Controller, Body, Patch, Param, Get, Query } from '@nestjs/common';
 import { ResourceService } from './resource.service';
 import { ParseMongoIdPipe } from '../../common/pipes/is-mongo-id.pipe';
 import { Role } from '../auth/decorators/role.decorator';

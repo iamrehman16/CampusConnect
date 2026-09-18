@@ -1,10 +1,4 @@
-import {
-  IsBoolean,
-  IsOptional,
-  IsString,
-  MaxLength,
-  IsNotEmpty,
-} from 'class-validator';
+import { IsBoolean, IsOptional } from 'class-validator';
 import { PartialType } from '@nestjs/mapped-types';
 import { CreatePostDto } from './post.dto';
 

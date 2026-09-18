@@ -1,11 +1,4 @@
-import {
-  IsOptional,
-  IsEnum,
-  IsNumber,
-  IsString,
-  Min,
-  Max,
-} from 'class-validator';
+import { IsOptional, IsEnum, IsNumber, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ResourceType } from '../enums/resource-types.enum';
 import { ResourceSort } from '../enums/resource-sort.enum';
