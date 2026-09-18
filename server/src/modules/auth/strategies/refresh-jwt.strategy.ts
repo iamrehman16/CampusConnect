@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import type { ConfigType } from '@nestjs/config';
@@ -26,10 +26,15 @@ export class RefreshJWTStrategy extends PassportStrategy(
   }
 
   validate(req: Request, payload: AuthJwtPayload) {
-    const refreshToken = req
-      .get('authorization')
-      ?.replace('Bearer', '')
-      .trim()!;
+    const authHeader = req.get('authorization');
+    if (!authHeader) {
+      // Passport only invokes validate() after ExtractJwt confirms a
+      // bearer token was present, but that guarantee is about the JWT
+      // strategy's own extraction, not this raw header read — so we
+      // still check explicitly rather than asserting non-null.
+      throw new UnauthorizedException('Missing authorization header');
+    }
+    const refreshToken = authHeader.replace('Bearer', '').trim();
     const userId = payload.sub;
     return this.authService.validateRefreshToken(userId, refreshToken);
   }

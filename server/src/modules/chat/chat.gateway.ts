@@ -13,14 +13,26 @@ import {
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
+  WsException,
 } from '@nestjs/websockets';
 import { ChatService } from './chat.service';
-import { Socket, Server } from 'socket.io';
+import { Server } from 'socket.io';
 import { WsJwtGuard } from './guards/websocket.jwt.guard';
 import { WsExceptionFilter } from './filters/websocket-exception.filter';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { DeleteMessageDto } from './dto/delete-message.dto';
 import { MarkSeenDto } from './dto/mark-seen.dto';
+import { AppSocket } from './types/app-socket';
+
+// @UseGuards(WsJwtGuard) already rejects sockets with no userId at
+// runtime before these handlers run; this narrows `string | undefined`
+// to `string` at compile time and stays defense-in-depth otherwise.
+function requireUserId(socket: AppSocket): string {
+  if (!socket.data.userId) {
+    throw new WsException('Unauthorized');
+  }
+  return socket.data.userId;
+}
 
 @WebSocketGateway({
   cors: {
@@ -43,9 +55,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly wsJwtGuard: WsJwtGuard,
   ) {}
 
-  async handleConnection(socket: Socket) {
+  async handleConnection(socket: AppSocket) {
     try {
-      const user = await this.wsJwtGuard.validateSocket(socket);
+      const user = this.wsJwtGuard.validateSocket(socket);
 
       socket.data.userId = user.id;
 
@@ -59,18 +71,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  handleDisconnect(socket: Socket) {
+  handleDisconnect(socket: AppSocket) {
     const userId = socket.data.userId;
 
     if (userId) {
-      console.log(`User ${userId} disconnected socket ${socket.id}`);
+      this.logger.log(`User ${userId} disconnected socket ${socket.id}`);
     }
   }
 
   @UseGuards(WsJwtGuard)
   @SubscribeMessage('join_conversation')
   async handleJoinConversation(
-    @ConnectedSocket() socket: Socket,
+    @ConnectedSocket() socket: AppSocket,
     @MessageBody() conversationId: string,
   ) {
     try {
@@ -88,10 +100,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @UseGuards(WsJwtGuard)
   @SubscribeMessage('send_message')
   async handleSendMessage(
-    @ConnectedSocket() socket: Socket,
+    @ConnectedSocket() socket: AppSocket,
     @MessageBody() dto: CreateMessageDto,
   ) {
-    const senderId = socket.data.userId;
+    const senderId = requireUserId(socket);
     try {
       const message = await this.chatService.createMessageIdempotent(
         dto,
@@ -114,10 +126,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @UseGuards(WsJwtGuard)
   @SubscribeMessage('mark_seen')
   async handleMarkSeen(
-    @ConnectedSocket() socket: Socket,
+    @ConnectedSocket() socket: AppSocket,
     @MessageBody() conversationId: string,
   ) {
-    const userId = socket.data.userId;
+    const userId = requireUserId(socket);
     try {
       await this.chatService.markSeen(conversationId, userId);
       const dto: MarkSeenDto = { conversationId, seenBy: userId };
@@ -131,10 +143,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @UseGuards(WsJwtGuard)
   @SubscribeMessage('delete_message')
   async handleDeleteMessage(
-    @ConnectedSocket() socket: Socket,
+    @ConnectedSocket() socket: AppSocket,
     @MessageBody() dto: DeleteMessageDto,
   ) {
-    const userId = socket.data.userId;
+    const userId = requireUserId(socket);
     try {
       await this.chatService.deleteMessage(
         dto.messageId,
