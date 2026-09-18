@@ -9,6 +9,7 @@ import { Model } from 'mongoose';
 import {
   AiConversation,
   AiConversationDocument,
+  DEFAULT_CONVERSATION_TITLE,
 } from '../schema/ai-conversation.schema';
 import { AiMessage, AiMessageDocument } from '../schema/ai-message.schema';
 import {
@@ -177,6 +178,47 @@ export class ConversationService implements OnModuleInit {
       : `Summarize these messages in 2-3 sentences. Return only the summary text, no preamble or explanation:
      ${rawText}`;
     conversation.summaryBuffer = await summarizeFn(prompt);
+  }
+
+  /**
+   * Auto-names a thread from its first exchange (BACKLOG.md B4). Only
+   * fires while the thread still has the schema default title, so it
+   * never clobbers a title the user set via rename — the `title:
+   * DEFAULT_CONVERSATION_TITLE` filter on the update makes that race-safe
+   * even if this somehow ran twice concurrently.
+   *
+   * Never throws: title generation is a nice-to-have side effect, not on
+   * the chat-response critical path. A failed titleFn call is logged, not
+   * swallowed, and falls back to the first few words of the user's
+   * message rather than leaving the thread untitled.
+   */
+  async maybeGenerateTitle(
+    conversation: AiConversationDocument,
+    userMessage: string,
+    titleFn: (message: string) => Promise<string>,
+  ): Promise<void> {
+    if (conversation.title !== DEFAULT_CONVERSATION_TITLE) return;
+
+    let title: string;
+    try {
+      title = (await titleFn(userMessage)).trim();
+    } catch (err) {
+      this.logger.error(
+        `Title generation failed for conversation ${conversation._id.toString()}`,
+        err instanceof Error ? err.stack : undefined,
+      );
+      title = '';
+    }
+
+    await this.conversationModel.updateOne(
+      { _id: conversation._id, title: DEFAULT_CONVERSATION_TITLE },
+      { title: title || this.fallbackTitle(userMessage) },
+    );
+  }
+
+  private fallbackTitle(userMessage: string): string {
+    const words = userMessage.trim().split(/\s+/).slice(0, 6).join(' ');
+    return words || DEFAULT_CONVERSATION_TITLE;
   }
 
   async clearConversation(

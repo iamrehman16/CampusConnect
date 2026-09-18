@@ -31,6 +31,7 @@ function buildService(context: RetrievedContext[]) {
     buildMessages: jest.fn().mockReturnValue([]),
     generateResponse: jest.fn().mockResolvedValue('the answer'),
     summarize: jest.fn().mockResolvedValue('summary'),
+    generateTitle: jest.fn().mockResolvedValue('a title'),
     generateStream: jest.fn().mockResolvedValue(
       (async function* () {
         // no token chunks needed for this test
@@ -44,6 +45,7 @@ function buildService(context: RetrievedContext[]) {
       recentMessages: [],
     }),
     appendMessages: jest.fn().mockResolvedValue(undefined),
+    maybeGenerateTitle: jest.fn().mockResolvedValue(undefined),
   };
   const retrievalService: Partial<RetrievalService> = {
     retrieve: jest.fn().mockResolvedValue({ context, status: 'ok' }),
@@ -99,5 +101,62 @@ describe('AiChatService — citation deduplication', () => {
     expect(citationsEvent.citations).toHaveLength(1);
     expect(citationsEvent.citations[0].resourceId).toBe('resource-1');
     expect(citationsEvent.citations[0].pageNumber).toBe(3);
+  });
+});
+
+function buildServiceWithConversation(recentMessages: unknown[]) {
+  const conversation = {
+    _id: new Types.ObjectId(),
+    summaryBuffer: '',
+    recentMessages,
+  };
+  const conversationService: Partial<ConversationService> = {
+    getOrCreateConversation: jest.fn().mockResolvedValue(conversation),
+    appendMessages: jest.fn().mockResolvedValue(undefined),
+    maybeGenerateTitle: jest.fn().mockResolvedValue(undefined),
+  };
+  const groqService: Partial<GroqService> = {
+    buildMessages: jest.fn().mockReturnValue([]),
+    generateResponse: jest.fn().mockResolvedValue('the answer'),
+    summarize: jest.fn().mockResolvedValue('summary'),
+    generateTitle: jest.fn().mockResolvedValue('a title'),
+  };
+  const retrievalService: Partial<RetrievalService> = {
+    retrieve: jest.fn().mockResolvedValue({ context: [], status: 'ok' }),
+  };
+
+  return {
+    service: new AiChatService(
+      groqService as GroqService,
+      conversationService as ConversationService,
+      retrievalService as RetrievalService,
+    ),
+    conversation,
+    conversationService,
+  };
+}
+
+describe('AiChatService — auto-title on first exchange (B4)', () => {
+  it('getChatResponse triggers title generation for a brand-new thread', async () => {
+    const { service, conversation, conversationService } =
+      buildServiceWithConversation([]);
+
+    await service.getChatResponse('user-1', 'query');
+
+    expect(conversationService.maybeGenerateTitle).toHaveBeenCalledWith(
+      conversation,
+      'query',
+      expect.any(Function),
+    );
+  });
+
+  it('getChatResponse does not trigger title generation for a thread that already has history', async () => {
+    const { service, conversationService } = buildServiceWithConversation([
+      { role: 'user', content: 'earlier', timestamp: new Date() },
+    ]);
+
+    await service.getChatResponse('user-1', 'query');
+
+    expect(conversationService.maybeGenerateTitle).not.toHaveBeenCalled();
   });
 });

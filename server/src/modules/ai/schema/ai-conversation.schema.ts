@@ -4,6 +4,12 @@ import { ChatMessage } from '../interfaces/conversation.interface';
 
 export type AiConversationDocument = AiConversation & Document;
 
+// Exported so ConversationService can detect "still has its default
+// title" (BACKLOG.md B4's auto-title trigger, and its guard against
+// overwriting a title the user already set via rename) without the
+// string literal drifting out of sync with the schema default.
+export const DEFAULT_CONVERSATION_TITLE = 'New conversation';
+
 @Schema({ timestamps: true })
 export class AiConversation {
   // String, not ObjectId ref, matching the legacy ConversationSession
@@ -12,7 +18,7 @@ export class AiConversation {
   @Prop({ required: true, index: true })
   userId: string;
 
-  @Prop({ required: true, default: 'New conversation' })
+  @Prop({ required: true, default: DEFAULT_CONVERSATION_TITLE })
   title: string;
 
   @Prop({ default: '' })

@@ -85,6 +85,30 @@ describe('GroqService', () => {
     );
   });
 
+  it('generateTitle returns trimmed content and uses the fast model', async () => {
+    const { service, create } = buildService();
+    create.mockResolvedValue({
+      choices: [{ message: { content: '  Campus Wifi Setup Help  ' } }],
+    });
+
+    const result = await service.generateTitle('how do I connect to wifi');
+
+    expect(result).toBe('Campus Wifi Setup Help');
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'fast-model' }),
+      expect.anything(),
+    );
+  });
+
+  it('generateTitle wraps failures as a GroqServiceError instead of an unhandled rejection', async () => {
+    const { service, create } = buildService();
+    create.mockRejectedValue(new Error('network blip'));
+
+    await expect(service.generateTitle('hi')).rejects.toBeInstanceOf(
+      GroqServiceError,
+    );
+  });
+
   it('generateStream wraps a 5xx as a retryable GroqServiceError', async () => {
     const { service, create } = buildService();
     create.mockRejectedValue(

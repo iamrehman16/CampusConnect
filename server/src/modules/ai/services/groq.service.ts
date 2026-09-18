@@ -132,6 +132,36 @@ export class GroqService {
     }
   }
 
+  /**
+   * Short (3-6 word) thread title from the first user message, generated
+   * with the same fast/cheap model used for summary compression
+   * (CLAUDE.md §4). Caller (ConversationService#maybeGenerateTitle) treats
+   * a thrown GroqServiceError as non-fatal and falls back to a default —
+   * this is a nice-to-have side effect, never on the chat-response
+   * critical path (BACKLOG.md B4).
+   */
+  async generateTitle(userMessage: string): Promise<string> {
+    try {
+      const completion = await this.groq.chat.completions.create(
+        {
+          messages: [
+            {
+              role: 'system',
+              content:
+                "Generate a short, specific title (3-6 words) summarizing what this conversation is about, based on the user's message. Return only the title text — no quotes, no trailing punctuation, no preamble.",
+            },
+            { role: 'user', content: userMessage },
+          ],
+          model: this.aiCfg.models.fast,
+        },
+        { timeout: this.aiCfg.groqTimeoutMs },
+      );
+      return completion.choices[0]?.message?.content?.trim() || '';
+    } catch (err) {
+      this.handleGroqError('generateTitle', err);
+    }
+  }
+
   async generateStream(
     messages: Groq.Chat.ChatCompletionMessageParam[],
   ): Promise<AsyncIterable<Groq.Chat.ChatCompletionChunk>> {

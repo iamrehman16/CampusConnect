@@ -52,6 +52,7 @@ export class AiChatService {
       this.conversationService.getOrCreateConversation(userId, conversationId),
       this.retrievalService.retrieve(message),
     ]);
+    const isNewThread = conversation.recentMessages.length === 0;
     const { context, status: retrievalStatus } = retrieval;
 
     const messages = this.groqService.buildMessages(
@@ -69,6 +70,17 @@ export class AiChatService {
       answer,
       (content: string) => this.groqService.summarize(content),
     );
+
+    // Fire-and-forget (BACKLOG.md B4): maybeGenerateTitle never rejects —
+    // a failed Groq call is logged and falls back to a default there, so
+    // this never blocks or errors the chat response over a nice-to-have.
+    if (isNewThread) {
+      void this.conversationService.maybeGenerateTitle(
+        conversation,
+        message,
+        (m) => this.groqService.generateTitle(m),
+      );
+    }
 
     const citations = this.buildCitations(context);
 
@@ -89,6 +101,7 @@ export class AiChatService {
       this.conversationService.getOrCreateConversation(userId, conversationId),
       this.retrievalService.retrieve(message),
     ]);
+    const isNewThread = conversation.recentMessages.length === 0;
     const { context, status: retrievalStatus } = retrieval;
 
     const messages = this.groqService.buildMessages(
@@ -144,6 +157,16 @@ export class AiChatService {
             fullAnswer,
             (content: string) => this.groqService.summarize(content),
           );
+
+          // Fire-and-forget (BACKLOG.md B4) — see getChatResponse for why
+          // this can't block or error the response.
+          if (isNewThread) {
+            void this.conversationService.maybeGenerateTitle(
+              conversation,
+              message,
+              (m) => this.groqService.generateTitle(m),
+            );
+          }
 
           observer.complete();
         } catch (err) {

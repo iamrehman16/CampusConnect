@@ -1,7 +1,10 @@
 import { NotFoundException } from '@nestjs/common';
 import { Model, Types } from 'mongoose';
 import { ConversationService } from './conversation.service';
-import { AiConversationDocument } from '../schema/ai-conversation.schema';
+import {
+  AiConversationDocument,
+  DEFAULT_CONVERSATION_TITLE,
+} from '../schema/ai-conversation.schema';
 import { AiMessageDocument } from '../schema/ai-message.schema';
 import { ConversationSessionDocument } from '../schema/conversation-session.schema';
 import { PaginationService } from '../../../common/services/pagination.service';
@@ -21,6 +24,7 @@ type MockConversationModel = {
   findOneAndDelete: jest.Mock;
   find: jest.Mock;
   create: jest.Mock;
+  updateOne: jest.Mock;
 };
 
 type MockMessageModel = {
@@ -110,6 +114,83 @@ describe('ConversationService#getOrCreateConversation', () => {
 
     expect(result).toBe(created);
     expect(conversationModel.create).toHaveBeenCalledWith({ userId: 'user-1' });
+  });
+});
+
+describe('ConversationService#maybeGenerateTitle', () => {
+  function buildConversation(title: string) {
+    return {
+      _id: new Types.ObjectId(),
+      title,
+    } as unknown as AiConversationDocument;
+  }
+
+  it('sets the generated title when the thread still has the default title', async () => {
+    const conversation = buildConversation(DEFAULT_CONVERSATION_TITLE);
+    const conversationModel: Partial<MockConversationModel> = {
+      updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),
+    };
+    const service = buildConversationService(conversationModel);
+    const titleFn = jest.fn().mockResolvedValue('Wifi Setup Help');
+
+    await service.maybeGenerateTitle(conversation, 'how do I connect', titleFn);
+
+    expect(conversationModel.updateOne).toHaveBeenCalledWith(
+      { _id: conversation._id, title: DEFAULT_CONVERSATION_TITLE },
+      { title: 'Wifi Setup Help' },
+    );
+  });
+
+  it('does nothing when the thread already has a non-default title (user renamed it)', async () => {
+    const conversation = buildConversation('My custom title');
+    const conversationModel: Partial<MockConversationModel> = {
+      updateOne: jest.fn(),
+    };
+    const service = buildConversationService(conversationModel);
+    const titleFn = jest.fn();
+
+    await service.maybeGenerateTitle(conversation, 'irrelevant', titleFn);
+
+    expect(titleFn).not.toHaveBeenCalled();
+    expect(conversationModel.updateOne).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the first few words of the message when titleFn rejects, without throwing', async () => {
+    const conversation = buildConversation(DEFAULT_CONVERSATION_TITLE);
+    const conversationModel: Partial<MockConversationModel> = {
+      updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),
+    };
+    const service = buildConversationService(conversationModel);
+    const titleFn = jest.fn().mockRejectedValue(new Error('groq down'));
+
+    await expect(
+      service.maybeGenerateTitle(
+        conversation,
+        'how do I reset my campus wifi password today',
+        titleFn,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(conversationModel.updateOne).toHaveBeenCalledWith(
+      { _id: conversation._id, title: DEFAULT_CONVERSATION_TITLE },
+      { title: 'how do I reset my campus' },
+    );
+  });
+
+  it('falls back to the default title when titleFn resolves empty and the message is blank', async () => {
+    const conversation = buildConversation(DEFAULT_CONVERSATION_TITLE);
+    const conversationModel: Partial<MockConversationModel> = {
+      updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),
+    };
+    const service = buildConversationService(conversationModel);
+    const titleFn = jest.fn().mockResolvedValue('');
+
+    await service.maybeGenerateTitle(conversation, '   ', titleFn);
+
+    expect(conversationModel.updateOne).toHaveBeenCalledWith(
+      { _id: conversation._id, title: DEFAULT_CONVERSATION_TITLE },
+      { title: DEFAULT_CONVERSATION_TITLE },
+    );
   });
 });
 
