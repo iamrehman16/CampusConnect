@@ -119,6 +119,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       socket.emit('chat_error', {
         message: 'Failed to send message',
         clientId: dto.clientId,
+        conversationId: dto.conversationId,
       });
     }
   }
