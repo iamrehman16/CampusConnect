@@ -68,8 +68,6 @@ export class AiChatService {
       context,
     );
 
-    const stream = await this.groqService.generateStream(messages);
-
     const citations: Citation[] = context.map((c) => ({
       title: c.title,
       pageNumber: c.pageNumber,
@@ -82,6 +80,13 @@ export class AiChatService {
       (async () => {
         let fullAnswer = '';
         try {
+          // Started inside the observable executor (not awaited above) so
+          // that a Groq failure here — e.g. a 429/5xx from generateStream —
+          // reaches observer.error() below and becomes a graceful SSE
+          // 'error' event, instead of rejecting streamChatResponse's
+          // promise after the controller has already flushed headers.
+          const stream = await this.groqService.generateStream(messages);
+
           for await (const chunk of stream) {
             const token = chunk.choices[0]?.delta?.content ?? '';
             if (token) {

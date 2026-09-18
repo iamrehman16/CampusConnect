@@ -7,6 +7,7 @@ export default registerAs('ai', () => ({
     fast: process.env.GROQ_FAST_MODEL || 'llama-3.1-8b-instant',
     embedding: process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001',
   },
+  groqTimeoutMs: Number(process.env.GROQ_TIMEOUT_MS) || 30_000,
   qdrantApiKey: process.env.QDRANT_API_KEY,
   qdrantUrl: process.env.QDRANT_URL,
   geminiApiKey: process.env.GEMINI_API_KEY,
