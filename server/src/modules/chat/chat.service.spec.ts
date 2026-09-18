@@ -1,4 +1,3 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { Model, Types } from 'mongoose';
 import { ChatService } from './chat.service';
 import { ConversationDocument } from './schema/conversation.schema';
@@ -32,17 +31,9 @@ function duplicateKeyError(field: string): Error & {
 }
 
 describe('ChatService', () => {
-  let service: ChatService;
-
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [ChatService],
-    }).compile();
-
-    service = module.get<ChatService>(ChatService);
-  });
-
   it('should be defined', () => {
+    const service = buildChatService({});
+
     expect(service).toBeDefined();
   });
 });
