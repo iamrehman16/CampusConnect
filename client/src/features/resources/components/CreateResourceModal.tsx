@@ -86,24 +86,30 @@ export function CreateResourceModal({ open, onClose }: CreateResourceModalProps)
 
   // ── File drop/select ──────────────────────────────────────────────────────
 
-  const handleFile = (selectedFile: File) => {
-    if (!selectedFile.type) {
-      return; // browser couldn't determine type — reject silently, backend will catch
-    }
-    setFile(selectedFile);
-    // Auto-fill title from filename if empty
-    if (!dto.title) {
-      const name = selectedFile.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-      setDto((prev) => ({ ...prev, title: name }));
-    }
-  };
+  const handleFile = useCallback(
+    (selectedFile: File) => {
+      if (!selectedFile.type) {
+        return; // browser couldn't determine type — reject silently, backend will catch
+      }
+      setFile(selectedFile);
+      // Auto-fill title from filename if empty
+      if (!dto.title) {
+        const name = selectedFile.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+        setDto((prev) => ({ ...prev, title: name }));
+      }
+    },
+    [dto.title],
+  );
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const dropped = e.dataTransfer.files[0];
-    if (dropped) handleFile(dropped);
-  }, [dto.title]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setDragOver(false);
+      const dropped = e.dataTransfer.files[0];
+      if (dropped) handleFile(dropped);
+    },
+    [handleFile],
+  );
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];

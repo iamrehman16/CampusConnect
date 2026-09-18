@@ -14,7 +14,7 @@ import {
   Autocomplete,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useUpdateResource } from '../hooks/resource.hooks';
 import { ResourceType } from '@/shared/types/enums';
 import type { Resource, UpdateResourceDto } from '../types/resource.dto';
@@ -32,21 +32,26 @@ export function EditResourceModal({ open, resource, onClose }: EditResourceModal
   const { mutate: updateResource, isPending } = useUpdateResource();
 
   const [dto, setDto] = useState<UpdateResourceDto>({});
+  // Tracks which resource `dto` was last synced from, so the form resets
+  // when the modal is reused for a different resource without an Effect
+  // (adjusting state during render, per React's "you might not need an
+  // effect" guidance — avoids the extra render an Effect-based sync causes).
+  const [syncedResourceId, setSyncedResourceId] = useState<string | null>(
+    null,
+  );
 
-  // Sync form when resource changes
-  useEffect(() => {
-    if (resource) {
-      setDto({
-        title: resource.title,
-        description: resource.description ?? '',
-        subject: resource.subject,
-        course: resource.course,
-        semester: resource.semester,
-        resourceType: resource.resourceType,
-        tags: resource.tags ?? [],
-      });
-    }
-  }, [resource]);
+  if (resource && resource._id !== syncedResourceId) {
+    setSyncedResourceId(resource._id);
+    setDto({
+      title: resource.title,
+      description: resource.description ?? '',
+      subject: resource.subject,
+      course: resource.course,
+      semester: resource.semester,
+      resourceType: resource.resourceType,
+      tags: resource.tags ?? [],
+    });
+  }
 
   const handleClose = () => {
     if (isPending) return;

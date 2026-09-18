@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   Box,
   Grid,
@@ -98,15 +98,20 @@ export default function ResourcePage() {
   const debouncedSearch = useDebounce(searchTerm, 500);
 
   const [filters, setFilters] = useState<
-    Omit<ResourceFilterParams, "page" | "limit">
+    Omit<ResourceFilterParams, "page" | "limit" | "search">
   >({
-    search: "",
     type: undefined,
     semester: undefined,
     sort: undefined,
     status: ApprovalStatus.APPROVED,
     uploadedBy: undefined,
   });
+  // debouncedSearch is merged in at query time rather than synced into
+  // `filters` via an Effect — no local state to keep in sync, no render lag.
+  const activeFilters = useMemo(
+    () => ({ ...filters, search: debouncedSearch }),
+    [filters, debouncedSearch],
+  );
 
   const { mutate: deleteResource } = useDeleteResource();
 
@@ -114,8 +119,8 @@ export default function ResourcePage() {
   const { ref: sentinelRef, inView } = useInView({ threshold: 0.1 });
 
   // ── Data hooks ────────────────────────────────────────────────────────────
-  const allQuery = useResources(filters);
-  const myQuery = useMyResources(filters);
+  const allQuery = useResources(activeFilters);
+  const myQuery = useMyResources(activeFilters);
 
   const activeQuery = tab === "all" ? allQuery : myQuery;
   const {
@@ -147,10 +152,6 @@ export default function ResourcePage() {
       },
     [],
   );
-  useEffect(() => {
-    setFilters((prev) => ({ ...prev, search: debouncedSearch }));
-  }, [debouncedSearch]);
-
   const handleDelete = useCallback(
     (resource: Resource) => {
       if (window.confirm(`Delete "${resource.title}"?`)) {

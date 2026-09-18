@@ -123,11 +123,11 @@ interface ResourceBaseFilterParams extends PaginationParams {
 }
 
 // public — approved resources, no moderation concerns
-export interface ResourceFilterParams extends ResourceBaseFilterParams {}
+export type ResourceFilterParams = ResourceBaseFilterParams;
 
 // admin browsing approved resources — same as public plus contributor filter
 // pending resources use a dedicated endpoint with PaginationParams only
-export interface AdminResourceFilterParams extends ResourceBaseFilterParams {}
+export type AdminResourceFilterParams = ResourceBaseFilterParams;
 
 // admin pending queue — dedicated endpoint needs only pagination
-export interface PendingResourceParams extends PaginationParams {}
+export type PendingResourceParams = PaginationParams;
