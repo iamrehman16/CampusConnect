@@ -79,7 +79,10 @@ export class AiChatService {
     }));
 
     return new Observable<MessageEvent>((observer) => {
-      (async () => {
+      // The Observable executor must be synchronous, so this async IIFE is
+      // deliberately not awaited — its own try/catch below routes every
+      // failure to observer.error(), so nothing here can reject silently.
+      void (async () => {
         let fullAnswer = '';
         try {
           // Started inside the observable executor (not awaited above) so

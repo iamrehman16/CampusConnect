@@ -50,10 +50,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       socket.data.userId = user.id;
 
       // user identity room (key change)
-      socket.join(user.id);
+      await socket.join(user.id);
 
-      console.log(`User ${user.id} connected`);
-    } catch (e) {
+      this.logger.log(`User ${user.id} connected`);
+    } catch (err) {
+      this.logger.error('Error in handleConnection:', err);
       socket.disconnect();
     }
   }
@@ -68,13 +69,20 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @UseGuards(WsJwtGuard)
   @SubscribeMessage('join_conversation')
-  handleJoinConversation(
+  async handleJoinConversation(
     @ConnectedSocket() socket: Socket,
     @MessageBody() conversationId: string,
   ) {
-    socket.join(conversationId);
-
-    return { event: 'joined', data: conversationId };
+    try {
+      await socket.join(conversationId);
+      return { event: 'joined', data: conversationId };
+    } catch (err) {
+      this.logger.error(
+        `Error in handleJoinConversation for conversation ${conversationId}:`,
+        err,
+      );
+      socket.emit('chat_error', { message: 'Failed to join conversation' });
+    }
   }
 
   @UseGuards(WsJwtGuard)
