@@ -28,11 +28,10 @@ jobs:
       # tsc -b (typecheck) && vite build, matching the local `npm run build` contract
       - run: npm run build
 
-  # Non-blocking until the existing lint debt (~60 errors) is cleaned up.
-  # See BACKLOG.md for the cleanup PBI; flip this to required once it's green.
+  # Clean as of BACKLOG.md A10 (2026-09-18) — required on main, see branch
+  # protection (not this file; check via `gh api .../branches/main/protection`).
   lint:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
