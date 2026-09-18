@@ -182,12 +182,11 @@ a PR outside that path leaves the PR stuck "pending" forever.
 
 ## 8. Known gaps as of last review (verified against code, Sept 2026)
 
-- **`ERR_HTTP_HEADERS_SENT` guard missing** — confirmed. In
-  `server/src/modules/ai/ai.controller.ts`, the SSE handler's `error`
-  callback and the `req.on('close')` handler both call `res.write()` /
-  `res.end()` with no `res.headersSent` check. A late error arriving after
-  the client disconnects (or after `complete` already called `res.end()`)
-  will throw.
+- **`ERR_HTTP_HEADERS_SENT` guard** — fixed (BACKLOG.md A1). The SSE handler
+  in `server/src/modules/ai/ai.controller.ts` now guards every
+  `res.write()`/`res.end()` call with `res.writableEnded`, and
+  `req.on('close')` unsubscribes the observable instead of just ending the
+  response. Regression covered by `ai.controller.spec.ts`.
 - **E11000 handling missing on `conversations`** — confirmed. In
   `server/src/modules/chat/chat.service.ts#findOrCreateConversation`, the
   check-then-create (`findOne` then `.create()`) has no try/catch. Two

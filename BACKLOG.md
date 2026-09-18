@@ -22,7 +22,7 @@ clean enough to flip to required. Do these before or interleaved with Epic B —
 shipping memory features on top of ~200 known lint errors and a broken test
 suite just grows the pile.
 
-### A1 — Fix SSE stream header-sent crash risk
+### A1 — Fix SSE stream header-sent crash risk — DONE (2026-09-18)
 **Effort:** 3
 **Where:** `server/src/modules/ai/ai.controller.ts` (`chat/stream` handler)
 **Why:** The `error` callback and `req.on('close')` handler both call
@@ -36,6 +36,14 @@ the observable errors (or `complete` already ended the response), Node throws
   response, so a late `next`/`error` after disconnect is a no-op, not a crash.
 - Add a test (or manual repro note in the PR) showing a mid-stream disconnect
   no longer throws.
+
+**Resolved:** `ai.controller.ts`'s `stream` handler now captures the
+`Subscription` and unsubscribes it in `req.on('close')`, and every
+`res.write`/`res.end` call across `next`/`error`/`complete`/`close` is
+guarded with `res.writableEnded`. New `ai.controller.spec.ts` covers three
+regression cases: late emission after disconnect, `close` firing after
+`complete`, and error arriving after disconnect — none write to or re-end
+the response. `CLAUDE.md` §8 updated to reflect the fix.
 
 ### A2 — Fix conversation-creation race condition (E11000 unhandled)
 **Effort:** 3
