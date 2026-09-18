@@ -1,0 +1,46 @@
+name: client-ci
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "client/**"
+      - ".github/workflows/client-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "client/**"
+      - ".github/workflows/client-ci.yml"
+
+defaults:
+  run:
+    working-directory: client
+
+jobs:
+  typecheck-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+          cache: "npm"
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      # tsc -b (typecheck) && vite build, matching the local `npm run build` contract
+      - run: npm run build
+
+  # Non-blocking until the existing lint debt (~60 errors) is cleaned up.
+  # See BACKLOG.md for the cleanup PBI; flip this to required once it's green.
+  lint:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+          cache: "npm"
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      - run: npm run lint

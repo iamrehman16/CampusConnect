@@ -1,0 +1,63 @@
+name: server-ci
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "server/**"
+      - ".github/workflows/server-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "server/**"
+      - ".github/workflows/server-ci.yml"
+
+defaults:
+  run:
+    working-directory: server
+
+jobs:
+  typecheck-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+          cache: "npm"
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      # tsc -p tsconfig.build.json — typecheck and emit in one step
+      - run: npm run build
+
+  # Non-blocking until the existing suite is fixed (9/10 suites currently fail
+  # on DI setup, unrelated to this workflow). See BACKLOG.md cleanup PBI.
+  test:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+          cache: "npm"
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - run: npm test -- --ci
+
+  # Non-blocking until the existing lint debt (~127 errors) is cleaned up.
+  # See BACKLOG.md for the cleanup PBI; flip this to required once it's green.
+  # Runs eslint directly (not `npm run lint`) because that script uses --fix,
+  # which silently patches files instead of reporting them in CI.
+  lint:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+          cache: "npm"
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - run: npx eslint "{src,apps,libs,test}/**/*.ts"
