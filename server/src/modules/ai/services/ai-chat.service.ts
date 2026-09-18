@@ -5,6 +5,7 @@ import { RetrievalService } from './retrieval.service';
 import {
   Citation,
   ChatResponse,
+  RetrievedContext,
 } from '../interfaces/retrieved-context.interface';
 import { Observable } from 'rxjs';
 
@@ -15,6 +16,32 @@ export class AiChatService {
     private readonly conversationService: ConversationService,
     private readonly retrievalService: RetrievalService,
   ) {}
+
+  /**
+   * A resource can be split into several chunks, and more than one chunk
+   * from the same resource can clear the retrieval threshold — dedupe by
+   * resourceId (the source document) so the same resource isn't cited
+   * twice, keeping the first (highest-scoring, since `context` is ordered
+   * by descending score) chunk's page as the citation's page.
+   */
+  private buildCitations(context: RetrievedContext[]): Citation[] {
+    const seen = new Set<string>();
+    const citations: Citation[] = [];
+
+    for (const c of context) {
+      if (seen.has(c.resourceId)) continue;
+      seen.add(c.resourceId);
+      citations.push({
+        title: c.title,
+        pageNumber: c.pageNumber,
+        semester: c.semester,
+        course: c.course,
+        resourceId: c.resourceId,
+      });
+    }
+
+    return citations;
+  }
 
   async getChatResponse(
     userId: string,
@@ -42,13 +69,7 @@ export class AiChatService {
       this.groqService.summarize.bind(this.groqService),
     );
 
-    const citations: Citation[] = context.map((c) => ({
-      title: c.title,
-      pageNumber: c.pageNumber,
-      semester: c.semester,
-      course: c.course,
-      resourceId: c.resourceId,
-    }));
+    const citations = this.buildCitations(context);
 
     return { answer, citations, retrievalStatus };
   }
@@ -70,13 +91,7 @@ export class AiChatService {
       context,
     );
 
-    const citations: Citation[] = context.map((c) => ({
-      title: c.title,
-      pageNumber: c.pageNumber,
-      semester: c.semester,
-      course: c.course,
-      resourceId: c.resourceId,
-    }));
+    const citations = this.buildCitations(context);
 
     return new Observable<MessageEvent>((observer) => {
       // The Observable executor must be synchronous, so this async IIFE is
