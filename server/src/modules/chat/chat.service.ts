@@ -1,7 +1,9 @@
 import {
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import {
@@ -16,7 +18,9 @@ import { CreateMessageDto } from './dto/create-message.dto';
 import { GetMessagesDto } from './dto/get-message.dto';
 
 @Injectable()
-export class ChatService {
+export class ChatService implements OnModuleInit {
+  private readonly logger = new Logger(ChatService.name);
+
   constructor(
     @InjectModel(Conversation.name)
     private readonly conversationModel: Model<ConversationDocument>,
@@ -24,6 +28,43 @@ export class ChatService {
     private readonly messageModel: Model<MessageDocument>,
     private readonly paginationService: PaginationService,
   ) {}
+
+  async onModuleInit() {
+    await this.backfillParticipantsKeys();
+  }
+
+  /**
+   * One-time, idempotent backfill for conversation documents created before
+   * `participantsKey` existed (see BACKLOG.md A9 / conversation.schema.ts).
+   * Safe to run on every boot — it only touches documents missing the
+   * field, and the field is deterministic from `participants`.
+   */
+  private async backfillParticipantsKeys(): Promise<void> {
+    const legacyDocs = await this.conversationModel
+      .find({ participantsKey: { $exists: false } })
+      .select('_id participants')
+      .lean()
+      .exec();
+
+    if (legacyDocs.length === 0) return;
+
+    this.logger.log(
+      `Backfilling participantsKey on ${legacyDocs.length} legacy conversation(s)`,
+    );
+
+    await Promise.all(
+      legacyDocs.map((doc) =>
+        this.conversationModel.updateOne(
+          { _id: doc._id },
+          {
+            participantsKey: this.buildParticipantsKey(
+              [...doc.participants].sort(),
+            ),
+          },
+        ),
+      ),
+    );
+  }
 
   async getMessageByClientId(clientId: string) {
     return this.messageModel.findOne({ clientId });
@@ -37,9 +78,10 @@ export class ChatService {
     const participantId = new Types.ObjectId(dto.participantId);
 
     const sorted = [currentId, participantId].sort();
+    const participantsKey = this.buildParticipantsKey(sorted);
 
     const existing = await this.conversationModel
-      .findOne({ participants: { $all: sorted } })
+      .findOne({ participantsKey })
       .populate('participants', 'name email')
       .populate('lastMessage')
       .lean()
@@ -52,6 +94,7 @@ export class ChatService {
     try {
       const newConversation = await this.conversationModel.create({
         participants: sorted,
+        participantsKey,
       });
 
       return this.conversationModel
@@ -64,7 +107,7 @@ export class ChatService {
         // Lost the race to a concurrent create for the same pair — the
         // winner's document is what we should return.
         return this.conversationModel
-          .findOne({ participants: { $all: sorted } })
+          .findOne({ participantsKey })
           .populate('participants', 'name email')
           .populate('lastMessage')
           .lean()
@@ -73,6 +116,10 @@ export class ChatService {
 
       throw err;
     }
+  }
+
+  private buildParticipantsKey(sortedParticipants: Types.ObjectId[]): string {
+    return sortedParticipants.map((id) => id.toString()).join('_');
   }
 
   async getUserConversations(userId: string) {
@@ -220,6 +267,6 @@ export class ChatService {
   }
 
   private isDuplicateParticipantsError(err: any): boolean {
-    return err?.code === 11000 && err?.keyPattern?.participants;
+    return err?.code === 11000 && err?.keyPattern?.participantsKey;
   }
 }

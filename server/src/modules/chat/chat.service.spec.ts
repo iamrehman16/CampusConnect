@@ -30,7 +30,7 @@ describe('ChatService#findOrCreateConversation', () => {
   function duplicateParticipantsError() {
     const err: any = new Error('E11000 duplicate key error');
     err.code = 11000;
-    err.keyPattern = { participants: 1 };
+    err.keyPattern = { participantsKey: 1 };
     return err;
   }
 
@@ -69,5 +69,61 @@ describe('ChatService#findOrCreateConversation', () => {
 
     expect(first).toEqual(winningConversation);
     expect(second).toEqual(winningConversation);
+  });
+});
+
+describe('ChatService#onModuleInit — participantsKey backfill', () => {
+  function chainable(result: unknown) {
+    const query: any = {};
+    query.select = jest.fn().mockReturnValue(query);
+    query.lean = jest.fn().mockReturnValue(query);
+    query.exec = jest.fn().mockResolvedValue(result);
+    return query;
+  }
+
+  it('backfills participantsKey on legacy conversation docs missing it', async () => {
+    const a = new Types.ObjectId();
+    const b = new Types.ObjectId();
+    const legacyDoc = { _id: new Types.ObjectId(), participants: [b, a] };
+
+    const conversationModel: any = {
+      find: jest.fn().mockReturnValue(chainable([legacyDoc])),
+      updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),
+    };
+
+    const chatService = new ChatService(
+      conversationModel,
+      {} as any,
+      {} as any,
+    );
+    await chatService.onModuleInit();
+
+    expect(conversationModel.find).toHaveBeenCalledWith({
+      participantsKey: { $exists: false },
+    });
+    const sortedKey = [a, b]
+      .sort()
+      .map((id) => id.toString())
+      .join('_');
+    expect(conversationModel.updateOne).toHaveBeenCalledWith(
+      { _id: legacyDoc._id },
+      { participantsKey: sortedKey },
+    );
+  });
+
+  it('does nothing when no legacy docs are missing participantsKey', async () => {
+    const conversationModel: any = {
+      find: jest.fn().mockReturnValue(chainable([])),
+      updateOne: jest.fn(),
+    };
+
+    const chatService = new ChatService(
+      conversationModel,
+      {} as any,
+      {} as any,
+    );
+    await chatService.onModuleInit();
+
+    expect(conversationModel.updateOne).not.toHaveBeenCalled();
   });
 });
