@@ -1,15 +1,8 @@
-import { createContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Socket } from "socket.io-client";
 import { chatSocketService } from "@/features/chat/services/chat-socket.service";
 import { tokenStorage } from "@/shared/utils/storage";
-
-type ChatSocketContextValue = {
-  isConnected: boolean;
-};
-
-export const ChatSocketContext = createContext<ChatSocketContextValue | null>(
-  null,
-);
+import { ChatSocketContext } from "./ChatSocketContext";
 
 export function ChatSocketProvider({
   children,

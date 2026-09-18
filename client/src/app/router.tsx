@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { ROUTES } from "@/shared/constants/routes";
 import ProtectedRoute from "@/app/routes/ProtectedRoute";
@@ -6,8 +6,8 @@ import PublicRoute from "@/app/routes/PublicRoute";
 import RoleRoute from "@/app/routes/RoleRoute";
 import AppLayout from "@/shared/components/layout/AppLayout";
 import MainLayout from "@/shared/components/layout/MainLayout";
-import LoadingScreen from "@/shared/components/feedback/LoadingScreen";
 import { UserRole } from "@/shared/types/enums";
+import SuspenseWrapper from "./SuspenseWrapper";
 
 // ── Eager-loaded (first paint) ──────────────────────────────────────
 import AuthPage from "@/features/auth/pages/AuthPage";
@@ -60,13 +60,6 @@ const FaqPage = lazy(
   () => import("@/features/info/pages/FAQPage"),
 );
 
-
-/**
- * Wraps a lazy component with Suspense fallback.
- */
-function SuspenseWrapper({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<LoadingScreen />}>{children}</Suspense>;
-}
 
 /**
  * Application route definitions.

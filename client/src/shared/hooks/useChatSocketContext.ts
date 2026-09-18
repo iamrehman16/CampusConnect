@@ -1,4 +1,4 @@
-import { ChatSocketContext } from "@/app/providers/ChatSocketProvider";
+import { ChatSocketContext } from "@/app/providers/ChatSocketContext";
 import { useContext } from "react";
 
 export function useChatSocketContext() {

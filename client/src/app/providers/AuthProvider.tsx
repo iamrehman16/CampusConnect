@@ -1,23 +1,9 @@
-import {
-  createContext,
-  useState,
-  useEffect,
-  useCallback,
-  type ReactNode,
-} from "react";
+import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import api from "@/shared/api/axios.instance";
 import { tokenStorage } from "@/shared/utils/storage";
-import type { User, AuthTokens, AuthState } from "@/shared/types/auth.types";
-
-// ── Context Shape ────────────────────────────────────────────────────
-interface AuthContextValue extends AuthState {
-  login: (tokens: AuthTokens) => void;
-  logout: () => void;
-  setOnboarded: () => void;
-}
-
-export const AuthContext = createContext<AuthContextValue | null>(null);
+import type { User, AuthTokens } from "@/shared/types/auth.types";
+import { AuthContext } from "./AuthContext";
 
 // ── Provider ─────────────────────────────────────────────────────────
 interface AuthProviderProps {
