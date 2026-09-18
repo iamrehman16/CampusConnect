@@ -97,7 +97,7 @@ headers are flushed. Covered by `groq.service.spec.ts` (5 cases:
 success + timeout param, 429 retryable, 400 non-retryable, generic
 failure, 5xx retryable on the stream path).
 
-### A4 — Retrieval empty-result signal + drop debug logging
+### A4 — Retrieval empty-result signal + drop debug logging — DONE (2026-09-18)
 **Effort:** 3
 **Where:** `server/src/modules/ai/services/retrieval.service.ts`
 **Why:** New findings — line ~25-28 has a leftover `console.log` dumping raw
@@ -114,7 +114,20 @@ know retrieval came up empty vs. wasn't attempted.
   exist at all"), and `AiChatService`/the frontend surface that distinction
   to the user (e.g. "no matching resources found" vs. silence).
 
-### A5 — Fix React correctness bugs (sync setState + ref-access-in-render)
+**Resolved:** `retrieve()` now returns `{ context, status }` with
+`status: 'ok' | 'no-matches' | 'below-threshold'` — `no-matches` when the
+vector search itself returned nothing, `below-threshold` when candidates
+existed but none cleared `SCORE_THRESHOLD` (now logged at debug level, not
+dumped raw). `AiChatService` surfaces `retrievalStatus` on both the REST
+`ChatResponse` and the streaming `citations` SSE event; the client threads
+it through `citationsRef`'s existing per-hook wiring
+(`useStreamRefs`/`useDrainQueue`/`useStreamMessage`, kept split per §4) and
+`MessageBubble` shows a short notice instead of silence when citations are
+empty and retrieval was attempted. Covered by `retrieval.service.spec.ts`
+(3 cases: ok, no-matches, below-threshold). No client test runner exists;
+verified via `tsc -b` + `eslint` only.
+
+### A5 — Fix React correctness bugs (sync setState + ref-access-in-render) — DONE (2026-09-18)
 **Effort:** 3
 **Where:** `client/src/app/providers/AuthProvider.tsx`,
 `ChatSocketProvider.tsx`, `client/src/features/ai-chat/components/ChatInput.tsx`
@@ -131,6 +144,19 @@ three files — one PBI, one pass.
   keyed on `prefillValue`, not inline in the render body.
 - No new ESLint `react-hooks/*` violations introduced; ideally the ones in
   these three files disappear.
+
+**Resolved:** `AuthProvider`'s `isLoading` is now computed in `useState`'s
+initializer from `tokenStorage.getAccessToken()` instead of always starting
+`true` and being synchronously cleared in the effect for the no-token case
+(eliminated a guaranteed extra render/paint on every load with no stored
+token). `ChatSocketProvider`'s redundant no-token `setIsConnected(false)`
+(and its `eslint-disable`) is removed — it was always a no-op against the
+`useState` default / the previous effect's cleanup; the one remaining
+`setIsConnected(socket.connected)` stays, since `chatSocketService.connect()`
+is a real side effect that can't be precomputed. `ChatInput.tsx` was already
+fixed — its prefill-and-focus logic is a proper `useEffect` keyed on
+`prefillValue` with a ref guard, no `setTimeout`/render-phase ref access —
+the backlog description predated that fix; no change made there.
 
 ### A6 — Fix floating promises in chat.gateway.ts and ai-chat.service.ts
 **Effort:** 3
