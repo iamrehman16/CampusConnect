@@ -17,6 +17,16 @@ import {
   ResourceDocument,
 } from '../resource/schemas/resource.schema';
 
+interface MyPostStatsResult {
+  postCount: number;
+  totalUpvotesReceived: number;
+}
+
+interface MyResourceStatsResult {
+  resourceCount: number;
+  totalDownloads: number;
+}
+
 @Injectable()
 export class DashboardService {
   constructor(
@@ -69,7 +79,7 @@ export class DashboardService {
     const objectId = new Types.ObjectId(userId);
 
     const [postStats, resourceStats] = await Promise.all([
-      this.postModel.aggregate([
+      this.postModel.aggregate<MyPostStatsResult>([
         { $match: { author: objectId, isDeleted: false } },
         {
           $group: {
@@ -79,7 +89,7 @@ export class DashboardService {
           },
         },
       ]),
-      this.resourceModel.aggregate([
+      this.resourceModel.aggregate<MyResourceStatsResult>([
         {
           $match: {
             uploadedBy: objectId,

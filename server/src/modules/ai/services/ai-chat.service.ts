@@ -66,7 +66,7 @@ export class AiChatService {
       userId,
       message,
       answer,
-      this.groqService.summarize.bind(this.groqService),
+      (content: string) => this.groqService.summarize(content),
     );
 
     const citations = this.buildCitations(context);
@@ -127,7 +127,7 @@ export class AiChatService {
             userId,
             message,
             fullAnswer,
-            this.groqService.summarize.bind(this.groqService),
+            (content: string) => this.groqService.summarize(content),
           );
 
           observer.complete();

@@ -73,7 +73,7 @@ export class DocumentParserService {
 
   private async pollForResult(
     jobId: string,
-  ): Promise<Array<{ text: string; metadata: any }>> {
+  ): Promise<Array<{ text: string; metadata: { page_label: string } }>> {
     for (let attempt = 0; attempt < this.MAX_POLL_ATTEMPTS; attempt++) {
       const response = await fetch(
         `${this.LLAMA_PARSE_BASE_URL}/job/${jobId}/result/json`,
