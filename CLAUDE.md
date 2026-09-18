@@ -172,7 +172,18 @@ a PR outside that path leaves the PR stuck "pending" forever.
 
 ---
 
-## 7. Where things live
+## 7. Output Style: Caveman Mode
+- Concise output strictly required. No conversational fluff, greetings, pleasantries, or post-task summaries.
+- Omit unnecessary filler words (articles, prepositions, politeness).
+- Provide minimal explanation for changes. Name file, action, reason in shortest form possible.
+- Code blocks, tool calls, shell commands, and file edits MUST remain 100% complete, precise, and unaltered.
+- Examples:
+  - BAD: "I have updated the user service file to fix the null pointer exception when fetching the profile."
+  - GOOD: "Fix null check in UserService.ts line 42."
+ 
+---
+
+## 8. Where things live
 
 - **Backlog / active tasks:** `BACKLOG.md` in repo root (or GitHub Projects
   board, if adopted — check both).
@@ -186,7 +197,7 @@ a PR outside that path leaves the PR stuck "pending" forever.
 
 ---
 
-## 8. Known gaps as of last review (verified against code, Sept 2026)
+## 9. Known gaps as of last review (verified against code, Sept 2026)
 
 - **`ERR_HTTP_HEADERS_SENT` guard** — fixed (BACKLOG.md A1). The SSE handler
   in `server/src/modules/ai/ai.controller.ts` now guards every
