@@ -49,15 +49,30 @@ export class ChatService {
       return existing;
     }
 
-    const newConversation = await this.conversationModel.create({
-      participants: sorted,
-    });
+    try {
+      const newConversation = await this.conversationModel.create({
+        participants: sorted,
+      });
 
-    return this.conversationModel
-      .findById(newConversation._id)
-      .populate('participants', 'name email')
-      .lean()
-      .exec();
+      return this.conversationModel
+        .findById(newConversation._id)
+        .populate('participants', 'name email')
+        .lean()
+        .exec();
+    } catch (err) {
+      if (this.isDuplicateParticipantsError(err)) {
+        // Lost the race to a concurrent create for the same pair — the
+        // winner's document is what we should return.
+        return this.conversationModel
+          .findOne({ participants: { $all: sorted } })
+          .populate('participants', 'name email')
+          .populate('lastMessage')
+          .lean()
+          .exec();
+      }
+
+      throw err;
+    }
   }
 
   async getUserConversations(userId: string) {
@@ -202,5 +217,9 @@ export class ChatService {
 
   private isDuplicateClientIdError(err: any): boolean {
     return err?.code === 11000 && err?.keyPattern?.clientId;
+  }
+
+  private isDuplicateParticipantsError(err: any): boolean {
+    return err?.code === 11000 && err?.keyPattern?.participants;
   }
 }
