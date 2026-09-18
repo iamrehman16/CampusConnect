@@ -8,14 +8,15 @@ interface BeforeInstallPromptEvent extends Event {
 export function usePwaInstall() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
-  const [isInstalled, setIsInstalled] = useState(false);
+  // Standalone-mode check is knowable synchronously at first render, so it
+  // belongs in the initializer rather than a setState call inside the
+  // effect below (which would trigger an extra render for the common case).
+  const [isInstalled, setIsInstalled] = useState(
+    () => window.matchMedia('(display-mode: standalone)').matches,
+  );
 
   useEffect(() => {
-    // Already installed (standalone mode)
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true);
-      return;
-    }
+    if (isInstalled) return;
 
     const handler = (e: Event) => {
       e.preventDefault(); // stop browser's default mini-infobar
@@ -27,7 +28,7 @@ export function usePwaInstall() {
     window.addEventListener('appinstalled', () => setIsInstalled(true));
 
     return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
+  }, [isInstalled]);
 
   const triggerInstall = async () => {
     if (!installPrompt) return;

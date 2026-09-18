@@ -24,7 +24,7 @@ export function useIntersectionObserver(options?: IntersectionObserverInit) {
     });
 
     observerRef.current.observe(node);
-  }, []);
+  }, [options?.threshold, options?.rootMargin, options?.root]);
 
   return { isIntersecting, targetRef };
 }
