@@ -19,5 +19,14 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // Allow destructuring-out an unused prop (e.g. `node`) purely to
+      // exclude it from a `...rest` spread, as react-markdown's component
+      // overrides need to do to avoid passing the hast `node` down to DOM.
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { ignoreRestSiblings: true },
+      ],
+    },
   },
 ])
