@@ -47,15 +47,15 @@ export class AiChatService {
     userId: string,
     message: string,
   ): Promise<ChatResponse> {
-    const [session, retrieval] = await Promise.all([
-      this.conversationService.getOrCreateSession(userId),
+    const [conversation, retrieval] = await Promise.all([
+      this.conversationService.getOrCreateConversation(userId),
       this.retrievalService.retrieve(message),
     ]);
     const { context, status: retrievalStatus } = retrieval;
 
     const messages = this.groqService.buildMessages(
-      session.summaryBuffer,
-      session.recentMessages,
+      conversation.summaryBuffer,
+      conversation.recentMessages,
       message,
       context,
     );
@@ -63,7 +63,7 @@ export class AiChatService {
     const answer = await this.groqService.generateResponse(messages);
 
     await this.conversationService.appendMessages(
-      userId,
+      conversation,
       message,
       answer,
       (content: string) => this.groqService.summarize(content),
@@ -78,15 +78,15 @@ export class AiChatService {
     userId: string,
     message: string,
   ): Promise<Observable<MessageEvent>> {
-    const [session, retrieval] = await Promise.all([
-      this.conversationService.getOrCreateSession(userId),
+    const [conversation, retrieval] = await Promise.all([
+      this.conversationService.getOrCreateConversation(userId),
       this.retrievalService.retrieve(message),
     ]);
     const { context, status: retrievalStatus } = retrieval;
 
     const messages = this.groqService.buildMessages(
-      session.summaryBuffer,
-      session.recentMessages,
+      conversation.summaryBuffer,
+      conversation.recentMessages,
       message,
       context,
     );
@@ -124,7 +124,7 @@ export class AiChatService {
 
           // Persist to conversation history after full answer is assembled
           await this.conversationService.appendMessages(
-            userId,
+            conversation,
             message,
             fullAnswer,
             (content: string) => this.groqService.summarize(content),
@@ -139,6 +139,15 @@ export class AiChatService {
   }
 
   async clearSession(userId: string): Promise<void> {
-    await this.conversationService.clearSession(userId);
+    // No conversationId from the client yet (BACKLOG.md B2 adds thread
+    // selection) — clears the user's most recently active thread, the
+    // same bridge behavior getOrCreateConversation uses elsewhere in this
+    // service.
+    const conversation =
+      await this.conversationService.getOrCreateConversation(userId);
+    await this.conversationService.clearConversation(
+      userId,
+      conversation._id.toString(),
+    );
   }
 }

@@ -14,6 +14,11 @@ import {
   ConversationSession,
   ConversationSessionSchema,
 } from './schema/conversation-session.schema';
+import {
+  AiConversation,
+  AiConversationSchema,
+} from './schema/ai-conversation.schema';
+import { AiMessage, AiMessageSchema } from './schema/ai-message.schema';
 import { ChunkingService } from './services/chunking.service';
 import { RetrievalService } from './services/retrieval.service';
 
@@ -21,7 +26,11 @@ import { RetrievalService } from './services/retrieval.service';
   imports: [
     ConfigModule.forFeature(aiConfig),
     MongooseModule.forFeature([
+      // Legacy singleton, read-only — kept only as the source for
+      // ConversationService's one-time startup migration (BACKLOG.md B1).
       { name: ConversationSession.name, schema: ConversationSessionSchema },
+      { name: AiConversation.name, schema: AiConversationSchema },
+      { name: AiMessage.name, schema: AiMessageSchema },
     ]),
   ],
   controllers: [AiController],

@@ -37,7 +37,7 @@ function buildService(context: RetrievedContext[]) {
     ),
   };
   const conversationService: Partial<ConversationService> = {
-    getOrCreateSession: jest
+    getOrCreateConversation: jest
       .fn()
       .mockResolvedValue({ summaryBuffer: '', recentMessages: [] }),
     appendMessages: jest.fn().mockResolvedValue(undefined),
