@@ -135,7 +135,6 @@ export function useStreamMessage() {
       startDrainInterval,
       waitForDrainThenCommit,
       commitOnAbort,
-      flushQueueInstant,
       cleanup,
     ],
   );

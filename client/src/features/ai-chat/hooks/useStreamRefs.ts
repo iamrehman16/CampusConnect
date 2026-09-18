@@ -1,6 +1,6 @@
 // useStreamRefs.ts — inferred from usage, adding 2 new refs
 import { useCallback, useRef } from "react";
-import type { RetrievalStatus } from "../types/ai-chat.dto";
+import type { Citation, RetrievalStatus } from "../types/ai-chat.dto";
 
 export function useStreamRefs() {
   const accRef    = useRef("");
@@ -9,7 +9,7 @@ export function useStreamRefs() {
   const flushRef  = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const fetchCompleteRef = useRef(false); // true once event.type === "done" received
   const pollCancelRef    = useRef(false); // cancels waitForDrainThenCommit poll
-  const citationsRef     = useRef<any[] | undefined>(undefined); // tracks citations payload
+  const citationsRef     = useRef<Citation[] | undefined>(undefined); // tracks citations payload
   const retrievalStatusRef = useRef<RetrievalStatus | undefined>(undefined); // tracks retrieval status payload
 
   const reset = useCallback(() => {

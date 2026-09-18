@@ -113,7 +113,7 @@ export class AiChatService {
         "[SERVICE CATCH]",
         err,
         err instanceof DOMException,
-        (err as any)?.name,
+        err instanceof DOMException || err instanceof Error ? err.name : undefined,
       );
       reader.cancel().catch(() => {});
       throw err; // re-throw so for await catch in the hook sees it
