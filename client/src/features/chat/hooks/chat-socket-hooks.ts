@@ -91,10 +91,22 @@ export function useChatSocket() {
       cache.deleteMessage(conversationId, messageId);
     });
 
+    // Server already knows a send failed synchronously (e.g. validation,
+    // DB error) — reconcile the specific optimistic message immediately by
+    // clientId instead of leaving it to look "sending" until the 6s timeout
+    // in startSendTimeout fires.
+    const offSendMessageError = chatSocketService.onSendMessageError(
+      ({ clientId, conversationId }) => {
+        clearSendTimeout(clientId);
+        cache.markFailed(conversationId, clientId);
+      },
+    );
+
     return () => {
       offNewMessage();
       offMessagesSeen();
       offMessageDeleted();
+      offSendMessageError();
     };
   }, [isConnected, handlers, cache, clearSendTimeout, currentUserId]);
 

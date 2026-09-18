@@ -10,6 +10,14 @@ import type {
 
 type Listener<T> = (payload: T) => void;
 
+// `clientId`/`conversationId` are only present for send_message failures —
+// other chat_error sources (join/markSeen/delete) carry just a message.
+interface ChatErrorPayload {
+  message: string;
+  clientId?: string;
+  conversationId?: string;
+}
+
 class ChatSocketService {
   private socket: Socket | null = null;
 
@@ -36,8 +44,14 @@ class ChatSocketService {
       console.error("[ChatSocket] connection error:", err.message);
     });
 
-    this.socket.on("chat_error", (err: { message: string }) => {
-      toast.error(err.message);
+    this.socket.on("chat_error", (err: ChatErrorPayload) => {
+      // Send-message failures carry a clientId and are reconciled onto the
+      // specific optimistic message by useChatSocket's onChatError
+      // subscription instead — a generic toast here would be redundant
+      // with (and disconnected from) that per-message failed state.
+      if (!err.clientId) {
+        toast.error(err.message);
+      }
     });
 
     return this.socket;
@@ -102,6 +116,24 @@ class ChatSocketService {
     }
     this.socket.on("message_deleted", cb);
     return () => this.socket?.off("message_deleted", cb);
+  }
+
+  // Only fires for send_message failures (payload carries clientId) — see
+  // the `chat_error` handler in connect() for why other chat_error sources
+  // aren't routed through here.
+  onSendMessageError(
+    cb: Listener<Required<Pick<ChatErrorPayload, "clientId" | "conversationId">>>,
+  ): () => void {
+    if (!this.socket) {
+      throw new Error("Socket not connected");
+    }
+    const handler = (err: ChatErrorPayload) => {
+      if (err.clientId && err.conversationId) {
+        cb({ clientId: err.clientId, conversationId: err.conversationId });
+      }
+    };
+    this.socket.on("chat_error", handler);
+    return () => this.socket?.off("chat_error", handler);
   }
 }
 
