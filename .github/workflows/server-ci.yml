@@ -47,6 +47,7 @@ jobs:
   # Runs eslint directly (not `npm run lint`) because that script uses --fix,
   # which silently patches files instead of reporting them in CI.
   lint:
+    name: server-lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

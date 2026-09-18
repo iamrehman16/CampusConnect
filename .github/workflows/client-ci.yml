@@ -31,6 +31,7 @@ jobs:
   # Clean as of BACKLOG.md A10 (2026-09-18) — required on main, see branch
   # protection (not this file; check via `gh api .../branches/main/protection`).
   lint:
+    name: client-lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
