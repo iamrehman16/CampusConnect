@@ -14,6 +14,7 @@ export interface ChatResponse {
   answer: string;
   citations: Citation[];
   retrievalStatus: RetrievalStatus;
+  conversationId: string;
 }
 
 export interface Citation {

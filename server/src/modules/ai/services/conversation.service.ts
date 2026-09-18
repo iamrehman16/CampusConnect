@@ -10,6 +10,7 @@ import {
   AiConversation,
   AiConversationDocument,
 } from '../schema/ai-conversation.schema';
+import { AiMessage, AiMessageDocument } from '../schema/ai-message.schema';
 import {
   ConversationSession,
   ConversationSessionDocument,
@@ -24,6 +25,8 @@ export class ConversationService implements OnModuleInit {
   constructor(
     @InjectModel(AiConversation.name)
     private readonly conversationModel: Model<AiConversationDocument>,
+    @InjectModel(AiMessage.name)
+    private readonly messageModel: Model<AiMessageDocument>,
     @InjectModel(ConversationSession.name)
     private readonly legacySessionModel: Model<ConversationSessionDocument>,
   ) {}
@@ -155,5 +158,55 @@ export class ConversationService implements OnModuleInit {
     if (!result) {
       throw new NotFoundException('Conversation not found');
     }
+  }
+
+  async listConversations(userId: string): Promise<AiConversationDocument[]> {
+    return this.conversationModel.find({ userId }).sort({ updatedAt: -1 });
+  }
+
+  async createConversation(
+    userId: string,
+    title?: string,
+  ): Promise<AiConversationDocument> {
+    return this.conversationModel.create({
+      userId,
+      ...(title ? { title } : {}),
+    });
+  }
+
+  async renameConversation(
+    userId: string,
+    conversationId: string,
+    title: string,
+  ): Promise<AiConversationDocument> {
+    const conversation = await this.conversationModel.findOneAndUpdate(
+      { _id: conversationId, userId },
+      { title },
+      { new: true },
+    );
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found');
+    }
+    return conversation;
+  }
+
+  /**
+   * Ownership-checked delete. Removes the thread's AiMessage docs too —
+   * the schema-only AiMessage collection isn't written to yet (that's
+   * B3), but this keeps the delete path correct in advance rather than
+   * leaving an orphan-cleanup gap to rediscover later.
+   */
+  async deleteConversation(
+    userId: string,
+    conversationId: string,
+  ): Promise<void> {
+    const conversation = await this.conversationModel.findOneAndDelete({
+      _id: conversationId,
+      userId,
+    });
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found');
+    }
+    await this.messageModel.deleteMany({ conversationId: conversation._id });
   }
 }

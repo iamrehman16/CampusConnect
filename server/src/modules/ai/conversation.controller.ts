@@ -1,0 +1,52 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+} from '@nestjs/common';
+import { ConversationService } from './services/conversation.service';
+import { CreateConversationDto } from './dto/create-conversation.dto';
+import { RenameConversationDto } from './dto/rename-conversation.dto';
+import { ParseMongoIdPipe } from '../../common/pipes/is-mongo-id.pipe';
+import { AuthenticatedRequest } from './ai.controller';
+
+@Controller('ai/conversations')
+export class ConversationController {
+  constructor(private readonly conversationService: ConversationService) {}
+
+  @Post()
+  create(@Req() req: AuthenticatedRequest, @Body() dto: CreateConversationDto) {
+    return this.conversationService.createConversation(req.user.id, dto.title);
+  }
+
+  @Get()
+  list(@Req() req: AuthenticatedRequest) {
+    return this.conversationService.listConversations(req.user.id);
+  }
+
+  @Patch(':id')
+  rename(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseMongoIdPipe) id: string,
+    @Body() dto: RenameConversationDto,
+  ) {
+    return this.conversationService.renameConversation(
+      req.user.id,
+      id,
+      dto.title,
+    );
+  }
+
+  @Delete(':id')
+  async remove(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseMongoIdPipe) id: string,
+  ) {
+    await this.conversationService.deleteConversation(req.user.id, id);
+    return { message: 'Conversation deleted' };
+  }
+}

@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import { AiChatService } from './ai-chat.service';
 import { GroqService } from './groq.service';
 import { ConversationService } from './conversation.service';
@@ -37,9 +38,11 @@ function buildService(context: RetrievedContext[]) {
     ),
   };
   const conversationService: Partial<ConversationService> = {
-    getOrCreateConversation: jest
-      .fn()
-      .mockResolvedValue({ summaryBuffer: '', recentMessages: [] }),
+    getOrCreateConversation: jest.fn().mockResolvedValue({
+      _id: new Types.ObjectId(),
+      summaryBuffer: '',
+      recentMessages: [],
+    }),
     appendMessages: jest.fn().mockResolvedValue(undefined),
   };
   const retrievalService: Partial<RetrievalService> = {

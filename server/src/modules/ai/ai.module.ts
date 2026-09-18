@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AiController } from './ai.controller';
+import { ConversationController } from './conversation.controller';
 import { AiChatService } from './services/ai-chat.service';
 import { GroqService } from './services/groq.service';
 import { EmbeddingService } from './services/embedding.service';
@@ -33,7 +34,7 @@ import { RetrievalService } from './services/retrieval.service';
       { name: AiMessage.name, schema: AiMessageSchema },
     ]),
   ],
-  controllers: [AiController],
+  controllers: [AiController, ConversationController],
   providers: [
     AiChatService,
     GroqService,

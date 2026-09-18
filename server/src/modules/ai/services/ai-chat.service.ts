@@ -46,9 +46,10 @@ export class AiChatService {
   async getChatResponse(
     userId: string,
     message: string,
+    conversationId?: string,
   ): Promise<ChatResponse> {
     const [conversation, retrieval] = await Promise.all([
-      this.conversationService.getOrCreateConversation(userId),
+      this.conversationService.getOrCreateConversation(userId, conversationId),
       this.retrievalService.retrieve(message),
     ]);
     const { context, status: retrievalStatus } = retrieval;
@@ -71,15 +72,21 @@ export class AiChatService {
 
     const citations = this.buildCitations(context);
 
-    return { answer, citations, retrievalStatus };
+    return {
+      answer,
+      citations,
+      retrievalStatus,
+      conversationId: conversation._id.toString(),
+    };
   }
 
   async streamChatResponse(
     userId: string,
     message: string,
+    conversationId?: string,
   ): Promise<Observable<MessageEvent>> {
     const [conversation, retrieval] = await Promise.all([
-      this.conversationService.getOrCreateConversation(userId),
+      this.conversationService.getOrCreateConversation(userId, conversationId),
       this.retrievalService.retrieve(message),
     ]);
     const { context, status: retrievalStatus } = retrieval;
@@ -116,9 +123,17 @@ export class AiChatService {
           }
           // Stream complete — emit citations (with retrieval status, so an
           // empty array distinguishes "nothing matched" from "matches were
-          // too weak to trust") then done
+          // too weak to trust") then done. conversationId is included so
+          // the client learns which thread this landed in — relevant the
+          // first time, when no conversationId was sent and one got
+          // created via the getOrCreateConversation fallback.
           observer.next({
-            data: { type: 'citations', citations, retrievalStatus },
+            data: {
+              type: 'citations',
+              citations,
+              retrievalStatus,
+              conversationId: conversation._id.toString(),
+            },
           } as MessageEvent);
           observer.next({ data: { type: 'done' } } as MessageEvent);
 

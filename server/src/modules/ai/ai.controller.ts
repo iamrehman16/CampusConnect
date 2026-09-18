@@ -24,6 +24,7 @@ export class AiController {
     const observable = await this.aiChatService.streamChatResponse(
       req.user.id,
       chatMessageDto.message,
+      chatMessageDto.conversationId,
     );
 
     const subscription = observable.subscribe({
@@ -59,6 +60,7 @@ export class AiController {
     const answer = await this.aiChatService.getChatResponse(
       req.user.id,
       chatMessageDto.message,
+      chatMessageDto.conversationId,
     );
     return answer;
   }
