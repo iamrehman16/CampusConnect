@@ -3,17 +3,20 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  type InfiniteData,
 } from "@tanstack/react-query";
 import communityService from "../services/community.service";
 import { communityKeys } from "./community.keys";
 import type {
   CreateCommentDto,
   CreatePostDto,
+  Post,
   UpdateCommentDto,
   UpdatePostDto,
 } from "../types/community.dto";
 import { PAGE_LIMIT, type PaginatedResult } from "@/shared/types/api.types";
 import toast from "react-hot-toast";
+import { useAuth } from "@/shared/hooks/useAuth";
 
 // ─── Queries ──────────────────────────────────────────────────────────────────
 
@@ -118,22 +121,33 @@ export const useDeletePost = () => {
 
 export const useToggleUpvote = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: (postId: string) => communityService.toggleUpvote(postId),
 
     onMutate: async (postId) => {
       await queryClient.cancelQueries({ queryKey: communityKeys.lists() });
-      const previousData = queryClient.getQueryData(communityKeys.lists());
+      const previousData = queryClient.getQueriesData<
+        InfiniteData<PaginatedResult<Post>>
+      >({ queryKey: communityKeys.lists() });
 
-      queryClient.setQueriesData({ queryKey: communityKeys.lists() }, (old) =>
-        updatePostInCache(old, postId, (post) => ({
-          ...post,
-          isUpvoted: !post.isUpvoted,
-          upvoteCount: post.isUpvoted
-            ? post.upvoteCount - 1
-            : post.upvoteCount + 1,
-        })),
+      // Post has no isUpvoted/upvoteCount field — PostCard derives isUpvoted
+      // from `upvotes.includes(currentUserId)`, so the optimistic update
+      // has to toggle membership in that array to actually affect the UI.
+      queryClient.setQueriesData<InfiniteData<PaginatedResult<Post>>>(
+        { queryKey: communityKeys.lists() },
+        (old) =>
+          updatePostInCache(old, postId, (post) => {
+            if (!user) return post;
+            const isUpvoted = post.upvotes.includes(user._id);
+            return {
+              ...post,
+              upvotes: isUpvoted
+                ? post.upvotes.filter((id) => id !== user._id)
+                : [...post.upvotes, user._id],
+            };
+          }),
       );
       return { previousData };
     },
@@ -141,18 +155,16 @@ export const useToggleUpvote = () => {
     onSuccess: (updatedPost) => {
       const idToSync = updatedPost._id;
 
-      queryClient.setQueriesData({ queryKey: communityKeys.lists() }, (old) =>
-        updatePostInCache(old, idToSync, () => updatedPost),
+      queryClient.setQueriesData<InfiniteData<PaginatedResult<Post>>>(
+        { queryKey: communityKeys.lists() },
+        (old) => updatePostInCache(old, idToSync, () => updatedPost),
       );
     },
 
     onError: (_err, _postId, context) => {
-      if (context?.previousData) {
-        queryClient.setQueriesData(
-          { queryKey: communityKeys.lists() },
-          context.previousData,
-        );
-      }
+      context?.previousData?.forEach(([queryKey, data]) => {
+        queryClient.setQueryData(queryKey, data);
+      });
     },
   });
 };
@@ -217,22 +229,20 @@ const useCommunityInvalidation = () => {
  * Helper to update a specific post within the TanStack InfiniteQuery cache structure
  */
 const updatePostInCache = (
-  oldData: any,
+  oldData: InfiniteData<PaginatedResult<Post>> | undefined,
   postId: string,
-  updateFn: (post: any) => any,
+  updateFn: (post: Post) => Post,
 ) => {
   if (!oldData?.pages) return oldData;
 
   return {
     ...oldData,
-    pages: oldData.pages.map((page: PaginatedResult<any>) => ({
+    pages: oldData.pages.map((page) => ({
       ...page,
       // Safely access 'data' and default to empty array if missing
-      data: (page.data || []).map((post: any) => {
-        // Check both id and _id to be safe across different environments
-        const isMatch = post._id === postId || post.id === postId;
-        return isMatch ? updateFn(post) : post;
-      }),
+      data: (page.data || []).map((post) =>
+        post._id === postId ? updateFn(post) : post,
+      ),
     })),
   };
 };
