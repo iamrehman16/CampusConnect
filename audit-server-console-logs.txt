@@ -1,4 +1,0 @@
-CampusConnect-Server/src/main.ts:  console.log(`Server listening on Port ${port}`);
-CampusConnect-Server/src/modules/ai/services/retrieval.service.ts:    console.log(
-CampusConnect-Server/src/modules/chat/chat.gateway.ts:      console.log(`User ${user.id} connected`);
-CampusConnect-Server/src/modules/chat/chat.gateway.ts:      console.log(`User ${userId} disconnected socket ${socket.id}`);
