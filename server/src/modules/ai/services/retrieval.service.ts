@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EmbeddingService } from './embedding.service';
 import { VectorStoreService } from './vector-store.service';
+import { GroqService } from './groq.service';
+import { ChatMessage } from '../interfaces/conversation.interface';
 import {
   RetrievalResult,
   RetrievedContext,
@@ -15,10 +17,21 @@ export class RetrievalService {
   constructor(
     private readonly embeddingService: EmbeddingService,
     private readonly vectorStoreService: VectorStoreService,
+    private readonly groqService: GroqService,
   ) {}
 
-  async retrieve(query: string): Promise<RetrievalResult> {
-    const vector = await this.embeddingService.embedQuery(query);
+  async retrieve(
+    query: string,
+    recentMessages: ChatMessage[] = [],
+    summaryBuffer?: string,
+  ): Promise<RetrievalResult> {
+    const contextualQuery = await this.groqService.contextualizeQuery(
+      query,
+      recentMessages,
+      summaryBuffer,
+    );
+
+    const vector = await this.embeddingService.embedQuery(contextualQuery);
 
     const results = await this.vectorStoreService.search(
       vector,

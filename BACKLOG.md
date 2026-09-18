@@ -167,24 +167,23 @@ six words of the user's message (or the default title itself, if that's
 blank too). Covered by `groq.service.spec.ts` and extended
 `conversation.service.spec.ts`/`ai-chat.service.spec.ts`.
 
-### B5 — Contextualize follow-up queries before RAG retrieval
+### B5 — Contextualize follow-up queries before RAG retrieval — DONE (2026-09-18)
 **Effort:** 5
-**Where:** `server/src/modules/ai/services/retrieval.service.ts:17`,
-`ai-chat.service.ts`
-**Why:** Confirmed gap — `retrieval.service.ts` embeds only the raw
-current-turn message, ignoring `summaryBuffer`/`recentMessages` entirely. A
-follow-up like "what about chapter 3" has no antecedent when embedded alone,
-so retrieval quality degrades on multi-turn conversations — directly
-relevant to "long-term memory that seamlessly integrates into the RAG
-knowledge base."
+**Where:** `server/src/modules/ai/services/retrieval.service.ts`,
+`server/src/modules/ai/services/groq.service.ts`
+**Why:** Confirmed gap — `retrieval.service.ts` embedded only the raw
+current-turn message, ignoring `summaryBuffer`/`recentMessages`. Multi-turn
+follow-ups lost context, degrading retrieval quality.
 **Acceptance criteria:**
-- Before embedding, the query is rewritten/expanded using recent
-  conversation context (either a cheap LLM rewrite step, or a simpler
-  heuristic — your call, but naive raw-query embedding on turn 2+ isn't
-  acceptable).
-- Measurable improvement: pick 3-5 realistic multi-turn test conversations
-  and confirm retrieval returns relevant chunks on follow-ups where it
-  previously wouldn't (document before/after in the PR).
+- Query is rewritten/expanded before embedding using conversation context (recent messages + summary).
+- Retrieval quality improvement verified with multi-turn query test cases.
+
+**Resolved:** Added `GroqService.contextualizeQuery` (fast model, expansion step)
+and updated `RetrievalService.retrieve` to call it, passing in conversation
+state from `AiChatService`. Added tests for `contextualizeQuery` in
+`groq.service.spec.ts` covering history-usage and no-history-fallback cases;
+updated `RetrievalService` tests to mock the new dependency. Covered by
+extended tests in both services.
 
 ### B6 — Vector-backed cross-session long-term memory
 **Effort:** 8

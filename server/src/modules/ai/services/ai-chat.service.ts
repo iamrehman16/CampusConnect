@@ -48,10 +48,15 @@ export class AiChatService {
     message: string,
     conversationId?: string,
   ): Promise<ChatResponse> {
-    const [conversation, retrieval] = await Promise.all([
-      this.conversationService.getOrCreateConversation(userId, conversationId),
-      this.retrievalService.retrieve(message),
-    ]);
+    const conversation = await this.conversationService.getOrCreateConversation(
+      userId,
+      conversationId,
+    );
+    const retrieval = await this.retrievalService.retrieve(
+      message,
+      conversation.recentMessages,
+      conversation.summaryBuffer,
+    );
     const isNewThread = conversation.recentMessages.length === 0;
     const { context, status: retrievalStatus } = retrieval;
 
@@ -97,10 +102,15 @@ export class AiChatService {
     message: string,
     conversationId?: string,
   ): Promise<Observable<MessageEvent>> {
-    const [conversation, retrieval] = await Promise.all([
-      this.conversationService.getOrCreateConversation(userId, conversationId),
-      this.retrievalService.retrieve(message),
-    ]);
+    const conversation = await this.conversationService.getOrCreateConversation(
+      userId,
+      conversationId,
+    );
+    const retrieval = await this.retrievalService.retrieve(
+      message,
+      conversation.recentMessages,
+      conversation.summaryBuffer,
+    );
     const isNewThread = conversation.recentMessages.length === 0;
     const { context, status: retrievalStatus } = retrieval;
 

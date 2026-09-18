@@ -99,8 +99,10 @@ code cold might flag them as anti-patterns — they are not.
 - **MongoDB ObjectIds are converted to UUIDs via MD5 hashing** before being
   used as Qdrant point IDs. Qdrant requires UUID or integer point IDs.
 - **Groq is explicitly instructed not to cite inline.** Citations are built
-  programmatically from retrieved context with deduplication, not parsed out
-  of the model's text output.
+  programmatically from retrieved context, not parsed out of the model's
+  text output. Deduplication (by `resourceId`, via `AiChatService`'s
+  private `buildCitations()`) was missing until BACKLOG.md A8 (2026-09-18)
+  — see §8's former "reopened" note, now resolved.
 - **Chat context uses a 6-exchange sliding window** with single-call summary
   compression via an 8B model, rather than sending full history.
 - **`getCollections()` workaround** exists in `VectorStoreService` for a
@@ -115,9 +117,13 @@ code cold might flag them as anti-patterns — they are not.
 - **Chat message de-duplication** relies on catching MongoDB's `E11000`
   duplicate-key error (`isDuplicateClientIdError` in `ChatService`) rather
   than a pre-check query — this is intentional, not a missed validation step.
-- **`ConversationSchema` has a unique index on `participants`**, enforcing
-  exactly one conversation per pair of users at the database level rather
-  than in application logic.
+- **`ConversationSchema` has a unique (partial) index on `participantsKey`**
+  — a deterministic sorted-pair string, not the `participants` array
+  itself — enforcing exactly one conversation per pair of users at the
+  database level rather than in application logic. (A unique index
+  directly on the `participants` array would be a MongoDB multikey index,
+  enforcing uniqueness per array *element* across the whole collection,
+  not per pair — see §8's A9 note for how this was found and fixed.)
 - **`DocumentParserService` polls LlamaParse with retry logic and streams
   `FormData` directly**, deliberately avoiding temp file storage during
   ingestion. Don't "simplify" this into a synchronous single-call pattern —
@@ -137,14 +143,17 @@ a PR outside that path leaves the PR stuck "pending" forever.
   (`tsc -b` / `tsc -p tsconfig.build.json`), so this is typecheck+build in
   one step. Branch protection on `main` requires both, blocks force-push and
   branch deletion.
-- **Advisory, not yet gating:** `lint` (both apps) and `test` (server).
-  These run and report on every PR so regressions are visible, but a
-  failure doesn't block merge. This is temporary, not a policy choice — as
-  of Sept 2026 there's pre-existing debt (~60 client lint errors, ~127
-  server lint errors, 9/10 server test suites failing on DI setup) that
-  predates the CI setup. Each gets a `BACKLOG.md` cleanup PBI; once a
-  workflow's job is clean, remove its `continue-on-error: true` to make it
-  required.
+- **Client and server `lint` are both clean** (BACKLOG.md A10/A11,
+  2026-09-18) — neither `client-ci.yml` nor `server-ci.yml`'s `lint` job
+  has `continue-on-error` anymore, but branch protection on `main` hasn't
+  been updated yet to add either to `required_status_checks` (a manual
+  GitHub admin step).
+- **Still advisory, not yet gating:** `test` (server). It runs and reports
+  on every PR so regressions are visible, but a failure doesn't block
+  merge. This is temporary, not a policy choice — as of Sept 2026, 9/10
+  server test suites fail on DI setup, predating the CI setup
+  (`BACKLOG.md` A12). Once that job is clean, remove its
+  `continue-on-error: true` to make it required.
 - Don't add more required checks casually — each one is a thing that can
   block you at 2am before the open house. Promote a check to required only
   once it's actually green.
@@ -153,20 +162,25 @@ a PR outside that path leaves the PR stuck "pending" forever.
 
 ## 6. Working style (apply by default)
 
-- The developer (Abdur) prefers **detailed prompts with full root-cause
-  context** over blind auto-fixes — when suggesting a fix, explain the why,
-  not just the diff.
 - Work **one committed fix at a time.** Don't chain multiple unrelated fixes
   in one pass without checkpoints.
 - Currently prioritizing **code health over new features** — repo-wide audit
   (types, lint, dead code, error-handling gaps) before shipping anything new.
-- Before starting a session, sanity-check the environment: Qdrant Cloud
-  cluster can go dormant on inactivity; MongoDB connection and Socket.IO CORS
-  handshake are known past failure points after time away from the project.
 
 ---
 
-## 7. Where things live
+## 7. Output Style: Caveman Mode
+- Concise output strictly required. No conversational fluff, greetings, pleasantries, or post-task summaries.
+- Omit unnecessary filler words (articles, prepositions, politeness).
+- Provide minimal explanation for changes. Name file, action, reason in shortest form possible.
+- Code blocks, tool calls, shell commands, and file edits MUST remain 100% complete, precise, and unaltered.
+- Examples:
+  - BAD: "I have updated the user service file to fix the null pointer exception when fetching the profile."
+  - GOOD: "Fix null check in UserService.ts line 42."
+ 
+---
+
+## 8. Where things live
 
 - **Backlog / active tasks:** `BACKLOG.md` in repo root (or GitHub Projects
   board, if adopted — check both).
@@ -180,30 +194,39 @@ a PR outside that path leaves the PR stuck "pending" forever.
 
 ---
 
-## 8. Known gaps as of last review (verified against code, Sept 2026)
+## 9. Known gaps as of last review (verified against code, Sept 2026)
 
-- **`ERR_HTTP_HEADERS_SENT` guard missing** — confirmed. In
-  `server/src/modules/ai/ai.controller.ts`, the SSE handler's `error`
-  callback and the `req.on('close')` handler both call `res.write()` /
-  `res.end()` with no `res.headersSent` check. A late error arriving after
-  the client disconnects (or after `complete` already called `res.end()`)
-  will throw.
-- **E11000 handling missing on `conversations`** — confirmed. In
-  `server/src/modules/chat/chat.service.ts#findOrCreateConversation`, the
-  check-then-create (`findOne` then `.create()`) has no try/catch. Two
-  concurrent "start conversation" requests for the same pair can both pass
-  the `findOne` check, then the second `.create()` throws unhandled on the
-  unique `participants` index (§4). Note this is a different code path from
-  the message-level `isDuplicateClientIdError` dedup, which does exist and
-  works as intended.
-- **`participantsKey` migration** — status unclear. No occurrences of
-  `participantsKey` found anywhere in `server/src`. Either never started or
-  the field was renamed; don't assume either way — check with the
-  developer before treating this as done or as a live task.
-- **RAG citation dedup — reopened.** §4 claims citations are built "with
-  deduplication," but `ai-chat.service.ts`'s citation construction is a
-  plain `.map()` over retrieved context, and no dedup step (`Set`, `filter`,
-  etc.) exists there or in `retrieval.service.ts`. Either the claim in §4 is
-  stale or the dedup lives somewhere not yet found — needs a real look, not
-  covered by this pass. Don't remove this note until someone traces the
-  actual citation path end to end.
+- **`ERR_HTTP_HEADERS_SENT` guard** — fixed (BACKLOG.md A1). The SSE handler
+  in `server/src/modules/ai/ai.controller.ts` now guards every
+  `res.write()`/`res.end()` call with `res.writableEnded`, and
+  `req.on('close')` unsubscribes the observable instead of just ending the
+  response. Regression covered by `ai.controller.spec.ts`.
+- **E11000 handling on `conversations`** — fixed (BACKLOG.md A2).
+  `findOrCreateConversation` now catches the E11000 on the unique
+  `participants` index and re-fetches/returns the winner, mirroring the
+  existing `isDuplicateClientIdError` pattern (new
+  `isDuplicateParticipantsError` helper). Regression covered in
+  `chat.service.spec.ts`.
+- **`participantsKey` migration** — implemented (BACKLOG.md A9,
+  2026-09-18). It had never been started (confirmed via `git log -S` across
+  the full 138-commit history, including the pre-monorepo merge). Turned
+  out to matter more than "unclear status" suggested: the unique index it
+  was presumably meant to fix — `{ participants: 1 }, { unique: true }` —
+  is a MongoDB multikey index, meaning uniqueness was enforced per array
+  *element* across the whole collection, not per pair. Verified
+  empirically (Docker `mongo:7`): a user could only ever be in **one**
+  conversation, system-wide, ever. `ConversationSchema` now has
+  `participantsKey` (a deterministic sorted-pair string) with its own
+  unique index (partial, to tolerate pre-existing docs missing the field);
+  `ChatService.onModuleInit()` backfills it for any legacy documents. See
+  `chat.service.ts`/`conversation.schema.ts`.
+- **RAG citation dedup** — fixed (BACKLOG.md A8, 2026-09-18). Traced end to
+  end: the §4 claim was false — `ai-chat.service.ts`'s citation
+  construction was a plain `.map()` with no dedup step, and since
+  `IngestionService` chunks each resource into multiple Qdrant points and
+  `RetrievalService`'s `TOP_K=5` can return several chunks from the same
+  document, duplicate citations (same `resourceId`, different pages) were
+  a real, reproducible bug, not a hypothetical one. Now deduped by
+  `resourceId` via a shared `buildCitations()` helper (keeps the
+  highest-scoring chunk's page), used by both `getChatResponse` and
+  `streamChatResponse`. Covered by `ai-chat.service.spec.ts`.

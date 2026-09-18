@@ -162,6 +162,76 @@ export class GroqService {
     }
   }
 
+  /**
+   * Refines a follow-up user query using conversation history (if any)
+   * into a self-contained query suitable for vector store search.
+   * If there is no history, or the LLM call fails, falls back gracefully to original query.
+   */
+  async contextualizeQuery(
+    userQuery: string,
+    recentMessages: ChatMessage[],
+    summaryBuffer?: string,
+  ): Promise<string> {
+    if (recentMessages.length === 0 && !summaryBuffer) {
+      return userQuery;
+    }
+
+    try {
+      const messages: Groq.Chat.ChatCompletionMessageParam[] = [
+        {
+          role: 'system',
+          content: `You are an expert search-query refiner. Given the recent conversation history (including recent messages and/or a summary buffer) and a follow-up user query, rewrite the query to be a self-contained, descriptive search query suitable for vector search.
+It must include all necessary context from previous messages (such as resolving pronouns like 'it', 'they', 'this', 'that' to their actual referents) without losing the original search intent.
+Do not generate explanations, introduction, markdown, quotes, or preamble. Return ONLY the refined, self-contained search query.`,
+        },
+      ];
+
+      if (summaryBuffer) {
+        messages.push({
+          role: 'system',
+          content: `Previous conversation summary:\n${summaryBuffer}`,
+        });
+      }
+
+      if (recentMessages.length > 0) {
+        const historyText = recentMessages
+          .map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+          .join('\n');
+        messages.push({
+          role: 'system',
+          content: `Recent conversation history:\n${historyText}`,
+        });
+      }
+
+      messages.push({
+        role: 'user',
+        content: `Follow-up user query to rewrite: ${userQuery}`,
+      });
+
+      const completion = await this.groq.chat.completions.create(
+        {
+          messages,
+          model: this.aiCfg.models.fast,
+        },
+        { timeout: this.aiCfg.groqTimeoutMs },
+      );
+
+      const refined = completion.choices[0]?.message?.content?.trim() || '';
+      if (refined) {
+        this.logger.debug(`Contextualized query: "${userQuery}" -> "${refined}"`);
+        return refined;
+      }
+      return userQuery;
+    } catch (err) {
+      this.logger.error(
+        `Failed to contextualize query: ${
+          err instanceof Error ? err.message : String(err)
+        }. Falling back to original query.`,
+      );
+      return userQuery;
+    }
+  }
+
   async generateStream(
     messages: Groq.Chat.ChatCompletionMessageParam[],
   ): Promise<AsyncIterable<Groq.Chat.ChatCompletionChunk>> {

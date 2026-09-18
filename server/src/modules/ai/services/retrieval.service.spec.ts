@@ -1,6 +1,7 @@
 import { RetrievalService } from './retrieval.service';
 import { EmbeddingService } from './embedding.service';
 import { VectorStoreService } from './vector-store.service';
+import { GroqService } from './groq.service';
 import { VectorSearchResultDto } from '../dto/vector-search-result.dto';
 
 function buildService(searchResults: VectorSearchResultDto[]) {
@@ -10,10 +11,14 @@ function buildService(searchResults: VectorSearchResultDto[]) {
   const vectorStoreService: Partial<VectorStoreService> = {
     search: jest.fn().mockResolvedValue(searchResults),
   };
+  const groqService: Partial<GroqService> = {
+    contextualizeQuery: jest.fn().mockImplementation((q) => Promise.resolve(q)),
+  };
 
   const service = new RetrievalService(
     embeddingService as EmbeddingService,
     vectorStoreService as VectorStoreService,
+    groqService as GroqService,
   );
 
   return service;
