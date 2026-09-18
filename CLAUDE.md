@@ -162,16 +162,10 @@ a PR outside that path leaves the PR stuck "pending" forever.
 
 ## 6. Working style (apply by default)
 
-- The developer (Abdur) prefers **detailed prompts with full root-cause
-  context** over blind auto-fixes — when suggesting a fix, explain the why,
-  not just the diff.
 - Work **one committed fix at a time.** Don't chain multiple unrelated fixes
   in one pass without checkpoints.
 - Currently prioritizing **code health over new features** — repo-wide audit
   (types, lint, dead code, error-handling gaps) before shipping anything new.
-- Before starting a session, sanity-check the environment: Qdrant Cloud
-  cluster can go dormant on inactivity; MongoDB connection and Socket.IO CORS
-  handshake are known past failure points after time away from the project.
 
 ---
 
