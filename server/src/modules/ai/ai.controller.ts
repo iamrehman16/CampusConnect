@@ -23,23 +23,29 @@ export class AiController {
       chatMessageDto.message,
     );
 
-    observable.subscribe({
+    const subscription = observable.subscribe({
       next: (event: MessageEvent) => {
+        if (res.writableEnded) return;
         res.write(`data: ${JSON.stringify(event.data)}\n\n`);
       },
       error: (err) => {
+        if (res.writableEnded) return;
         res.write(
           `data: ${JSON.stringify({ type: 'error', message: err.message })}\n\n`,
         );
         res.end();
       },
       complete: () => {
+        if (res.writableEnded) return;
         res.end();
       },
     });
 
     req.on('close', () => {
-      res.end();
+      subscription.unsubscribe();
+      if (!res.writableEnded) {
+        res.end();
+      }
     });
   }
 
