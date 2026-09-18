@@ -481,3 +481,81 @@ users have to leave chat to visit.
 **Why:** Desktop layout akin to Claude.ai/ChatGPT (persistent sidebar +
 main chat pane) rather than the current tab-based structure; needs a mobile
 equivalent too. Depends entirely on what B7's sidebar ends up looking like.
+
+---
+
+## Epic D — Google OAuth authentication
+
+Goal: let students sign in with their Google account instead of only
+email/password. Independent of Epics A-C — can be picked up any time,
+sequencing among D1-D3 matters (D1 is the schema foundation).
+
+Current state (verified against code): `server/src/modules/auth/` has only
+`local.strategy.ts` and `jwt.strategy.ts` (passport-local + passport-jwt,
+already listed in `CLAUDE.md` §2). No `passport-google-oauth20` dependency,
+no Google strategy, no callback route. `UserSchema`
+(`server/src/modules/user/schemas/user.schema.ts:18-19`) has `password`
+as `required: true` — that has to change before a passwordless OAuth user
+can be created.
+
+### D1 — User schema + config for OAuth-created accounts
+**Effort:** 3
+**Where:** `server/src/modules/user/schemas/user.schema.ts`,
+`server/src/modules/user/user.service.ts`, `server/.env.example`
+**Why:** A Google-authenticated user has no password to hash, but
+`password` is currently `required: true` on `UserSchema`. Need a schema
+shape that supports both local and OAuth-created accounts before any
+strategy code can create one.
+**Acceptance criteria:**
+- `password` becomes optional on `UserSchema` (`required: false` /
+  conditional), with `authProvider: 'local' | 'google'` (default
+  `'local'`) and `googleId?: string` (unique, sparse index) added.
+- `UserService` gains a `findOrCreateGoogleUser` (or equivalent) that
+  looks up by `googleId` first, then by `email` for account-linking
+  (existing local account + same email signs in via Google without a
+  duplicate user doc — document the linking decision, don't silently
+  merge without one), then creates if neither matches.
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_CALLBACK_URL`
+  documented in `.env.example` (shape only, no real values, per
+  `CLAUDE.md` §3.7).
+- Existing local-signup flow (`AuthService#register`) unaffected — a
+  regression here breaks the only auth path that currently works.
+
+### D2 — Google OAuth strategy + callback endpoints
+**Effort:** 5
+**Where:** `server/src/modules/auth/` (new `google.strategy.ts`,
+controller routes), depends on D1
+**Why:** The actual OAuth flow — this is the PBI that makes "Sign in with
+Google" work end to end on the server.
+**Acceptance criteria:**
+- `passport-google-oauth20` strategy validates the Google profile, calls
+  D1's `findOrCreateGoogleUser`, and issues the same access/refresh token
+  pair `AuthService#login` already issues for local login — one token
+  contract for both auth methods, not a parallel one.
+- `GET /auth/google` (kicks off consent screen) and
+  `GET /auth/google/callback` (handles the redirect) routes, both marked
+  `@Public()` per the existing `public.decorator.ts` pattern.
+- Callback redirects to a client URL with tokens (or a short-lived
+  exchange code — your call, but don't put long-lived tokens in a query
+  string if avoidable) rather than returning raw JSON to a browser
+  redirect.
+- Explicit error handling on the Google API call per `CLAUDE.md` §3.3 (a
+  Google outage or a user who denies consent degrades to a clear
+  redirect-with-error, not an unhandled exception).
+
+### D3 — Frontend "Sign in with Google" flow
+**Effort:** 3
+**Where:** `client/src/features/auth/` (or wherever login/signup UI
+lives), `client/src/app/providers/AuthProvider.tsx`, depends on D2
+**Why:** The visible half — a button plus handling D2's redirect-back so
+the user actually lands authenticated in the app.
+**Acceptance criteria:**
+- "Continue with Google" button on the existing login/register screen,
+  linking to the server's `GET /auth/google`.
+- A callback/landing route that receives D2's redirect, stores tokens via
+  the existing `tokenStorage` utility, and populates `AuthProvider` the
+  same way a normal login does (reuse `login`/`fetchProfile`, don't fork
+  a second auth-bootstrap path).
+- Error case (user denies consent, or D2 redirects with an error) shows a
+  clear message on the login screen instead of a blank/broken redirect
+  target.
