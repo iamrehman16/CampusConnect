@@ -22,6 +22,8 @@ import {
 import { AiMessage, AiMessageSchema } from './schema/ai-message.schema';
 import { ChunkingService } from './services/chunking.service';
 import { RetrievalService } from './services/retrieval.service';
+import { MemoryStoreService } from './services/memory-store.service';
+import { MemoryService } from './services/memory.service';
 import { CommonModule } from '../../common/common.module';
 
 @Module({
@@ -47,6 +49,8 @@ import { CommonModule } from '../../common/common.module';
     VectorStoreService,
     ChunkingService,
     RetrievalService,
+    MemoryStoreService,
+    MemoryService,
   ],
   exports: [AiChatService, IngestionService],
 })

@@ -3,7 +3,10 @@ import { ConfigType } from '@nestjs/config';
 import Groq from 'groq-sdk';
 import aiConfig from '../config/ai.config';
 import { ChatMessage } from '../interfaces/conversation.interface';
-import { RetrievedContext } from '../interfaces/retrieved-context.interface';
+import {
+  MemoryRecall,
+  RetrievedContext,
+} from '../interfaces/retrieved-context.interface';
 
 const SYSTEM_PROMPT = `You are CampusConnect AI, a helpful academic assistant for university students.
 Answer clearly and concisely. If you don't know something, say so honestly.`;
@@ -69,6 +72,7 @@ export class GroqService {
     recentMessages: ChatMessage[],
     userQuery: string,
     context: RetrievedContext[],
+    memories: MemoryRecall[] = [],
   ): Groq.Chat.ChatCompletionMessageParam[] {
     const messages: Groq.Chat.ChatCompletionMessageParam[] = [];
 
@@ -78,6 +82,18 @@ export class GroqService {
       messages.push({
         role: 'system',
         content: `Previous conversation summary:\n${summaryBuffer}`,
+      });
+    }
+
+    // Cross-session memory recall (BACKLOG.md B6) is injected as its own
+    // system block, distinct from document-RAG context below — it's a
+    // recalled fact from a past conversation, not a citable source, so it
+    // must never be conflated with the `context` block into a citation.
+    if (memories.length > 0) {
+      const memoryBlock = memories.map((m) => `- ${m.text}`).join('\n');
+      messages.push({
+        role: 'system',
+        content: `Relevant memories from your past conversations with this user:\n${memoryBlock}\n\nUse these only if relevant to the current question. Do not cite them as sources.`,
       });
     }
 
@@ -195,7 +211,9 @@ Do not generate explanations, introduction, markdown, quotes, or preamble. Retur
 
       if (recentMessages.length > 0) {
         const historyText = recentMessages
-          .map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+          .map(
+            (m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`,
+          )
           .join('\n');
         messages.push({
           role: 'system',
@@ -218,7 +236,9 @@ Do not generate explanations, introduction, markdown, quotes, or preamble. Retur
 
       const refined = completion.choices[0]?.message?.content?.trim() || '';
       if (refined) {
-        this.logger.debug(`Contextualized query: "${userQuery}" -> "${refined}"`);
+        this.logger.debug(
+          `Contextualized query: "${userQuery}" -> "${refined}"`,
+        );
         return refined;
       }
       return userQuery;

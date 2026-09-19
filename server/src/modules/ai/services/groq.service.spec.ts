@@ -130,25 +130,44 @@ describe('GroqService', () => {
   it('contextualizeQuery returns the refined query using history', async () => {
     const { service, create } = buildService();
     create.mockResolvedValue({
-      choices: [{ message: { content: 'What is the recommended textbook for CS101?' } }],
+      choices: [
+        { message: { content: 'What is the recommended textbook for CS101?' } },
+      ],
     });
 
     const result = await service.contextualizeQuery(
       'what about that?',
       [
-        { role: 'user', content: 'What course is CS101?', timestamp: new Date() },
-        { role: 'assistant', content: 'It is Introduction to Programming.', timestamp: new Date() }
+        {
+          role: 'user',
+          content: 'What course is CS101?',
+          timestamp: new Date(),
+        },
+        {
+          role: 'assistant',
+          content: 'It is Introduction to Programming.',
+          timestamp: new Date(),
+        },
       ],
-      'User asked about CS101 course content.'
+      'User asked about CS101 course content.',
     );
 
     expect(result).toBe('What is the recommended textbook for CS101?');
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({
         messages: expect.arrayContaining([
-          expect.objectContaining({ role: 'system', content: expect.stringContaining('Previous conversation summary:') }),
-          expect.objectContaining({ role: 'system', content: expect.stringContaining('Recent conversation history:') }),
-          expect.objectContaining({ role: 'user', content: expect.stringContaining('what about that?') }),
+          expect.objectContaining({
+            role: 'system',
+            content: expect.stringContaining('Previous conversation summary:'),
+          }),
+          expect.objectContaining({
+            role: 'system',
+            content: expect.stringContaining('Recent conversation history:'),
+          }),
+          expect.objectContaining({
+            role: 'user',
+            content: expect.stringContaining('what about that?'),
+          }),
         ]),
       }),
       expect.anything(),
@@ -157,9 +176,9 @@ describe('GroqService', () => {
 
   it('contextualizeQuery returns original query if no history', async () => {
     const { service, create } = buildService();
-    
+
     const result = await service.contextualizeQuery('some query', []);
-    
+
     expect(result).toBe('some query');
     expect(create).not.toHaveBeenCalled();
   });

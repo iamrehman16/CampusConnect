@@ -21,6 +21,7 @@ import {
   PaginationService,
 } from '../../../common/services/pagination.service';
 import { BaseQueryDto } from '../../../common/dto/base-query.dto';
+import { MemoryService } from './memory.service';
 
 @Injectable()
 export class ConversationService implements OnModuleInit {
@@ -36,6 +37,7 @@ export class ConversationService implements OnModuleInit {
     @InjectModel(ConversationSession.name)
     private readonly legacySessionModel: Model<ConversationSessionDocument>,
     private readonly paginationService: PaginationService,
+    private readonly memoryService: MemoryService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -178,6 +180,19 @@ export class ConversationService implements OnModuleInit {
       : `Summarize these messages in 2-3 sentences. Return only the summary text, no preamble or explanation:
      ${rawText}`;
     conversation.summaryBuffer = await summarizeFn(prompt);
+
+    // BACKLOG.md B6: the exchanges just spliced out of recentMessages are,
+    // by definition, "aging" out of active context — embed the raw text
+    // (not the ever-growing summaryBuffer, which would re-store
+    // overlapping content on every compression) into cross-session memory.
+    // Fire-and-forget: MemoryService.storeMemory never throws, it logs and
+    // degrades to "no memory stored this turn" on failure (CLAUDE.md §3.3),
+    // so this can't block or fail the response that triggered compression.
+    void this.memoryService.storeMemory(
+      conversation.userId,
+      conversation._id.toString(),
+      rawText,
+    );
   }
 
   /**

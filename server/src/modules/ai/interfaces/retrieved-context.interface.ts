@@ -8,6 +8,20 @@ export type RetrievalStatus = 'ok' | 'no-matches' | 'below-threshold';
 export interface RetrievalResult {
   context: RetrievedContext[];
   status: RetrievalStatus;
+  memories: MemoryRecall[];
+}
+
+/**
+ * A recalled fact from a past conversation (BACKLOG.md B6) — distinct
+ * from a document Citation. Never surfaced to the client as a citation;
+ * it's context injected into buildMessages, not a source the user can
+ * click through to.
+ */
+export interface MemoryRecall {
+  text: string;
+  conversationId: string;
+  score: number;
+  createdAt: Date;
 }
 
 export interface ChatResponse {

@@ -185,7 +185,7 @@ state from `AiChatService`. Added tests for `contextualizeQuery` in
 updated `RetrievalService` tests to mock the new dependency. Covered by
 extended tests in both services.
 
-### B6 — Vector-backed cross-session long-term memory
+### B6 — Vector-backed cross-session long-term memory — DONE (2026-09-19)
 **Effort:** 8
 **Where:** new service alongside `VectorStoreService`, `RetrievalService`,
 `AiChatService`
@@ -210,6 +210,30 @@ one.
 - Explicit error handling on this new external-call path per §3.3 — a
   memory-store failure degrades to "no memory recall this turn," not a
   broken chat response.
+
+**Resolved:** New `campus_memory` Qdrant collection via `MemoryStoreService`
+(mirrors `VectorStoreService`'s shape/`getCollections()` workaround but kept
+separate — memory recall is not document-RAG context). `MemoryService` sits
+on top: `storeMemory` embeds and upserts, keyed by `userId` in the payload,
+point IDs MD5-hashed to UUID per the `IngestionService` convention (hash of
+`${conversationId}_${Date.now()}` so a thread accumulates multiple memory
+points over its lifetime instead of overwriting one). `retrieveMemories`
+applies the same 0.6 score-threshold pattern as `RetrievalService`. Both
+methods catch and log internally rather than throwing — a failure degrades
+to "no memory stored/recalled this turn," never a broken chat response.
+Wired at the write side: `ConversationService#maybeCompressSummary` fires
+`memoryService.storeMemory` (fire-and-forget) with the raw exchange batch
+just spliced out of `recentMessages` — that's the "aging out" moment,
+and using the raw batch (not the ever-growing `summaryBuffer`) avoids
+re-embedding overlapping text on every compression. Wired at the read
+side: `RetrievalService.retrieve` now takes `userId`, calls
+`memoryService.retrieveMemories` alongside document-RAG search off the
+same contextualized query vector, and returns `memories` on
+`RetrievalResult` distinct from `context`. `GroqService.buildMessages`
+injects memories as their own system block ("Relevant memories from your
+past conversations... do not cite them as sources"), never folded into
+`AiChatService#buildCitations`. Covered by `memory.service.spec.ts` (new)
+and extended `retrieval.service.spec.ts`/`conversation.service.spec.ts`.
 
 ### B7 — Frontend: conversation history sidebar
 **Effort:** 8

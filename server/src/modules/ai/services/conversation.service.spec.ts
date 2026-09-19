@@ -8,6 +8,7 @@ import {
 import { AiMessageDocument } from '../schema/ai-message.schema';
 import { ConversationSessionDocument } from '../schema/conversation-session.schema';
 import { PaginationService } from '../../../common/services/pagination.service';
+import { MemoryService } from './memory.service';
 
 type MockQuery<T> = { sort: jest.Mock; lean: jest.Mock } & Promise<T>;
 
@@ -50,12 +51,16 @@ function buildConversationService(
   paginationService: Partial<PaginationService> = {
     paginate: jest.fn(),
   },
+  memoryService: Partial<MemoryService> = {
+    storeMemory: jest.fn().mockResolvedValue(undefined),
+  },
 ) {
   return new ConversationService(
     conversationModel as unknown as Model<AiConversationDocument>,
     messageModel as unknown as Model<AiMessageDocument>,
     legacySessionModel as unknown as Model<ConversationSessionDocument>,
     paginationService as PaginationService,
+    memoryService as MemoryService,
   );
 }
 
@@ -460,6 +465,78 @@ describe('ConversationService#appendMessages', () => {
       { conversationId, role: 'user', content: 'user question' },
       { conversationId, role: 'assistant', content: 'assistant answer' },
     ]);
+  });
+});
+
+describe('ConversationService#appendMessages — cross-session memory (B6)', () => {
+  it('stores the aging exchange batch as memory once the sliding window compresses', async () => {
+    const conversationId = new Types.ObjectId();
+    const existingMessages = Array.from({ length: 12 }, (_, i) => ({
+      role: i % 2 === 0 ? 'user' : 'assistant',
+      content: `message ${i}`,
+      timestamp: new Date(),
+    }));
+    const conversation = {
+      _id: conversationId,
+      userId: 'user-1',
+      summaryBuffer: '',
+      recentMessages: existingMessages,
+      save: jest.fn().mockResolvedValue(undefined),
+    } as unknown as AiConversationDocument;
+    const messageModel: Partial<MockMessageModel> = {
+      insertMany: jest.fn().mockResolvedValue([]),
+    };
+    const memoryService: Partial<MemoryService> = {
+      storeMemory: jest.fn().mockResolvedValue(undefined),
+    };
+    const service = buildConversationService(
+      {},
+      undefined,
+      messageModel,
+      undefined,
+      memoryService,
+    );
+
+    await service.appendMessages(
+      conversation,
+      'new question',
+      'new answer',
+      jest.fn().mockResolvedValue('a summary'),
+    );
+
+    expect(memoryService.storeMemory).toHaveBeenCalledWith(
+      'user-1',
+      conversationId.toString(),
+      expect.any(String),
+    );
+  });
+
+  it('does not store memory when the sliding window has not filled yet', async () => {
+    const conversationId = new Types.ObjectId();
+    const conversation = {
+      _id: conversationId,
+      userId: 'user-1',
+      summaryBuffer: '',
+      recentMessages: [],
+      save: jest.fn().mockResolvedValue(undefined),
+    } as unknown as AiConversationDocument;
+    const messageModel: Partial<MockMessageModel> = {
+      insertMany: jest.fn().mockResolvedValue([]),
+    };
+    const memoryService: Partial<MemoryService> = {
+      storeMemory: jest.fn().mockResolvedValue(undefined),
+    };
+    const service = buildConversationService(
+      {},
+      undefined,
+      messageModel,
+      undefined,
+      memoryService,
+    );
+
+    await service.appendMessages(conversation, 'question', 'answer', jest.fn());
+
+    expect(memoryService.storeMemory).not.toHaveBeenCalled();
   });
 });
 

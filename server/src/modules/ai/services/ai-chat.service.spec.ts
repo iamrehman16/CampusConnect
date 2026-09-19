@@ -48,7 +48,9 @@ function buildService(context: RetrievedContext[]) {
     maybeGenerateTitle: jest.fn().mockResolvedValue(undefined),
   };
   const retrievalService: Partial<RetrievalService> = {
-    retrieve: jest.fn().mockResolvedValue({ context, status: 'ok' }),
+    retrieve: jest
+      .fn()
+      .mockResolvedValue({ context, status: 'ok', memories: [] }),
   };
 
   return new AiChatService(
@@ -122,7 +124,9 @@ function buildServiceWithConversation(recentMessages: unknown[]) {
     generateTitle: jest.fn().mockResolvedValue('a title'),
   };
   const retrievalService: Partial<RetrievalService> = {
-    retrieve: jest.fn().mockResolvedValue({ context: [], status: 'ok' }),
+    retrieve: jest
+      .fn()
+      .mockResolvedValue({ context: [], status: 'ok', memories: [] }),
   };
 
   return {

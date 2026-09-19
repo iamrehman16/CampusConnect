@@ -53,18 +53,20 @@ export class AiChatService {
       conversationId,
     );
     const retrieval = await this.retrievalService.retrieve(
+      userId,
       message,
       conversation.recentMessages,
       conversation.summaryBuffer,
     );
     const isNewThread = conversation.recentMessages.length === 0;
-    const { context, status: retrievalStatus } = retrieval;
+    const { context, status: retrievalStatus, memories } = retrieval;
 
     const messages = this.groqService.buildMessages(
       conversation.summaryBuffer,
       conversation.recentMessages,
       message,
       context,
+      memories,
     );
 
     const answer = await this.groqService.generateResponse(messages);
@@ -107,18 +109,20 @@ export class AiChatService {
       conversationId,
     );
     const retrieval = await this.retrievalService.retrieve(
+      userId,
       message,
       conversation.recentMessages,
       conversation.summaryBuffer,
     );
     const isNewThread = conversation.recentMessages.length === 0;
-    const { context, status: retrievalStatus } = retrieval;
+    const { context, status: retrievalStatus, memories } = retrieval;
 
     const messages = this.groqService.buildMessages(
       conversation.summaryBuffer,
       conversation.recentMessages,
       message,
       context,
+      memories,
     );
 
     const citations = this.buildCitations(context);
