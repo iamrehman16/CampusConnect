@@ -360,31 +360,92 @@ system/query even far over budget).
 
 ## Epic C — RAG-first UI redesign
 
-**Blocked on Epic B.** Don't start scoping this precisely until B7/B8 ship —
-sizing a redesign against a data model and sidebar UX that doesn't exist yet
-is guessing, not planning. These three are placeholders to hold the shape of
-the epic, not ready-to-execute PBIs. Re-scope each with real effort numbers
-once Epic B is functional.
+**Re-scoped 2026-09-19, now that Epic B is functional.** Verified against
+current code, not the original guess: AI Chat already lives at its own
+`immersive`-mode route (`routeConfig.ts`) that hides `Sidebar`/`BottomNav`
+entirely, and B7 already gave it its own `AiChatLayout` — a permanent
+280px sidebar on desktop, a `Drawer` on mobile — which is exactly the
+"Claude.ai/ChatGPT-style persistent sidebar + main pane" shape the
+original C3 asked for. That changes what's actually left to do here: C3
+is largely done as a side effect of B7, and the real open question is C1
+(is chat the *landing* experience, not just a full-bleed page one nav
+click away) — C3's remaining scope depends on how C1 answers that, so do
+C1 first.
 
-### C1 — Redesign navigation/IA around chat as the primary surface
-**Where:** `client/src/app/router.tsx`, top-level layout
-**Why:** Once long-term memory/threads work (Epic B), chat stops being "one
-feature among several" and becomes the thing CampusConnect is about —
-navigation and the landing experience should reflect that instead of
-treating AI chat as a side tab.
+### C1 — Make chat the landing experience, not a side tab
+**Effort:** 5
+**Where:** `client/src/app/router.tsx` (the `ROUTES.HOME` entry),
+`client/src/features/dashboard/pages/DashboardPage.tsx`,
+`client/src/shared/components/layout/{Sidebar,BottomNav}.tsx`
+**Why:** Confirmed gap — `/` (`ROUTES.HOME`) renders `DashboardPage`
+(`GreetingStatsCard`, an `AiAssistantCTA` banner, `TrendingResourcesRow`,
+`PlatformStatsBar`); AI Chat is `/ai`, one nav click away, exactly the "one
+feature among several" framing this epic exists to fix. Nothing about
+this requires guessing at a data model anymore — B1-B9 are done and B7
+already proved out the target layout shape.
+**Acceptance criteria:**
+- Landing at `/` puts the user into chat (either `ROUTES.HOME` renders
+  `AiChatLayout`/`AiChatPage` directly, or `/` redirects to `/ai` — pick
+  one and document why; a redirect is simpler and keeps `/` and `/ai` as
+  one canonical route instead of two URLs for the same screen).
+- Decide explicitly whether `Sidebar`/`BottomNav` (global nav chrome)
+  stay visible while in chat, or chat keeps its current full-bleed
+  `immersive` mode with its own `AiChatLayout` sidebar instead. Today's
+  `immersive` mode hides global nav entirely — that was fine for a
+  side-tab feature reached deliberately, but may feel wrong for the
+  *default* screen (no way back to Resources/Community without opening
+  the AI thread drawer). Whichever is chosen, `Resources`/`Community`/
+  `Profile` must stay reachable in the same number of taps as today.
+- `GreetingStatsCard`/`TrendingResourcesRow`/`PlatformStatsBar` don't just
+  disappear — decide where their content goes (folded into chat's empty
+  state, moved to a secondary "overview" route, or dropped if genuinely
+  redundant with chat) rather than silently deleting a feature.
+- `BottomNav`/`Sidebar`'s nav item ordering/highlighting reflects chat as
+  primary (e.g. first position), not wherever it happened to land before.
 
-### C2 — Surface resource discovery inline in chat (not a separate feed)
-**Where:** `client/src/features/ai-chat/`, `client/src/features/resource/`
-**Why:** If chat is primary, resource browsing/contributor feed should show
-up as part of the chat experience (inline resource cards from citations,
-"related resources" surfaced conversationally) rather than a separate page
-users have to leave chat to visit.
+### C2 — Inline resource cards on citations (replace the text-only chip)
+**Effort:** 3
+**Where:** `client/src/features/ai-chat/components/CitationChip.tsx`,
+`client/src/features/resources/components/ResourceCard.tsx`
+**Why:** Confirmed gap, smaller than the original framing — citations
+already deep-link to `/resources/:id` (`CitationChip.tsx`'s
+`CitationItem`, `handleClick` → `navigate`), so "leave chat to discover
+resources" is already partly solved. What's actually missing is that the
+citation list is a bespoke, text-only `CitationItem` row, not the
+richer `ResourceCard` used everywhere else in the app (thumbnail,
+type/subject chips, contributor) — inconsistent presentation for the
+same underlying resource. "Related resources" beyond direct citations
+(the original wording's other half) needs a new retrieval query with no
+backend support today and is real net-new scope, not a UI change — it's
+deliberately left out of this PBI; re-raise it as its own backlog item
+if wanted.
+**Acceptance criteria:**
+- `CitationsChip`'s expanded list renders `ResourceCard` (or a compact
+  variant of it, if the full card doesn't fit the chat column width)
+  instead of the bespoke `CitationItem`, so a cited resource looks the
+  same whether you found it via chat or via `/resources`.
+- Existing click-through-to-`/resources/:id` behavior is preserved.
+- No backend changes — this is a client-only presentational PBI.
 
-### C3 — Persistent chat-first responsive layout
-**Where:** client top-level layout/theme
-**Why:** Desktop layout akin to Claude.ai/ChatGPT (persistent sidebar +
-main chat pane) rather than the current tab-based structure; needs a mobile
-equivalent too. Depends entirely on what B7's sidebar ends up looking like.
+### C3 — Reconcile AiChatLayout with whatever C1 decides for global nav
+**Effort:** 3 (down from the original placeholder's implied 8 — most of
+the actual layout work shipped as part of B7)
+**Where:** `client/src/features/ai-chat/pages/AiChatLayout.tsx`,
+`client/src/shared/components/layout/AppLayout.tsx`, depends on C1
+**Why:** B7 already built the persistent-sidebar-desktop /
+drawer-on-mobile shape this item originally asked for
+(`AiChatLayout.tsx`) — for the AI Chat feature in isolation. What's left
+is making that consistent with whatever C1 decides about global nav
+chrome: if C1 keeps `Sidebar`/`BottomNav` visible on the chat route,
+`AiChatLayout` needs to nest inside `AppLayout` instead of the
+`immersive` full-bleed mode it uses today (which currently assumes it
+owns the whole viewport — see `AiChatPage.tsx`'s `height: "100svh"`).
+**Acceptance criteria:**
+- `AiChatLayout` renders correctly whether or not `AppLayout`'s chrome is
+  present around it, per C1's decision — no hardcoded full-viewport
+  height assumption if global nav now takes up part of the screen.
+- No regression to B7's mobile drawer or desktop permanent-sidebar
+  behavior.
 
 ---
 
