@@ -288,6 +288,20 @@ background — nearly invisible in light mode, and not derived from the
 theme in dark mode either. Removed in favor of the theme's own `MuiCard`
 override, which both already correctly styles.
 
+**Follow-up #3 (user steer):** the indigo dark-mode primary above was
+itself replaced — user asked to keep one consistent signature brand color
+(clay/terracotta) across both modes rather than switching hue for dark
+mode, explicitly citing Claude's own UI as the reference point for that
+choice. This reverses D1's original "light and dark are encouraged to use
+different hues" framing for *primary* specifically (secondary still
+differs in role — amber "desk lamp" accent stays as-is). Dark-mode
+primary is now `#D98A5C` (main) / `#E8B08C` (light) / `#A44C1B` (dark,
+== light mode's own primary) / dark contrastText `#1A1206` — brightened
+and switched to dark-on-light button text instead of white-on-dark,
+because at this lightness (~61% L) white text fails AA (2.7:1); dark text
+clears 6.8:1. `action.hover/selected/focus` rgba updated to the new
+primary's RGB to match.
+
 ### D2 — Apply the new theme across core surfaces + verify accessibility
 **Effort:** 5
 **Where:** `client/src/theme/components.ts`, spot-checked across
