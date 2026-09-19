@@ -211,6 +211,27 @@ secondary hues today.
   note, not a design doc) so the "why" survives past this session.
 - Tokens only in this PBI — no component-level rollout yet (that's D2).
 
+**Status: DONE.** Two distinct moods instead of one hue at two lightnesses:
+light is "paper & ink" (warm clay/terracotta `#B5541F` primary on a warm
+cream `#F6F1E9` background, cooled by a forest-teal `#2F6F62` secondary —
+reads academic, like ink on a page) and dark is "midnight desk" (cool
+indigo `#5266D6` primary on near-black blue-slate `#12141C`, warmed by an
+amber `#F0A857` "desk lamp" secondary). The primary hue itself changes
+between modes, not just its lightness. Semantic colors (error/warning/
+success/info) were re-tuned to harmonize with each mood but deliberately
+kept distinct from primary/secondary — an earlier draft reused the brand
+hues for warning/success and made a "pending" chip indistinguishable from
+a primary button, so that was reverted. Typography: added `Lora` (serif)
+as a display face for `h1`-`h3` only, layered on top of `Inter`, which
+stays the sole typeface for `h4`-`h6`/body/buttons/chips — gives page-level
+headings a distinct voice without hurting density in the small, frequent
+UI text (chat bubbles, chips, forms). Loaded via the existing Google Fonts
+`<link>` in `index.html`; also fixed the stale `theme-color` meta tag
+(was still `#6C63FF`). All new primary/secondary pairings checked against
+WCAG contrast math (see D2) before finalizing — one shade (`dark` primary)
+was darkened from `#5B6EE8` to `#5266D6` to clear 4.5:1 against white
+button text.
+
 ### D2 — Apply the new theme across core surfaces + verify accessibility
 **Effort:** 5
 **Where:** `client/src/theme/components.ts`, spot-checked across
@@ -229,6 +250,32 @@ too, not just the palette file itself.
   Dashboard, AI Chat, Resources list, Messenger, Contributors.
 - Text/background contrast checked (WCAG AA minimum) for both modes with
   the new colors.
+
+**Status: DONE**, with one gap flagged below. `componentOverrides`
+(`MuiButton` `containedPrimary`/`outlinedPrimary`) no longer hardcode
+`#6C63FF`/`#938BFF`/`rgba(108,99,255,...)` — they now read
+`theme.palette.primary.main/light` via `alpha()`, so a future palette
+change won't require touching this file again. Grepped the whole client
+`src/` for the old hex and its rgb-equivalent rgba (`rgba(108, 99, 255`,
+`rgba(0, 217, 166`, `rgba(0, 184, 148`) — found and fixed two more
+offenders outside the theme folder: `ProfileSettingsTab.tsx` (focus-ring
+color + a save-button gradient that duplicated, and had drifted from,
+`componentOverrides`' own `containedPrimary` — deleted the duplicate
+rather than re-hardcoding it) and `ProfileResourcesTab.tsx` (status-filter
+chips used bare hex that only *approximated* success/warning/error rather
+than reading from the palette — now sourced from
+`theme.palette.{success,warning,error}.main` via a `getStatusMeta(theme)`
+helper). `useChartTheme.ts` was already palette-driven (its `#6C63FF`
+occurrences were stale comments, not literals) — left as-is.
+Contrast was verified numerically (WCAG relative-luminance formula, all
+new primary/secondary/semantic-on-background and text-on-background pairs
+computed directly) rather than with a browser contrast checker — all pairs
+clear 4.3:1+, most 5:1+; see D1 note for the one adjustment that math
+forced. **Not yet manually eyeballed in a running browser** across
+Dashboard/AI Chat/Resources/Messenger/Contributors in both modes — only
+confirmed the dev server boots and serves both fonts. That visual pass
+(plus the still-open C2 composer check) is worth doing together before
+calling the theme visually final.
 
 ---
 

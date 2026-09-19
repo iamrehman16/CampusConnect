@@ -7,7 +7,9 @@ import {
   Skeleton,
   Stack,
   Typography,
+  useTheme,
 } from "@mui/material";
+import { alpha, type Theme } from "@mui/material/styles";
 import {
   CheckCircle,
   HourglassEmpty,
@@ -32,29 +34,32 @@ interface ProfileResourcesTabProps {
   onDeleteResource?: (resource: Resource) => void;
 }
 
-const statusMeta: Record<
-  ApprovalStatus,
-  { label: string; color: string; bg: string; icon: React.ReactNode }
-> = {
+// BACKLOG.md D2 — these were hardcoded literals that happened to
+// approximate the theme's success/warning/error hues rather than reading
+// from them, so a palette change (see palette.ts) would have silently
+// desynced these status chips from the rest of the app.
+const getStatusMeta = (
+  theme: Theme
+): Record<ApprovalStatus, { label: string; color: string; bg: string; icon: React.ReactNode }> => ({
   [ApprovalStatus.APPROVED]: {
     label: "Approved",
-    color: "#00D9A6",
-    bg: "rgba(0,217,166,0.12)",
+    color: theme.palette.success.main,
+    bg: alpha(theme.palette.success.main, 0.12),
     icon: <CheckCircle sx={{ fontSize: 13 }} />,
   },
   [ApprovalStatus.PENDING]: {
     label: "Pending",
-    color: "#FFB547",
-    bg: "rgba(255,181,71,0.12)",
+    color: theme.palette.warning.main,
+    bg: alpha(theme.palette.warning.main, 0.12),
     icon: <HourglassEmpty sx={{ fontSize: 13 }} />,
   },
   [ApprovalStatus.REJECTED]: {
     label: "Rejected",
-    color: "#FF5C5C",
-    bg: "rgba(255,92,92,0.12)",
+    color: theme.palette.error.main,
+    bg: alpha(theme.palette.error.main, 0.12),
     icon: <Cancel sx={{ fontSize: 13 }} />,
   },
-};
+});
 
 const ResourceCardSkeleton = () => (
   <Card
@@ -92,6 +97,8 @@ const ProfileResourcesTab: React.FC<ProfileResourcesTabProps> = (props) => {
     fetchNextPage,
     publicView = false,
   } = props;
+  const theme = useTheme();
+  const statusMeta = getStatusMeta(theme);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -139,23 +146,23 @@ const ProfileResourcesTab: React.FC<ProfileResourcesTabProps> = (props) => {
                   background: isActive
                     ? meta
                       ? meta.bg
-                      : "rgba(108,99,255,0.15)"
-                    : "rgba(255,255,255,0.05)",
+                      : alpha(theme.palette.primary.main, 0.15)
+                    : alpha(theme.palette.text.primary, 0.05),
                   color: isActive
                     ? meta
                       ? meta.color
-                      : "#6C63FF"
+                      : theme.palette.primary.main
                     : "text.secondary",
                   border: isActive
-                    ? `1px solid ${meta ? meta.color + "55" : "rgba(108,99,255,0.4)"}`
-                    : "1px solid rgba(255,255,255,0.08)",
+                    ? `1px solid ${meta ? meta.color + "55" : alpha(theme.palette.primary.main, 0.4)}`
+                    : `1px solid ${alpha(theme.palette.text.primary, 0.08)}`,
                   transition: "all 0.15s",
                   "&:hover": {
                     background: isActive
                       ? meta
                         ? meta.bg
-                        : "rgba(108,99,255,0.2)"
-                      : "rgba(255,255,255,0.08)",
+                        : alpha(theme.palette.primary.main, 0.2)
+                      : alpha(theme.palette.text.primary, 0.08),
                   },
                 }}
               />

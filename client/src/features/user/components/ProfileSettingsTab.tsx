@@ -9,6 +9,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { alpha, type Theme } from "@mui/material/styles";
 import { Save } from "@mui/icons-material";
 import type { UpdateUserDto } from "../types/user.dto";
 import type { ProfileUserViewModel } from "../types/profile.types";
@@ -21,15 +22,18 @@ interface ProfileSettingsTabProps {
 
 const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8];
 
-const fieldSx = {
+// BACKLOG.md D2 — was hardcoded to the old primary (#6C63FF) and a bare
+// white-overlay background; now themed so it tracks the current
+// primary/mode instead of drifting from the palette on the next rebrand.
+const fieldSx = (theme: Theme) => ({
   "& .MuiOutlinedInput-root": {
-    background: "rgba(255,255,255,0.03)",
-    "& fieldset": { borderColor: "rgba(255,255,255,0.1)" },
-    "&:hover fieldset": { borderColor: "rgba(108,99,255,0.4)" },
-    "&.Mui-focused fieldset": { borderColor: "#6C63FF" },
+    background: alpha(theme.palette.text.primary, 0.03),
+    "& fieldset": { borderColor: alpha(theme.palette.text.primary, 0.1) },
+    "&:hover fieldset": { borderColor: alpha(theme.palette.primary.main, 0.4) },
+    "&.Mui-focused fieldset": { borderColor: theme.palette.primary.main },
   },
-  "& .MuiInputLabel-root.Mui-focused": { color: "#6C63FF" },
-};
+  "& .MuiInputLabel-root.Mui-focused": { color: theme.palette.primary.main },
+});
 
 const ProfileSettingsTab: React.FC<ProfileSettingsTabProps> = ({
   user,
@@ -149,7 +153,7 @@ const ProfileSettingsTab: React.FC<ProfileSettingsTabProps> = ({
         </TextField>
       </Stack>
 
-      <Divider sx={{ my: 3, borderColor: "rgba(255,255,255,0.07)" }} />
+      <Divider sx={{ my: 3, borderColor: "divider" }} />
 
       <Stack direction="row" justifyContent="flex-end">
         <Button
@@ -164,13 +168,13 @@ const ProfileSettingsTab: React.FC<ProfileSettingsTabProps> = ({
           onClick={handleSubmit}
           disabled={!isDirty || isSaving || !form.name.trim()}
           sx={{
-            background: "linear-gradient(135deg, #6C63FF, #5753d0)",
-            textTransform: "none",
-            fontWeight: 600,
+            // Gradient/shadow come from the theme's containedPrimary
+            // override — no need to duplicate them (and risk drifting
+            // from the palette) here.
             px: 3,
             "&:disabled": {
-              background: "rgba(255,255,255,0.07)",
-              color: "rgba(255,255,255,0.3)",
+              background: (theme) => alpha(theme.palette.text.primary, 0.07),
+              color: (theme) => alpha(theme.palette.text.primary, 0.3),
             },
           }}
         >

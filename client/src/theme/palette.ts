@@ -1,19 +1,31 @@
 import type { PaletteMode } from "@mui/material";
 
+// BACKLOG.md D1 — light and dark used to be the same primary (#6C63FF) at
+// two lightness values, which reads as an auto-inverted default rather than
+// a considered brand. Two distinct moods instead, each with its own hue
+// pairing (not just the other's colors darkened/lightened):
+//
+// Light ("paper & ink") — warm clay/terracotta primary on a warm cream
+// paper, cooled by a deep forest-teal secondary. Reads academic: ink on a
+// page, a highlighter accent, not a SaaS-purple template.
+//
+// Dark ("midnight desk") — cool indigo primary on a near-black blue-slate,
+// warmed by an amber "desk lamp" secondary. The primary hue itself changes
+// between modes (clay -> indigo), not just its lightness.
 export const getPalette = (mode: PaletteMode) =>
   mode === "dark"
     ? {
         primary: {
-          main: "#6C63FF",
-          light: "#938BFF",
-          dark: "#4B44B2",
+          main: "#5266D6",
+          light: "#8C98F0",
+          dark: "#3C4AAD",
           contrastText: "#FFFFFF",
         },
         secondary: {
-          main: "#00D9A6",
-          light: "#33E1B8",
-          dark: "#009874",
-          contrastText: "#000000",
+          main: "#F0A857",
+          light: "#F5C388",
+          dark: "#C2823D",
+          contrastText: "#1A1206",
         },
         error: {
           main: "#FF6B6B",
@@ -21,15 +33,15 @@ export const getPalette = (mode: PaletteMode) =>
           dark: "#CC5555",
         },
         warning: {
-          main: "#FFB347",
-          light: "#FFB347",
-          dark: "#CC8F39",
-          contrastText: "#0A0A0A",
+          main: "#D6A62A",
+          light: "#E8C468",
+          dark: "#A87F1E",
+          contrastText: "#1A1206",
         },
         success: {
-          main: "#4ECB71",
-          light: "#7DD99A",
-          dark: "#3EA259",
+          main: "#4ECB8E",
+          light: "#7DD9AC",
+          dark: "#3EA271",
         },
         info: {
           main: "#54A0FF",
@@ -37,68 +49,68 @@ export const getPalette = (mode: PaletteMode) =>
           dark: "#4380CC",
         },
         background: {
-          default: "#0F1117",
-          paper: "#1A1D27",
+          default: "#12141C",
+          paper: "#1B1E29",
         },
         text: {
-          primary: "#F1F5F9",
-          secondary: "#94A3B8",
-          disabled: "#475569",
+          primary: "#F2F0EA",
+          secondary: "#A6ADBB",
+          disabled: "#5B6272",
         },
-        divider: "rgba(148, 163, 184, 0.18)",
+        divider: "rgba(166, 173, 187, 0.16)",
         action: {
-          hover: "rgba(108, 99, 255, 0.08)",
-          selected: "rgba(108, 99, 255, 0.16)",
-          focus: "rgba(108, 99, 255, 0.12)",
+          hover: "rgba(82, 102, 214, 0.08)",
+          selected: "rgba(82, 102, 214, 0.16)",
+          focus: "rgba(82, 102, 214, 0.12)",
         },
       }
     : {
         primary: {
-          main: "#6C63FF",
-          light: "#938BFF",
-          dark: "#4B44B2",
+          main: "#B5541F",
+          light: "#D98A5C",
+          dark: "#8A3E15",
           contrastText: "#FFFFFF",
         },
         secondary: {
-          main: "#00B894",
-          light: "#00D9A6",
-          dark: "#007A65",
+          main: "#2F6F62",
+          light: "#5C9C8D",
+          dark: "#1D4A40",
           contrastText: "#FFFFFF",
         },
         error: {
-          main: "#E53935",
-          light: "#EF5350",
-          dark: "#C62828",
+          main: "#B33951",
+          light: "#CC6B82",
+          dark: "#832639",
         },
         warning: {
-          main: "#F59E0B",
-          light: "#FBBF24",
-          dark: "#B45309",
-          contrastText: "#0A0A0A",
+          main: "#C98A1F",
+          light: "#DFAE5C",
+          dark: "#8F6314",
+          contrastText: "#2A2420",
         },
         success: {
-          main: "#10B981",
-          light: "#34D399",
-          dark: "#047857",
+          main: "#3F7D5C",
+          light: "#6FA688",
+          dark: "#2B5940",
         },
         info: {
-          main: "#3B82F6",
-          light: "#60A5FA",
-          dark: "#2563EB",
+          main: "#3B7A9E",
+          light: "#69A2C2",
+          dark: "#295A78",
         },
         background: {
-          default: "#F4F2EF",
-          paper: "#FFFFFF",
+          default: "#F6F1E9",
+          paper: "#FFFCF7",
         },
         text: {
-          primary: "#0A0A0A",
-          secondary: "#5E6778",
-          disabled: "#9BA3AF",
+          primary: "#2A2420",
+          secondary: "#6B6259",
+          disabled: "#9C9284",
         },
-        divider: "rgba(0, 0, 0, 0.14)",
+        divider: "rgba(42, 36, 32, 0.13)",
         action: {
-          hover: "rgba(108, 99, 255, 0.06)",
-          selected: "rgba(108, 99, 255, 0.12)",
-          focus: "rgba(108, 99, 255, 0.10)",
+          hover: "rgba(181, 84, 31, 0.06)",
+          selected: "rgba(181, 84, 31, 0.12)",
+          focus: "rgba(181, 84, 31, 0.10)",
         },
       };

@@ -1,4 +1,4 @@
-import type { Components, Theme } from '@mui/material/styles';
+import { alpha, type Components, type Theme } from '@mui/material/styles';
 
 /**
  * Global MUI component style overrides.
@@ -22,26 +22,26 @@ export const componentOverrides: Components<Theme> = {
       sizeLarge: {
         padding: '12px 28px',
       },
-      containedPrimary: {
-        background: 'linear-gradient(135deg, #6C63FF 0%, #938BFF 100%)',
-        boxShadow: '0 2px 8px rgba(108, 99, 255, 0.25)',
+      containedPrimary: ({ theme }) => ({
+        background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
+        boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.25)}`,
         '&:hover': {
-          background: 'linear-gradient(135deg, #6C63FF 0%, #938BFF 100%)',
-          boxShadow: '0 4px 12px rgba(108, 99, 255, 0.30)',
+          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.light} 100%)`,
+          boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
           opacity: 0.92,
         },
         '&:active': {
-          boxShadow: '0 1px 4px rgba(108, 99, 255, 0.20)',
+          boxShadow: `0 1px 4px ${alpha(theme.palette.primary.main, 0.2)}`,
           opacity: 1,
         },
-      },
-      outlinedPrimary: {
-        borderColor: 'rgba(108, 99, 255, 0.5)',
+      }),
+      outlinedPrimary: ({ theme }) => ({
+        borderColor: alpha(theme.palette.primary.main, 0.5),
         '&:hover': {
-          borderColor: '#6C63FF',
-          backgroundColor: 'rgba(108, 99, 255, 0.06)',
+          borderColor: theme.palette.primary.main,
+          backgroundColor: alpha(theme.palette.primary.main, 0.06),
         },
-      },
+      }),
       text: {
         '&:hover': {
           backgroundColor: 'rgba(148, 163, 184, 0.06)',
