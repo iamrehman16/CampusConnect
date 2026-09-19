@@ -1,23 +1,38 @@
 // hooks/ai-chat.hooks.ts
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { aiChatService } from "../services/ai-chat.service";
-import { aiChatKeys } from "./ai-chat.keys";
+import { aiChatKeys, NEW_THREAD_KEY } from "./ai-chat.keys";
+import { getConversation } from "../utils/ai-chat.cache";
 import type { ConversationMessage } from "../types/ai-chat.dto";
 
 // ---------------------------------------------------------------------------
 // useConversation
-// Treats the React Query cache as local state storage for one thread's
-// messages, keyed by conversationId (BACKLOG.md B7) — queryFn returns []
-// so it never hits the network; staleTime:Infinity keeps it frozen for the
-// lifetime of the session (server-side history sync is BACKLOG.md B8).
+// The React Query cache is a thread's message store, keyed by
+// conversationId (BACKLOG.md B7). For an existing thread whose cache entry
+// is empty — a fresh browser/device with nothing persisted locally yet —
+// this fetches full history from the server as the source of truth
+// (BACKLOG.md B8). If the entry already has messages (an active session's
+// optimistic writes, or a thread already synced this session), it's left
+// alone: refetching unconditionally on every mount would race the server's
+// own async persistence for a thread just created in this session
+// (AiChatService only awaits appendMessages after the SSE stream's "done"
+// event is already flushed to the client — see ai-chat.service.ts on the
+// server), which could clobber correct optimistic messages with an
+// incomplete read moments later.
 // ---------------------------------------------------------------------------
 export function useConversation(conversationId: string) {
+  const queryClient = useQueryClient();
+  const isNewThread = conversationId === NEW_THREAD_KEY;
+
   return useQuery<ConversationMessage[]>({
     queryKey: aiChatKeys.conversation(conversationId),
-    queryFn: () => [],
+    queryFn: () => aiChatService.getMessages(conversationId),
+    enabled:
+      !isNewThread &&
+      getConversation(queryClient, conversationId).length === 0,
     staleTime: Infinity,
     gcTime: Infinity,
-    initialData: [],
+    initialData: isNewThread ? [] : undefined,
   });
 }
 

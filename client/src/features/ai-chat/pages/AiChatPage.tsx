@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Box, Drawer, useMediaQuery, useTheme } from "@mui/material";
+import { Box, CircularProgress, Drawer, useMediaQuery, useTheme } from "@mui/material";
 import { useConversation, useThreadsQuery } from "../hooks/ai-chat.hooks";
 import { useStreamMessage } from "../hooks/useStreamMessage";
 import { useChatScroll } from "../hooks/useChatScroll";
@@ -34,7 +34,11 @@ export default function AiChatPage() {
     [threads, routeConversationId],
   );
 
-  const { data: messages } = useConversation(conversationId);
+  // BACKLOG.md B8 — for an existing thread with nothing cached locally yet
+  // (fresh browser/device), useConversation fetches full history from the
+  // server; `data` is undefined until that resolves.
+  const { data: messages, isLoading: isHistoryLoading } =
+    useConversation(conversationId);
 
   const onThreadResolved = useCallback(
     (newConversationId: string) => {
@@ -50,7 +54,7 @@ export default function AiChatPage() {
 
   const { scrollContainerRef, bottomRef, showScrollBtn, scrollToBottom } =
     useChatScroll({
-      messages,
+      messages: messages ?? [],
       streamingContent: streamingBubble?.content,
       isStreaming,
     });
@@ -78,15 +82,28 @@ export default function AiChatPage() {
         onOpenThreads={isDesktop ? undefined : () => setThreadsDrawerOpen(true)}
       />
 
-      <AiChatMessageList
-        messages={messages}
-        streamingBubble={streamingBubble}
-        showScrollBtn={showScrollBtn}
-        onSuggestionClick={(text) => setPrefill(text)}
-        onScrollToBottom={scrollToBottom}
-        scrollContainerRef={scrollContainerRef}
-        bottomRef={bottomRef}
-      />
+      {isHistoryLoading ? (
+        <Box
+          sx={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <CircularProgress size={28} />
+        </Box>
+      ) : (
+        <AiChatMessageList
+          messages={messages ?? []}
+          streamingBubble={streamingBubble}
+          showScrollBtn={showScrollBtn}
+          onSuggestionClick={(text) => setPrefill(text)}
+          onScrollToBottom={scrollToBottom}
+          scrollContainerRef={scrollContainerRef}
+          bottomRef={bottomRef}
+        />
+      )}
 
       <Box
         sx={{

@@ -279,7 +279,7 @@ tests exist in this repo (client CI is typecheck+build only, no test
 job); verified via `tsc -b`/`vite build`/`eslint` all clean — did not
 verify interactively in a browser (needs a live backend + auth session).
 
-### B8 — Sync client history with server on load (single source of truth)
+### B8 — Sync client history with server on load (single source of truth) — DONE (2026-09-19)
 **Effort:** 5
 **Where:** `client/src/features/ai-chat/hooks/useChatPageInit.ts` (or
 equivalent), depends on B2/B3
@@ -296,6 +296,28 @@ answers.
   primary store.
 - Verify: clear browser storage, reload, open an existing thread — full
   history reappears from the server, not just from cache.
+
+**Resolved:** `aiChatService.getMessages(conversationId)` hits B3's
+`GET ai/conversations/:id/messages` (a single generous page —
+`HISTORY_PAGE_LIMIT = 100` — not true infinite-scroll pagination; that's
+its own PBI, out of scope for what B8 actually asks for), reverses the
+server's newest-first order to chronological, and drops citations/
+retrievalStatus (AiMessage never persisted those — they're transient
+SSE/response payload). `useConversation(conversationId)` now fetches
+this when — and only when — the thread's local cache entry is empty:
+unconditionally refetching on every open was considered and rejected,
+because a thread just created in this session (B7) already has its
+correct optimistic messages, and `AiChatService.streamChatResponse`
+persists the exchange (`appendMessages`) only after the SSE "done" event
+is already flushed to the client — refetching immediately after
+resolving a new thread's id risks reading an incomplete history and
+clobbering correct optimistic state with it. An empty cache entry (fresh
+browser/device, or after `useDeleteThread` evicts one) is exactly the
+scenario the acceptance criteria's verify step describes, so "fetch iff
+empty" satisfies it without the race. `AiChatPage` shows a spinner while
+an existing thread's history is loading. Verified via `tsc -b`/
+`vite build`/`eslint`, not interactively (same constraint as B7 — needs a
+live backend + auth session).
 
 ### B9 — Token-budget hardening for the assembled context
 **Effort:** 5

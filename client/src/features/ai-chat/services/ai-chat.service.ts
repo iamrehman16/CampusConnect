@@ -1,10 +1,12 @@
 // services/ai-chat.service.ts
 import api from "@/shared/api/axios.instance";
+import type { PaginatedResult } from "@/shared/types/api.types";
 import type {
   AiConversationThread,
   ChatMessageDto,
   ChatResponseDto,
   Citation,
+  ConversationMessage,
   RetrievalStatus,
 } from "../types/ai-chat.dto";
 
@@ -36,6 +38,30 @@ function normalizeThread(thread: RawThread): AiConversationThread {
     updatedAt: thread.updatedAt,
   };
 }
+
+// Server's AiMessage (BACKLOG.md B3) — no citations/retrievalStatus, those
+// are transient SSE/response payload, never persisted per-message.
+type RawMessage = {
+  _id?: string;
+  id?: string;
+  role: "user" | "assistant";
+  content: string;
+};
+
+function normalizeMessage(message: RawMessage): ConversationMessage {
+  return {
+    id: message.id ?? message._id ?? "",
+    role: message.role,
+    content: message.content,
+  };
+}
+
+// Full history a thread realistically has for this app's scale — a single
+// page, not true infinite scroll (BACKLOG.md B8's acceptance criteria asks
+// for history to reappear on open, not for scroll-back pagination; that
+// would be its own PBI). Server returns newest-first (ConversationService
+// convention); reversed here for chronological display.
+const HISTORY_PAGE_LIMIT = 100;
 
 export class AiChatService {
   async sendMessage(dto: ChatMessageDto): Promise<ChatResponseDto> {
@@ -69,6 +95,14 @@ export class AiChatService {
 
   async deleteThread(conversationId: string): Promise<void> {
     await api.delete(`ai/conversations/${conversationId}`);
+  }
+
+  async getMessages(conversationId: string): Promise<ConversationMessage[]> {
+    const { data } = await api.get<PaginatedResult<RawMessage>>(
+      `ai/conversations/${conversationId}/messages`,
+      { params: { page: 1, limit: HISTORY_PAGE_LIMIT } },
+    );
+    return data.data.map(normalizeMessage).reverse();
   }
 
   async *streamMessage(
