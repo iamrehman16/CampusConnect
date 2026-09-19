@@ -14,9 +14,15 @@ import type { PaletteMode } from "@mui/material";
 // `#A44C1B`) to keep text-colored-primary contrast above 4.5:1 on the
 // now-darker paper.
 //
-// Dark ("midnight desk") — cool indigo primary on a near-black blue-slate,
-// warmed by an amber "desk lamp" secondary. The primary hue itself changes
-// between modes (clay -> indigo), not just its lightness.
+// Dark ("midnight desk") — cool indigo primary on a matte warm-charcoal
+// (not blue-slate — a first pass left `background`/`text.secondary`/
+// `divider` at their old near-navy hue (~226°, ~20% saturation) even
+// though primary/secondary changed, so the app still read as generically
+// "navy" everywhere; those three are now warm-neutral (~25-45° hue,
+// <10% saturation) to actually deliver the "midnight desk" mood instead of
+// leftover default-MUI blue-black), warmed by an amber "desk lamp"
+// secondary. The primary hue itself changes between modes (clay ->
+// indigo), not just its lightness.
 export const getPalette = (mode: PaletteMode) =>
   mode === "dark"
     ? {
@@ -54,15 +60,15 @@ export const getPalette = (mode: PaletteMode) =>
           dark: "#4380CC",
         },
         background: {
-          default: "#12141C",
-          paper: "#1B1E29",
+          default: "#181614",
+          paper: "#211E1C",
         },
         text: {
           primary: "#F2F0EA",
-          secondary: "#A6ADBB",
-          disabled: "#5B6272",
+          secondary: "#ABA9A3",
+          disabled: "#726F67",
         },
-        divider: "rgba(166, 173, 187, 0.16)",
+        divider: "rgba(171, 169, 163, 0.14)",
         action: {
           hover: "rgba(82, 102, 214, 0.08)",
           selected: "rgba(82, 102, 214, 0.16)",

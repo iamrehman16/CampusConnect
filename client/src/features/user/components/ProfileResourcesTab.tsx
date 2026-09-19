@@ -61,14 +61,10 @@ const getStatusMeta = (
   },
 });
 
+// BACKLOG.md D2 — same fix as PostCardSkeleton (ProfilePostsTab.tsx): was
+// hardcoded to a white-alpha overlay that assumed a dark background.
 const ResourceCardSkeleton = () => (
-  <Card
-    sx={{
-      background: "rgba(255,255,255,0.03)",
-      border: "1px solid rgba(255,255,255,0.07)",
-      borderRadius: 2,
-    }}
-  >
+  <Card>
     <CardContent sx={{ p: 2.5 }}>
       <Stack direction="row" spacing={2} alignItems="flex-start">
         <Skeleton variant="rounded" width={40} height={40} />

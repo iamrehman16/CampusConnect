@@ -249,6 +249,45 @@ a background-tone fix. Left as a known gap for D2's still-open manual
 accessibility pass rather than silently patching each chip's alpha/weight
 without the user in the loop on look.
 
+**Follow-up #2 (user feedback):** dark mode still read as generic
+navy-blue everywhere after D1/D2 — user's words: "the theme new theme we
+implemented is just applied on light mode... the dark mode has navy color
+all over it." Root-caused via a targeted read-only audit (see the general
+inline audit note above D2): confirmed every shell/layout/feature
+component (`AppLayout`, `Sidebar`, `BottomNav`, dashboard, resources,
+messenger, contributors) already reads `background.default`/
+`background.paper` from the theme correctly — no component bypasses the
+theme. The bug was in the token itself: D1's dark-mode rewrite changed
+`primary`/`secondary` (purple -> indigo, teal -> amber) but left
+`background.default`/`background.paper`/`text.secondary`/`divider`
+essentially untouched from the old palette — measured at ~226-228° hue,
+~20% saturation before and after, i.e. still the same navy-blue-slate,
+just 1-2% lighter. Since those four tokens are what every single surface,
+caption, and border reads from app-wide, the primary/secondary changes
+alone were invisible against the unchanged (and most visually dominant)
+neutrals. Fixed by re-deriving the dark neutrals as warm-charcoal instead
+of blue-slate: `background.default` `#12141C` -> `#181614`,
+`background.paper` `#1B1E29` -> `#211E1C`, `text.secondary` `#A6ADBB` ->
+`#ABA9A3`, `text.disabled` `#5B6272` -> `#726F67`, `divider`
+`rgba(166,173,187,...)` -> `rgba(171,169,163,...)` — all now ~24-45° hue,
+<10% saturation (matte charcoal, not navy). Contrast re-verified: text
+pairs 7:1-16:1 (comfortably above AA), disabled-text contrast improved
+from the old theme's 2.49:1 to ~3.6:1 (disabled text has no AA
+requirement, but higher is still better). One pre-existing, not-newly-
+introduced gap noted in passing: `primary.main` (indigo) used as text
+color directly on `background.paper` computes to ~3.3:1 in dark mode
+(was ~3.9:1 in the old theme, e.g. `MarkdownMessage`'s link color) — below
+AA-normal-text 4.5:1, though it clears the 3:1 large-text/UI-component
+threshold. Not fixed here (would mean auditing every dark-mode use of
+primary-as-text-color individually, a bigger and more surgical job than a
+token-level palette fix) — added to the same accessibility-audit gap list
+above. Also fixed, same class of bug, found by the same audit: two
+profile-tab skeleton cards (`ProfilePostsTab.tsx`, `ProfileResourcesTab.tsx`)
+hardcoded a `rgba(255,255,255,...)` overlay that assumed a dark
+background — nearly invisible in light mode, and not derived from the
+theme in dark mode either. Removed in favor of the theme's own `MuiCard`
+override, which both already correctly styles.
+
 ### D2 — Apply the new theme across core surfaces + verify accessibility
 **Effort:** 5
 **Where:** `client/src/theme/components.ts`, spot-checked across

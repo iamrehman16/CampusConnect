@@ -20,14 +20,12 @@ interface ProfilePostsTabProps {
   fetchNextPage: () => void;
 }
 
+// BACKLOG.md D2 — was hardcoded to a white-alpha overlay that assumed a
+// dark background (near-invisible border/tint in light mode); the theme's
+// own MuiCard override already gives a themed border/background, so this
+// just needed to stop redundantly re-declaring it with the wrong values.
 const PostCardSkeleton = () => (
-  <Card
-    sx={{
-      background: "rgba(255,255,255,0.03)",
-      border: "1px solid rgba(255,255,255,0.07)",
-      borderRadius: 2,
-    }}
-  >
+  <Card>
     <CardContent sx={{ p: 2.5 }}>
       <Skeleton width="60%" height={20} sx={{ mb: 1 }} />
       <Skeleton width="100%" height={16} />
