@@ -319,7 +319,7 @@ an existing thread's history is loading. Verified via `tsc -b`/
 `vite build`/`eslint`, not interactively (same constraint as B7 — needs a
 live backend + auth session).
 
-### B9 — Token-budget hardening for the assembled context
+### B9 — Token-budget hardening for the assembled context — DONE (2026-09-19)
 **Effort:** 5
 **Where:** `server/src/modules/ai/services/groq.service.ts#buildMessages`,
 depends on B5/B6
@@ -336,6 +336,25 @@ but becomes one once memory is unbounded input.
   order, but document the reasoning).
 - No silent truncation — if content gets dropped, that's a debug-loggable
   event per §3.3, not invisible.
+
+**Resolved:** `GroqService.buildMessages` now assembles mandatory content
+(system prompt + summary + the current user query — never dropped, the
+request is meaningless without them) separately from three optional
+blocks, then calls a new `assembleWithinBudget` that measures the total
+against `aiCfg.maxPromptTokens` (new `GROQ_MAX_PROMPT_TOKENS` env var,
+default 6000) using a chars/4 estimator — a real tokenizer (e.g.
+tiktoken) was deliberately not added, since Groq serves Llama models,
+not OpenAI's cl100k vocabulary, so a GPT tokenizer would just be a
+precise count for the wrong thing; this is a safety-net budget, not a
+billing-accurate one. Drop order when over budget: cross-session memory
+recall (B6) first, then document RAG context, then the oldest recent
+exchanges one at a time — matching the priority reasoning in this PBI's
+own description (memory is the newest, least-load-bearing addition;
+recent exchanges are what actually keeps a reply coherent). Every drop
+is `logger.warn`ed with the token counts involved, never silent. Covered
+by new tests in `groq.service.spec.ts` (fits within budget, drops memory
+first, drops context next, trims oldest history last, never drops
+system/query even far over budget).
 
 ---
 

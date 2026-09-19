@@ -5,11 +5,12 @@ import { GroqService, GroqServiceError } from './groq.service';
 
 type GroqInternals = { groq: { chat: { completions: { create: jest.Mock } } } };
 
-function buildService(timeoutMs = 30_000) {
+function buildService(timeoutMs = 30_000, maxPromptTokens = 6000) {
   const service = new GroqService({
     groqApiKey: 'test-key',
     models: { reasoning: 'reasoning-model', fast: 'fast-model' },
     groqTimeoutMs: timeoutMs,
+    maxPromptTokens,
   } as ConfigType<typeof aiConfig>);
 
   const create = jest.fn();
@@ -181,5 +182,137 @@ describe('GroqService', () => {
 
     expect(result).toBe('some query');
     expect(create).not.toHaveBeenCalled();
+  });
+});
+
+describe('GroqService#buildMessages — token budget (B9)', () => {
+  function contextOf(charCount: number) {
+    return [
+      {
+        text: 'x'.repeat(charCount),
+        pageNumber: 1,
+        title: 'Doc',
+        resourceId: 'r1',
+        semester: 1,
+        course: 'CS101',
+        score: 0.9,
+      },
+    ];
+  }
+
+  function memoriesOf(charCount: number) {
+    return [
+      {
+        text: 'y'.repeat(charCount),
+        conversationId: 'c1',
+        score: 0.9,
+        createdAt: new Date(),
+      },
+    ];
+  }
+
+  it('keeps memory, RAG context, and history when everything fits the budget', () => {
+    const { service } = buildService(30_000, 6000);
+
+    const messages = service.buildMessages(
+      '',
+      [{ role: 'user', content: 'hi', timestamp: new Date() }],
+      'question',
+      contextOf(100),
+      memoriesOf(100),
+    );
+
+    expect(
+      messages.some((m) => (m.content as string).includes('Relevant memories')),
+    ).toBe(true);
+    expect(
+      messages.some((m) =>
+        (m.content as string).includes('campus knowledge base'),
+      ),
+    ).toBe(true);
+    expect(messages.some((m) => m.role === 'user' && m.content === 'hi')).toBe(
+      true,
+    );
+  });
+
+  it('drops memory recall first when over budget, keeping RAG context and history', () => {
+    const { service } = buildService(30_000, 200); // tiny budget, char/4 estimator
+
+    const messages = service.buildMessages(
+      '',
+      [],
+      'question',
+      contextOf(50),
+      memoriesOf(2000), // large enough alone to blow the budget
+    );
+
+    expect(
+      messages.some((m) => (m.content as string).includes('Relevant memories')),
+    ).toBe(false);
+    expect(
+      messages.some((m) =>
+        (m.content as string).includes('campus knowledge base'),
+      ),
+    ).toBe(true);
+  });
+
+  it('drops RAG context next if dropping memory alone is not enough', () => {
+    const { service } = buildService(30_000, 100);
+
+    const messages = service.buildMessages(
+      '',
+      [],
+      'question',
+      contextOf(2000),
+      memoriesOf(2000),
+    );
+
+    expect(
+      messages.some((m) => (m.content as string).includes('Relevant memories')),
+    ).toBe(false);
+    expect(
+      messages.some((m) =>
+        (m.content as string).includes('campus knowledge base'),
+      ),
+    ).toBe(false);
+  });
+
+  it('trims the oldest recent messages last, after memory and context are already dropped', () => {
+    const { service } = buildService(30_000, 60);
+    const recentMessages = [
+      { role: 'user' as const, content: 'a'.repeat(80), timestamp: new Date() },
+      { role: 'assistant' as const, content: 'oldest', timestamp: new Date() },
+      { role: 'user' as const, content: 'b'.repeat(80), timestamp: new Date() },
+      { role: 'assistant' as const, content: 'newest', timestamp: new Date() },
+    ];
+
+    const messages = service.buildMessages(
+      '',
+      recentMessages,
+      'question',
+      contextOf(200),
+      memoriesOf(200),
+    );
+
+    // Oldest pair dropped first; the newest exchange survives longer.
+    expect(messages.some((m) => m.content === 'oldest')).toBe(false);
+  });
+
+  it('never drops the system prompt or the current user query, even far over budget', () => {
+    const { service } = buildService(30_000, 10);
+
+    const messages = service.buildMessages(
+      '',
+      [{ role: 'user', content: 'z'.repeat(500), timestamp: new Date() }],
+      'the actual question',
+      contextOf(500),
+      memoriesOf(500),
+    );
+
+    expect(messages[0].role).toBe('system');
+    expect(messages[messages.length - 1]).toEqual({
+      role: 'user',
+      content: 'the actual question',
+    });
   });
 });

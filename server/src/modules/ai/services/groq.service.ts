@@ -67,6 +67,25 @@ export class GroqService {
     );
   }
 
+  /**
+   * Rough chars/4 approximation (BACKLOG.md B9), not an exact tokenizer —
+   * Groq serves Llama models, not OpenAI's cl100k, so a GPT-specific
+   * tokenizer (e.g. tiktoken) would give a precise count for the wrong
+   * vocabulary. This is a safety-net budget, not a billing-accurate one.
+   */
+  private estimateTokens(text: string): number {
+    return Math.ceil(text.length / 4);
+  }
+
+  private sumTokens(messages: Groq.Chat.ChatCompletionMessageParam[]): number {
+    return messages.reduce(
+      (sum, m) =>
+        sum +
+        this.estimateTokens(typeof m.content === 'string' ? m.content : ''),
+      0,
+    );
+  }
+
   buildMessages(
     summaryBuffer: string,
     recentMessages: ChatMessage[],
@@ -74,46 +93,138 @@ export class GroqService {
     context: RetrievedContext[],
     memories: MemoryRecall[] = [],
   ): Groq.Chat.ChatCompletionMessageParam[] {
-    const messages: Groq.Chat.ChatCompletionMessageParam[] = [];
-
-    messages.push({ role: 'system', content: SYSTEM_PROMPT });
-
+    const mandatory: Groq.Chat.ChatCompletionMessageParam[] = [
+      { role: 'system', content: SYSTEM_PROMPT },
+    ];
     if (summaryBuffer) {
-      messages.push({
+      mandatory.push({
         role: 'system',
         content: `Previous conversation summary:\n${summaryBuffer}`,
       });
     }
+    const queryMessage: Groq.Chat.ChatCompletionMessageParam = {
+      role: 'user',
+      content: userQuery,
+    };
 
-    // Cross-session memory recall (BACKLOG.md B6) is injected as its own
-    // system block, distinct from document-RAG context below — it's a
-    // recalled fact from a past conversation, not a citable source, so it
-    // must never be conflated with the `context` block into a citation.
-    if (memories.length > 0) {
-      const memoryBlock = memories.map((m) => `- ${m.text}`).join('\n');
-      messages.push({
-        role: 'system',
-        content: `Relevant memories from your past conversations with this user:\n${memoryBlock}\n\nUse these only if relevant to the current question. Do not cite them as sources.`,
-      });
-    }
+    // Cross-session memory recall (BACKLOG.md B6) is its own system block,
+    // distinct from document-RAG context below — it's a recalled fact from
+    // a past conversation, not a citable source, so it must never be
+    // conflated with the `context` block into a citation.
+    const memoryMessage: Groq.Chat.ChatCompletionMessageParam | null =
+      memories.length > 0
+        ? {
+            role: 'system',
+            content: `Relevant memories from your past conversations with this user:\n${memories
+              .map((m) => `- ${m.text}`)
+              .join(
+                '\n',
+              )}\n\nUse these only if relevant to the current question. Do not cite them as sources.`,
+          }
+        : null;
 
-    if (context.length > 0) {
-      const contextBlock = context
-        .map((c) => `[Source: ${c.title}, Page ${c.pageNumber}]\n${c.text}`)
-        .join('\n\n---\n\n');
+    const contextMessage: Groq.Chat.ChatCompletionMessageParam | null =
+      context.length > 0
+        ? {
+            role: 'system',
+            content: `Relevant resources from the campus knowledge base:\n\n${context
+              .map(
+                (c) => `[Source: ${c.title}, Page ${c.pageNumber}]\n${c.text}`,
+              )
+              .join(
+                '\n\n---\n\n',
+              )}\n\nUse this information to answer the question. Do not add citations in your response — they will be appended separately.`,
+          }
+        : null;
 
-      messages.push({
-        role: 'system',
-        content: `Relevant resources from the campus knowledge base:\n\n${contextBlock}\n\nUse this information to answer the question. Do not add citations in your response — they will be appended separately.`,
-      });
-    }
+    const historyMessages: Groq.Chat.ChatCompletionMessageParam[] =
+      recentMessages.map((m) => ({ role: m.role, content: m.content }));
 
-    messages.push(
-      ...recentMessages.map((m) => ({ role: m.role, content: m.content })),
+    return this.assembleWithinBudget(
+      mandatory,
+      memoryMessage,
+      contextMessage,
+      historyMessages,
+      queryMessage,
     );
-    messages.push({ role: 'user', content: userQuery });
+  }
 
-    return messages;
+  /**
+   * Enforces `aiCfg.maxPromptTokens` (BACKLOG.md B9) once B5 (query
+   * rewriting) and B6 (cross-session memory) both feed unbounded content
+   * into the same assembled prompt. Drop order, lowest priority first:
+   * memory recall, then document RAG context, then the oldest recent
+   * exchanges — `mandatory` (system prompt + summary) and the current
+   * user query are never dropped, since the request would be meaningless
+   * without them; if the budget is still exceeded after dropping
+   * everything else, it goes out over budget rather than broken.
+   * Every drop is logged — no silent truncation.
+   */
+  private assembleWithinBudget(
+    mandatory: Groq.Chat.ChatCompletionMessageParam[],
+    memoryMessage: Groq.Chat.ChatCompletionMessageParam | null,
+    contextMessage: Groq.Chat.ChatCompletionMessageParam | null,
+    historyMessages: Groq.Chat.ChatCompletionMessageParam[],
+    queryMessage: Groq.Chat.ChatCompletionMessageParam,
+  ): Groq.Chat.ChatCompletionMessageParam[] {
+    const budget = this.aiCfg.maxPromptTokens;
+    let includeMemory = memoryMessage !== null;
+    let includeContext = contextMessage !== null;
+    const history = [...historyMessages];
+
+    const assemble = () => [
+      ...mandatory,
+      ...(includeMemory && memoryMessage ? [memoryMessage] : []),
+      ...(includeContext && contextMessage ? [contextMessage] : []),
+      ...history,
+      queryMessage,
+    ];
+
+    let assembled = assemble();
+    let tokens = this.sumTokens(assembled);
+    if (tokens <= budget) return assembled;
+
+    if (includeMemory) {
+      const before = tokens;
+      includeMemory = false;
+      assembled = assemble();
+      tokens = this.sumTokens(assembled);
+      this.logger.warn(
+        `Prompt token budget exceeded (~${before} > ${budget} tokens) — dropped cross-session memory recall for this turn`,
+      );
+      if (tokens <= budget) return assembled;
+    }
+
+    if (includeContext) {
+      const before = tokens;
+      includeContext = false;
+      assembled = assemble();
+      tokens = this.sumTokens(assembled);
+      this.logger.warn(
+        `Prompt token budget still exceeded (~${before} > ${budget} tokens) after dropping memory — dropped document RAG context for this turn`,
+      );
+      if (tokens <= budget) return assembled;
+    }
+
+    let droppedHistoryCount = 0;
+    while (history.length > 0 && this.sumTokens(assemble()) > budget) {
+      history.shift(); // oldest exchange first
+      droppedHistoryCount++;
+    }
+    assembled = assemble();
+    tokens = this.sumTokens(assembled);
+    if (droppedHistoryCount > 0) {
+      this.logger.warn(
+        `Prompt token budget still exceeded after dropping memory and RAG context — dropped ${droppedHistoryCount} oldest recent message(s) to fit ~${budget} tokens`,
+      );
+    }
+    if (tokens > budget) {
+      this.logger.warn(
+        `Prompt still ~${tokens} tokens (budget ~${budget}) after dropping all optional content — sending system prompt/summary/query as-is rather than breaking the request`,
+      );
+    }
+
+    return assembled;
   }
 
   async generateResponse(
