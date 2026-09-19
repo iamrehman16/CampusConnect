@@ -13,9 +13,15 @@ interface UseDrainQueueOptions {
   // conversationId, or NEW_THREAD_KEY while a new thread's first message
   // is still in flight and no real id has come back yet.
   conversationIdRef: React.RefObject<string>;
+  // The persisted AiMessage id for the reply in flight, once the server's
+  // "message-saved" SSE event has resolved it (BACKLOG.md C1) — null while
+  // still waiting, in which case the bubble is committed under its
+  // client-generated id and gets swapped in place later (see
+  // ai-chat.cache.ts's updateMessageId).
+  realMessageIdRef: React.RefObject<string | null>;
 }
 
-export function useDrainQueue({ refs, setStreamingBubble, setIsStreaming, conversationIdRef }: UseDrainQueueOptions) {
+export function useDrainQueue({ refs, setStreamingBubble, setIsStreaming, conversationIdRef, realMessageIdRef }: UseDrainQueueOptions) {
   const queryClient = useQueryClient();
   const { accRef, queueRef, renderRef, flushRef, pollCancelRef, citationsRef, retrievalStatusRef } = refs;
 
@@ -72,9 +78,9 @@ export function useDrainQueue({ refs, setStreamingBubble, setIsStreaming, conver
     if (flushRef.current !== null) cancelAnimationFrame(flushRef.current!);
     setConversation(queryClient, conversationIdRef.current, (prev) => [
       ...prev,
-      { 
-        id: assistantBubbleId, 
-        role: "assistant" as const, 
+      {
+        id: realMessageIdRef.current ?? assistantBubbleId,
+        role: "assistant" as const,
         content: accRef.current,
         isPending: false,
         citations: citationsRef.current,
@@ -83,7 +89,7 @@ export function useDrainQueue({ refs, setStreamingBubble, setIsStreaming, conver
     ]);
     setStreamingBubble(null);
     setIsStreaming(false);
-  }, [queryClient, accRef, flushRef, citationsRef, retrievalStatusRef, conversationIdRef, setStreamingBubble, setIsStreaming]);
+  }, [queryClient, accRef, flushRef, citationsRef, retrievalStatusRef, conversationIdRef, realMessageIdRef, setStreamingBubble, setIsStreaming]);
 
   const waitForDrainThenCommit = useCallback((assistantBubbleId: string) => {
     const poll = () => {

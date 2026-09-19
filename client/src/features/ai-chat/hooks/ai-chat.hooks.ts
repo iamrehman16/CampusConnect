@@ -2,8 +2,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { aiChatService } from "../services/ai-chat.service";
 import { aiChatKeys, NEW_THREAD_KEY } from "./ai-chat.keys";
-import { getConversation } from "../utils/ai-chat.cache";
-import type { ConversationMessage } from "../types/ai-chat.dto";
+import { getConversation, setMessageFeedback } from "../utils/ai-chat.cache";
+import type { ConversationMessage, MessageFeedback } from "../types/ai-chat.dto";
 
 // ---------------------------------------------------------------------------
 // useConversation
@@ -66,6 +66,40 @@ export function useRenameThread() {
       aiChatService.renameThread(conversationId, title),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: aiChatKeys.threads() });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// useSetMessageFeedback (BACKLOG.md C1) — optimistic like/dislike toggle.
+// Applies to the cache immediately (the toolbar needs to feel instant) and
+// rolls back on failure, mirroring the pattern the streaming hooks already
+// use for cache-as-local-state.
+// ---------------------------------------------------------------------------
+export function useSetMessageFeedback() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      conversationId,
+      messageId,
+      feedback,
+    }: {
+      conversationId: string;
+      messageId: string;
+      feedback: MessageFeedback | null;
+    }) => aiChatService.setMessageFeedback(conversationId, messageId, feedback),
+    onMutate: ({ conversationId, messageId, feedback }) => {
+      const previous = getConversation(queryClient, conversationId);
+      setMessageFeedback(queryClient, conversationId, messageId, feedback);
+      return { previous, conversationId };
+    },
+    onError: (_err, _vars, context) => {
+      if (!context) return;
+      queryClient.setQueryData(
+        aiChatKeys.conversation(context.conversationId),
+        context.previous,
+      );
     },
   });
 }

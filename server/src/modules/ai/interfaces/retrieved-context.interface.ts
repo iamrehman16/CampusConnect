@@ -29,6 +29,9 @@ export interface ChatResponse {
   citations: Citation[];
   retrievalStatus: RetrievalStatus;
   conversationId: string;
+  // BACKLOG.md C1 — the persisted AiMessage id for this answer, so the
+  // client can attach like/dislike feedback to it.
+  messageId: string;
 }
 
 export interface Citation {

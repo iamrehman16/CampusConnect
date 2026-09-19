@@ -31,6 +31,7 @@ type MockConversationModel = {
 type MockMessageModel = {
   deleteMany: jest.Mock;
   insertMany: jest.Mock;
+  updateOne: jest.Mock;
 };
 
 type MockLegacySessionModel = {
@@ -352,7 +353,12 @@ describe('ConversationService — legacy session migration', () => {
       create: jest.fn().mockResolvedValue({ _id: newConversationId }),
     };
     const messageModel: Partial<MockMessageModel> = {
-      insertMany: jest.fn().mockResolvedValue([]),
+      insertMany: jest
+        .fn()
+        .mockResolvedValue([
+          { _id: new Types.ObjectId() },
+          { _id: new Types.ObjectId() },
+        ]),
     };
     const legacySessionModel: Partial<MockLegacySessionModel> = {
       find: jest.fn().mockReturnValue(chainableQuery([legacySession])),
@@ -450,7 +456,12 @@ describe('ConversationService#appendMessages', () => {
       save: jest.fn().mockResolvedValue(undefined),
     } as unknown as AiConversationDocument;
     const messageModel: Partial<MockMessageModel> = {
-      insertMany: jest.fn().mockResolvedValue([]),
+      insertMany: jest
+        .fn()
+        .mockResolvedValue([
+          { _id: new Types.ObjectId() },
+          { _id: new Types.ObjectId() },
+        ]),
     };
     const service = buildConversationService({}, undefined, messageModel);
 
@@ -465,6 +476,139 @@ describe('ConversationService#appendMessages', () => {
       { conversationId, role: 'user', content: 'user question' },
       { conversationId, role: 'assistant', content: 'assistant answer' },
     ]);
+  });
+
+  it('returns the persisted user and assistant message ids (C1)', async () => {
+    const conversationId = new Types.ObjectId();
+    const userMessageId = new Types.ObjectId();
+    const assistantMessageId = new Types.ObjectId();
+    const conversation = {
+      _id: conversationId,
+      summaryBuffer: '',
+      recentMessages: [],
+      save: jest.fn().mockResolvedValue(undefined),
+    } as unknown as AiConversationDocument;
+    const messageModel: Partial<MockMessageModel> = {
+      insertMany: jest
+        .fn()
+        .mockResolvedValue([
+          { _id: userMessageId },
+          { _id: assistantMessageId },
+        ]),
+    };
+    const service = buildConversationService({}, undefined, messageModel);
+
+    const result = await service.appendMessages(
+      conversation,
+      'user question',
+      'assistant answer',
+      jest.fn(),
+    );
+
+    expect(result).toEqual({
+      userMessageId: userMessageId.toString(),
+      assistantMessageId: assistantMessageId.toString(),
+    });
+  });
+});
+
+describe('ConversationService#setMessageFeedback', () => {
+  it('throws NotFoundException on a thread the user does not own', async () => {
+    const conversationModel: Partial<MockConversationModel> = {
+      findOne: jest.fn().mockResolvedValue(null),
+    };
+    const service = buildConversationService(conversationModel);
+
+    await expect(
+      service.setMessageFeedback('user-1', 'not-mine', 'msg-1', 'up'),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('throws NotFoundException when the message does not belong to the conversation', async () => {
+    const conversationId = new Types.ObjectId();
+    const conversationModel: Partial<MockConversationModel> = {
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ _id: conversationId, userId: 'user-1' }),
+    };
+    const messageModel: Partial<MockMessageModel> & { updateOne: jest.Mock } = {
+      insertMany: jest.fn(),
+      updateOne: jest.fn().mockResolvedValue({ matchedCount: 0 }),
+    };
+    const service = buildConversationService(
+      conversationModel,
+      undefined,
+      messageModel,
+    );
+
+    await expect(
+      service.setMessageFeedback(
+        'user-1',
+        conversationId.toString(),
+        'not-a-message',
+        'up',
+      ),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('sets feedback on an owned message', async () => {
+    const conversationId = new Types.ObjectId();
+    const conversationModel: Partial<MockConversationModel> = {
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ _id: conversationId, userId: 'user-1' }),
+    };
+    const messageModel: Partial<MockMessageModel> & { updateOne: jest.Mock } = {
+      insertMany: jest.fn(),
+      updateOne: jest.fn().mockResolvedValue({ matchedCount: 1 }),
+    };
+    const service = buildConversationService(
+      conversationModel,
+      undefined,
+      messageModel,
+    );
+
+    await service.setMessageFeedback(
+      'user-1',
+      conversationId.toString(),
+      'msg-1',
+      'down',
+    );
+
+    expect(messageModel.updateOne).toHaveBeenCalledWith(
+      { _id: 'msg-1', conversationId },
+      { feedback: 'down' },
+    );
+  });
+
+  it('clears feedback when passed null, using $unset rather than storing a "none" state', async () => {
+    const conversationId = new Types.ObjectId();
+    const conversationModel: Partial<MockConversationModel> = {
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ _id: conversationId, userId: 'user-1' }),
+    };
+    const messageModel: Partial<MockMessageModel> & { updateOne: jest.Mock } = {
+      insertMany: jest.fn(),
+      updateOne: jest.fn().mockResolvedValue({ matchedCount: 1 }),
+    };
+    const service = buildConversationService(
+      conversationModel,
+      undefined,
+      messageModel,
+    );
+
+    await service.setMessageFeedback(
+      'user-1',
+      conversationId.toString(),
+      'msg-1',
+      null,
+    );
+
+    expect(messageModel.updateOne).toHaveBeenCalledWith(
+      { _id: 'msg-1', conversationId },
+      { $unset: { feedback: '' } },
+    );
   });
 });
 
@@ -484,7 +628,12 @@ describe('ConversationService#appendMessages — cross-session memory (B6)', () 
       save: jest.fn().mockResolvedValue(undefined),
     } as unknown as AiConversationDocument;
     const messageModel: Partial<MockMessageModel> = {
-      insertMany: jest.fn().mockResolvedValue([]),
+      insertMany: jest
+        .fn()
+        .mockResolvedValue([
+          { _id: new Types.ObjectId() },
+          { _id: new Types.ObjectId() },
+        ]),
     };
     const memoryService: Partial<MemoryService> = {
       storeMemory: jest.fn().mockResolvedValue(undefined),
@@ -521,7 +670,12 @@ describe('ConversationService#appendMessages — cross-session memory (B6)', () 
       save: jest.fn().mockResolvedValue(undefined),
     } as unknown as AiConversationDocument;
     const messageModel: Partial<MockMessageModel> = {
-      insertMany: jest.fn().mockResolvedValue([]),
+      insertMany: jest
+        .fn()
+        .mockResolvedValue([
+          { _id: new Types.ObjectId() },
+          { _id: new Types.ObjectId() },
+        ]),
     };
     const memoryService: Partial<MemoryService> = {
       storeMemory: jest.fn().mockResolvedValue(undefined),

@@ -12,7 +12,10 @@ export interface ChatResponseDto {
   citations: Citation[];
   retrievalStatus: RetrievalStatus;
   conversationId: string;
+  messageId: string;
 }
+
+export type MessageFeedback = "up" | "down";
 
 // A thread in the sidebar (BACKLOG.md B7) — server's AiConversation without
 // summaryBuffer/recentMessages, which the sidebar has no use for.
@@ -37,4 +40,5 @@ export interface ConversationMessage {
   citations?: Citation[];
   retrievalStatus?: RetrievalStatus;
   isPending?: boolean;
+  feedback?: MessageFeedback | null;
 }

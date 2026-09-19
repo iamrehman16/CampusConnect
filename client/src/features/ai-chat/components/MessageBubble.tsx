@@ -1,7 +1,15 @@
-import { Box, keyframes } from "@mui/material";
+import { useState } from "react";
+import { Box, IconButton, Tooltip, keyframes } from "@mui/material";
+import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
+import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
+import ThumbUpRoundedIcon from "@mui/icons-material/ThumbUpRounded";
+import ThumbUpOutlinedIcon from "@mui/icons-material/ThumbUpOutlined";
+import ThumbDownRoundedIcon from "@mui/icons-material/ThumbDownRounded";
+import ThumbDownOutlinedIcon from "@mui/icons-material/ThumbDownOutlined";
 import { ThinkingBubble } from "./ThinkingBubble";
 import { CitationsChip } from "./CitationChip";
 import { MarkdownMessage } from "./MarkdownMessage";
+import { useSetMessageFeedback } from "../hooks/ai-chat.hooks";
 import type { ConversationMessage } from "../types/ai-chat.dto";
 
 const fadeSlideIn = keyframes`
@@ -11,9 +19,80 @@ const fadeSlideIn = keyframes`
 
 interface MessageBubbleProps {
   message: ConversationMessage;
+  // Needed to address the feedback endpoint (BACKLOG.md C1). Omitted for
+  // the streaming bubble in AiChatMessageList's usage isn't necessary
+  // since the toolbar is hidden until isPending is false anyway.
+  conversationId: string;
 }
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+function MessageActionToolbar({
+  message,
+  conversationId,
+}: {
+  message: ConversationMessage;
+  conversationId: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const { mutate: setFeedback } = useSetMessageFeedback();
+
+  const handleCopy = () => {
+    void navigator.clipboard.writeText(message.content).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  const toggleFeedback = (value: "up" | "down") => {
+    setFeedback({
+      conversationId,
+      messageId: message.id,
+      feedback: message.feedback === value ? null : value,
+    });
+  };
+
+  return (
+    <Box
+      className="message-action-toolbar"
+      sx={{
+        display: "flex",
+        gap: 0.25,
+        mt: 0.25,
+        opacity: { xs: 1, md: 0 },
+        transition: "opacity 0.15s ease",
+      }}
+    >
+      <Tooltip title={copied ? "Copied" : "Copy"}>
+        <IconButton size="small" onClick={handleCopy}>
+          {copied ? (
+            <CheckRoundedIcon sx={{ fontSize: 16 }} />
+          ) : (
+            <ContentCopyRoundedIcon sx={{ fontSize: 16 }} />
+          )}
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Good response">
+        <IconButton size="small" onClick={() => toggleFeedback("up")}>
+          {message.feedback === "up" ? (
+            <ThumbUpRoundedIcon sx={{ fontSize: 16 }} color="primary" />
+          ) : (
+            <ThumbUpOutlinedIcon sx={{ fontSize: 16 }} />
+          )}
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Bad response">
+        <IconButton size="small" onClick={() => toggleFeedback("down")}>
+          {message.feedback === "down" ? (
+            <ThumbDownRoundedIcon sx={{ fontSize: 16 }} color="primary" />
+          ) : (
+            <ThumbDownOutlinedIcon sx={{ fontSize: 16 }} />
+          )}
+        </IconButton>
+      </Tooltip>
+    </Box>
+  );
+}
+
+export function MessageBubble({ message, conversationId }: MessageBubbleProps) {
   const isUser = message.role === "user";
 
   return (
@@ -24,7 +103,12 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         animation: `${fadeSlideIn} 0.2s ease forwards`,
       }}
     >
-      <Box sx={{ maxWidth: "78%" }}>
+      <Box
+        sx={{
+          maxWidth: "78%",
+          "&:hover .message-action-toolbar": { opacity: 1 },
+        }}
+      >
         <Box
           sx={{
             px: 1.75,
@@ -82,6 +166,13 @@ export function MessageBubble({ message }: MessageBubbleProps) {
               for this question.
             </Box>
           )}
+
+        {!isUser && !message.isPending && (
+          <MessageActionToolbar
+            message={message}
+            conversationId={conversationId}
+          />
+        )}
       </Box>
     </Box>
   );

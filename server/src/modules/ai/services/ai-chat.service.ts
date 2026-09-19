@@ -71,12 +71,13 @@ export class AiChatService {
 
     const answer = await this.groqService.generateResponse(messages);
 
-    await this.conversationService.appendMessages(
-      conversation,
-      message,
-      answer,
-      (content: string) => this.groqService.summarize(content),
-    );
+    const { assistantMessageId } =
+      await this.conversationService.appendMessages(
+        conversation,
+        message,
+        answer,
+        (content: string) => this.groqService.summarize(content),
+      );
 
     // Fire-and-forget (BACKLOG.md B4): maybeGenerateTitle never rejects —
     // a failed Groq call is logged and falls back to a default there, so
@@ -96,6 +97,7 @@ export class AiChatService {
       citations,
       retrievalStatus,
       conversationId: conversation._id.toString(),
+      messageId: assistantMessageId,
     };
   }
 
@@ -165,12 +167,22 @@ export class AiChatService {
           observer.next({ data: { type: 'done' } } as MessageEvent);
 
           // Persist to conversation history after full answer is assembled
-          await this.conversationService.appendMessages(
-            conversation,
-            message,
-            fullAnswer,
-            (content: string) => this.groqService.summarize(content),
-          );
+          const { assistantMessageId } =
+            await this.conversationService.appendMessages(
+              conversation,
+              message,
+              fullAnswer,
+              (content: string) => this.groqService.summarize(content),
+            );
+
+          // BACKLOG.md C1 — the client has no real message id until now
+          // (appendMessages runs after 'done' is already flushed, by
+          // design — see the comment above). Sent as its own event rather
+          // than folded into 'done' so 'done' still means "stop waiting on
+          // tokens" without being delayed by the DB write.
+          observer.next({
+            data: { type: 'message-saved', messageId: assistantMessageId },
+          } as MessageEvent);
 
           // Fire-and-forget (BACKLOG.md B4) — see getChatResponse for why
           // this can't block or error the response.

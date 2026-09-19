@@ -7,6 +7,7 @@ import type {
   ChatResponseDto,
   Citation,
   ConversationMessage,
+  MessageFeedback,
   RetrievalStatus,
 } from "../types/ai-chat.dto";
 
@@ -19,11 +20,16 @@ export type SseCitationsEvent = {
   conversationId: string;
 };
 export type SseDoneEvent = { type: "done" };
+// BACKLOG.md C1 — arrives after "done", once the server has persisted the
+// assistant reply and knows its real AiMessage id (see ai-chat.service.ts
+// on the server for why this can't be folded into "done" or "citations").
+export type SseMessageSavedEvent = { type: "message-saved"; messageId: string };
 export type SseErrorEvent = { type: "error"; message: string };
 export type SseEvent =
   | SseTokenEvent
   | SseCitationsEvent
   | SseDoneEvent
+  | SseMessageSavedEvent
   | SseErrorEvent;
 
 // Server's AiConversation shape has more fields (summaryBuffer,
@@ -46,6 +52,7 @@ type RawMessage = {
   id?: string;
   role: "user" | "assistant";
   content: string;
+  feedback?: MessageFeedback;
 };
 
 function normalizeMessage(message: RawMessage): ConversationMessage {
@@ -53,6 +60,7 @@ function normalizeMessage(message: RawMessage): ConversationMessage {
     id: message.id ?? message._id ?? "",
     role: message.role,
     content: message.content,
+    feedback: message.feedback ?? null,
   };
 }
 
@@ -103,6 +111,17 @@ export class AiChatService {
       { params: { page: 1, limit: HISTORY_PAGE_LIMIT } },
     );
     return data.data.map(normalizeMessage).reverse();
+  }
+
+  async setMessageFeedback(
+    conversationId: string,
+    messageId: string,
+    feedback: MessageFeedback | null,
+  ): Promise<void> {
+    await api.patch(
+      `ai/conversations/${conversationId}/messages/${messageId}/feedback`,
+      { feedback },
+    );
   }
 
   async *streamMessage(

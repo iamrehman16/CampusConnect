@@ -12,6 +12,11 @@ interface AiChatMessageListProps {
   onScrollToBottom: () => void;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   bottomRef: React.RefObject<HTMLDivElement | null>;
+  // BACKLOG.md C1 — MessageBubble needs this to address the feedback
+  // endpoint. Always the real thread id by the time a bubble can show a
+  // toolbar (isPending is false), even for a just-resolved new thread —
+  // see useStreamMessage's onThreadResolved/navigate ordering.
+  conversationId: string;
 }
 
 export function AiChatMessageList({
@@ -22,6 +27,7 @@ export function AiChatMessageList({
   onScrollToBottom,
   scrollContainerRef,
   bottomRef,
+  conversationId,
 }: AiChatMessageListProps) {
   return (
     // Shell: takes the flex-1 slot, clips the absolute button correctly
@@ -47,12 +53,17 @@ export function AiChatMessageList({
         ) : (
           <>
             {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} />
+              <MessageBubble
+                key={msg.id}
+                message={msg}
+                conversationId={conversationId}
+              />
             ))}
             {streamingBubble && (
               <MessageBubble
                 key={streamingBubble.id}
                 message={streamingBubble}
+                conversationId={conversationId}
               />
             )}
           </>

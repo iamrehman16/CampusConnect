@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { aiChatService } from "../services/ai-chat.service";
-import { setConversation } from "../utils/ai-chat.cache";
+import { setConversation, updateMessageId } from "../utils/ai-chat.cache";
 import { generateId } from "../utils/generate-id";
 import { useStreamRefs } from "./useStreamRefs";
 import { useDrainQueue } from "./useDrainQueue";
@@ -41,6 +41,11 @@ export function useStreamMessage({
   const conversationIdRef = useRef(conversationId);
   conversationIdRef.current = conversationId;
 
+  // The real AiMessage id for the reply currently in flight, resolved once
+  // the server's "message-saved" event arrives (BACKLOG.md C1). Reset per
+  // send in sendMessage below.
+  const realMessageIdRef = useRef<string | null>(null);
+
   const {
     startDrainInterval,
     flushQueueInstant,
@@ -48,7 +53,13 @@ export function useStreamMessage({
     commitOnAbort,
     flushAndCommit,
     cleanup,
-  } = useDrainQueue({ refs, setStreamingBubble, setIsStreaming, conversationIdRef });
+  } = useDrainQueue({
+    refs,
+    setStreamingBubble,
+    setIsStreaming,
+    conversationIdRef,
+    realMessageIdRef,
+  });
 
   // Bug 1 fix: when tab becomes visible, instantly flush any frozen queue
   // so the user sees the full response immediately rather than a slow catch-up
@@ -83,6 +94,7 @@ export function useStreamMessage({
       const userBubbleId = generateId();
       const assistantBubbleId = generateId();
       currentBubbleIdRef.current = assistantBubbleId;
+      realMessageIdRef.current = null;
 
       setConversation(queryClient, conversationIdRef.current, (prev) => [
         ...prev,
@@ -138,7 +150,21 @@ export function useStreamMessage({
             fetchCompleteRef.current = true; // fetch is complete, only animation remains
             setIsFetching(false);
             waitForDrainThenCommit(assistantBubbleId);
-            return;
+            // No early return: the server still has one more event to send
+            // (see below) before it closes the stream on its end.
+          } else if (event.type === "message-saved") {
+            // BACKLOG.md C1 — arrives after "done", once the server has
+            // persisted the reply. commitFinal may already have run by
+            // now (or may not have — the two races independently), so
+            // both the pending-commit ref and an in-place cache patch are
+            // needed to cover either order.
+            realMessageIdRef.current = event.messageId;
+            updateMessageId(
+              queryClient,
+              conversationIdRef.current,
+              assistantBubbleId,
+              event.messageId,
+            );
           } else if (event.type === "error") {
             throw new Error(event.message);
           }

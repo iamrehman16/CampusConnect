@@ -130,7 +130,7 @@ export class ConversationService implements OnModuleInit {
     userMessage: string,
     assistantMessage: string,
     summarizeFn: (content: string) => Promise<string>,
-  ): Promise<void> {
+  ): Promise<{ userMessageId: string; assistantMessageId: string }> {
     conversation.recentMessages.push(
       { role: 'user', content: userMessage, timestamp: new Date() },
       { role: 'assistant', content: assistantMessage, timestamp: new Date() },
@@ -142,7 +142,7 @@ export class ConversationService implements OnModuleInit {
     // spliced out of recentMessages into summaryBuffer — that splice
     // bounds Groq's context window (CLAUDE.md §4), it doesn't govern what's
     // retrievable for scroll-back (BACKLOG.md B3).
-    await this.messageModel.insertMany([
+    const [userDoc, assistantDoc] = await this.messageModel.insertMany([
       { conversationId: conversation._id, role: 'user', content: userMessage },
       {
         conversationId: conversation._id,
@@ -152,6 +152,13 @@ export class ConversationService implements OnModuleInit {
     ]);
 
     await conversation.save();
+
+    // BACKLOG.md C1 — callers need the assistant message's real id to let
+    // the client attach like/dislike feedback to it.
+    return {
+      userMessageId: userDoc._id.toString(),
+      assistantMessageId: assistantDoc._id.toString(),
+    };
   }
 
   private async maybeCompressSummary(
@@ -303,6 +310,34 @@ export class ConversationService implements OnModuleInit {
       { build: () => ({ conversationId: conversation._id }) },
       { build: () => ({ createdAt: -1 }) },
     );
+  }
+
+  /**
+   * Ownership-checked via the parent conversation, since AiMessage has no
+   * userId of its own (BACKLOG.md C1). `feedback: null` clears any existing
+   * rating rather than storing a third 'none' state.
+   */
+  async setMessageFeedback(
+    userId: string,
+    conversationId: string,
+    messageId: string,
+    feedback: 'up' | 'down' | null,
+  ): Promise<void> {
+    const conversation = await this.conversationModel.findOne({
+      _id: conversationId,
+      userId,
+    });
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    const result = await this.messageModel.updateOne(
+      { _id: messageId, conversationId: conversation._id },
+      feedback ? { feedback } : { $unset: { feedback: '' } },
+    );
+    if (result.matchedCount === 0) {
+      throw new NotFoundException('Message not found');
+    }
   }
 
   /**

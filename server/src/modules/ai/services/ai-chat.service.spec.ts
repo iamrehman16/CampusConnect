@@ -9,6 +9,7 @@ import {
 } from '../interfaces/retrieved-context.interface';
 
 type CitationsSseData = { type: 'citations'; citations: Citation[] };
+type MessageSavedSseData = { type: 'message-saved'; messageId: string };
 
 function chunk(
   resourceId: string,
@@ -44,7 +45,10 @@ function buildService(context: RetrievedContext[]) {
       summaryBuffer: '',
       recentMessages: [],
     }),
-    appendMessages: jest.fn().mockResolvedValue(undefined),
+    appendMessages: jest.fn().mockResolvedValue({
+      userMessageId: 'user-msg-id',
+      assistantMessageId: 'assistant-msg-id',
+    }),
     maybeGenerateTitle: jest.fn().mockResolvedValue(undefined),
   };
   const retrievalService: Partial<RetrievalService> = {
@@ -104,6 +108,41 @@ describe('AiChatService — citation deduplication', () => {
     expect(citationsEvent.citations[0].resourceId).toBe('resource-1');
     expect(citationsEvent.citations[0].pageNumber).toBe(3);
   });
+
+  it('getChatResponse returns the persisted assistant message id (C1)', async () => {
+    const service = buildService([]);
+
+    const { messageId } = await service.getChatResponse('user-1', 'query');
+
+    expect(messageId).toBe('assistant-msg-id');
+  });
+
+  it('streamChatResponse emits a message-saved event with the persisted id after done (C1)', async () => {
+    const service = buildService([]);
+
+    const observable = await service.streamChatResponse('user-1', 'query');
+
+    const events: string[] = [];
+    const messageSavedEvent = await new Promise<MessageSavedSseData>(
+      (resolve, reject) => {
+        observable.subscribe({
+          next: (event: MessageEvent) => {
+            const data = event.data as { type: string };
+            events.push(data.type);
+            if (data.type === 'message-saved') {
+              resolve(data as MessageSavedSseData);
+            }
+          },
+          error: reject,
+        });
+      },
+    );
+
+    expect(messageSavedEvent.messageId).toBe('assistant-msg-id');
+    expect(events.indexOf('done')).toBeLessThan(
+      events.indexOf('message-saved'),
+    );
+  });
 });
 
 function buildServiceWithConversation(recentMessages: unknown[]) {
@@ -114,7 +153,10 @@ function buildServiceWithConversation(recentMessages: unknown[]) {
   };
   const conversationService: Partial<ConversationService> = {
     getOrCreateConversation: jest.fn().mockResolvedValue(conversation),
-    appendMessages: jest.fn().mockResolvedValue(undefined),
+    appendMessages: jest.fn().mockResolvedValue({
+      userMessageId: 'user-msg-id',
+      assistantMessageId: 'assistant-msg-id',
+    }),
     maybeGenerateTitle: jest.fn().mockResolvedValue(undefined),
   };
   const groqService: Partial<GroqService> = {

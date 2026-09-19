@@ -12,6 +12,7 @@ import {
 import { ConversationService } from './services/conversation.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { RenameConversationDto } from './dto/rename-conversation.dto';
+import { SetMessageFeedbackDto } from './dto/set-message-feedback.dto';
 import { ParseMongoIdPipe } from '../../common/pipes/is-mongo-id.pipe';
 import { BaseQueryDto } from '../../common/dto/base-query.dto';
 import { AuthenticatedRequest } from './ai.controller';
@@ -37,6 +38,21 @@ export class ConversationController {
     @Query() dto: BaseQueryDto,
   ) {
     return this.conversationService.getMessages(req.user.id, id, dto);
+  }
+
+  @Patch(':id/messages/:messageId/feedback')
+  setMessageFeedback(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseMongoIdPipe) id: string,
+    @Param('messageId', ParseMongoIdPipe) messageId: string,
+    @Body() dto: SetMessageFeedbackDto,
+  ) {
+    return this.conversationService.setMessageFeedback(
+      req.user.id,
+      id,
+      messageId,
+      dto.feedback,
+    );
   }
 
   @Patch(':id')

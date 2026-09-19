@@ -102,6 +102,7 @@ export default function AiChatPage() {
           onScrollToBottom={scrollToBottom}
           scrollContainerRef={scrollContainerRef}
           bottomRef={bottomRef}
+          conversationId={conversationId}
         />
       )}
 

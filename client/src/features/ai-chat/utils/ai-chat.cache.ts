@@ -4,7 +4,7 @@
 // every thread gets its own cache entry.
 import type { QueryClient } from '@tanstack/react-query';
 import { aiChatKeys } from '../hooks/ai-chat.keys';
-import type { ConversationMessage } from '../types/ai-chat.dto';
+import type { ConversationMessage, MessageFeedback } from '../types/ai-chat.dto';
 
 export function getConversation(
   queryClient: QueryClient,
@@ -60,4 +60,33 @@ export function moveConversationCache(
     queryKey: aiChatKeys.conversation(fromConversationId),
     exact: true,
   });
+}
+
+/**
+ * BACKLOG.md C1 — the assistant bubble is first committed to the cache
+ * under its client-generated id (see useDrainQueue's commitFinal); this
+ * swaps it for the real AiMessage id once the server's "message-saved" SSE
+ * event arrives, wherever that lands relative to the commit (see
+ * useStreamMessage). A no-op if the commit hasn't happened yet.
+ */
+export function updateMessageId(
+  queryClient: QueryClient,
+  conversationId: string,
+  oldId: string,
+  newId: string,
+): void {
+  setConversation(queryClient, conversationId, (prev) =>
+    prev.map((m) => (m.id === oldId ? { ...m, id: newId } : m)),
+  );
+}
+
+export function setMessageFeedback(
+  queryClient: QueryClient,
+  conversationId: string,
+  messageId: string,
+  feedback: MessageFeedback | null,
+): void {
+  setConversation(queryClient, conversationId, (prev) =>
+    prev.map((m) => (m.id === messageId ? { ...m, feedback } : m)),
+  );
 }

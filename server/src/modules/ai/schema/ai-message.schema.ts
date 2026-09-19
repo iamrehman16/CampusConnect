@@ -27,6 +27,12 @@ export class AiMessage {
   @Prop({ required: true })
   content: string;
 
+  // BACKLOG.md C1 — user rating on an assistant reply. Absent means no
+  // feedback given yet; not modeled as a default so "no opinion" and "not
+  // asked" both look like a missing field rather than a stored 'none'.
+  @Prop({ type: String, enum: ['up', 'down'] })
+  feedback?: 'up' | 'down';
+
   createdAt: Date;
 }
 

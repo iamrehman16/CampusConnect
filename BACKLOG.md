@@ -74,6 +74,25 @@ exposes this on assistant messages.
   copy + like/dislike. Regenerate touches streaming/resend logic and is
   a separate, larger PBI if wanted later.
 
+**Status: DONE.** `AiMessage.feedback?: 'up' | 'down'` added; ownership-
+checked `PATCH ai/conversations/:id/messages/:messageId/feedback` (`null`
+clears via `$unset`, not a stored 'none'). `appendMessages` now returns
+`{ userMessageId, assistantMessageId }` — a real gap this PBI surfaced:
+the client previously had no way to know an assistant reply's persisted
+id at all, since `appendMessages` runs *after* the SSE `done` event is
+already flushed (deliberately, for perceived latency — see B8). Fixed by
+adding a `message-saved` SSE event emitted once persistence completes;
+`useStreamMessage` no longer returns early on `done` and now swaps the
+bubble's client-generated id for the real one in place
+(`ai-chat.cache.ts`'s `updateMessageId`), covering either arrival order
+against `useDrainQueue`'s commit. `MessageBubble.tsx` gained
+`MessageActionToolbar` (copy via Clipboard API with icon-swap
+confirmation; thumbs toggle via `useSetMessageFeedback`, optimistic with
+rollback on error), hover-reveal on desktop / always-visible on mobile.
+Non-streaming `getChatResponse`/`ChatResponseDto` also carry the new
+`messageId` for consistency. Server: 84/84 tests green, lint clean,
+typecheck clean. Client: typecheck/build/lint clean.
+
 ### C2 — Composer (input bar) refinement
 **Effort:** 3
 **Where:** `client/src/features/ai-chat/components/ChatInput.tsx`
