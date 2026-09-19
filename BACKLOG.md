@@ -110,6 +110,24 @@ reclick to keep typing.
 - The disabled-during-streaming state reads clearly as "can't type right
   now," not just a color change — visual clarity only, no new behavior.
 
+**Status: DONE.** Root cause of the disabled-state gap: `ChatInput`
+already declared a `disabled` prop and used it to gate `handleSend`/
+`canSend`, but never actually passed it to the `TextField` — so streaming
+silently blocked sending without ever visibly locking the field. Wired
+`disabled` onto the `TextField` (MUI's native disabled treatment) plus an
+explicit opacity/background dip on `.Mui-disabled` so it doesn't read as
+"muted but still a normal field." Added a low-emphasis "Enter to send ·
+Shift+Enter for new line" caption (hidden on mobile, where the shortcut
+doesn't apply) alongside the existing char counter. Focus restoration:
+since a disabled input is force-blurred by the browser, refocusing right
+at send would just get undone the moment streaming disables the field —
+instead an effect watches `disabled` going true→false and refocuses once
+the composer is usable again, plus an immediate `.focus()` call in
+`handleSend` for the (non-streaming) case where the field never actually
+disables. Client typecheck/build/lint clean. Not manually verified in a
+running browser this session — worth a quick pass before considering the
+composer visually final.
+
 ### C3 — Inline resource cards on citations
 **Effort:** 3
 **Where:** `client/src/features/ai-chat/components/CitationChip.tsx`,

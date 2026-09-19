@@ -37,6 +37,20 @@ export function ChatInput({
     }
   }, [prefillValue, onPrefillConsumed]);
 
+  // BACKLOG.md C2 — `disabled` now actually locks the textarea (see the
+  // TextField prop below), which browsers force-blur on. That's the
+  // moment focus needs to come back without a reclick: once the composer
+  // re-enables after a response finishes, not only right after the click
+  // that sent it (by then the field is already disabled and about to be
+  // blurred regardless of what we focus here).
+  const wasDisabledRef = useRef(disabled);
+  useEffect(() => {
+    if (wasDisabledRef.current && !disabled) {
+      textareaRef.current?.focus();
+    }
+    wasDisabledRef.current = disabled;
+  }, [disabled]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setValue(e.target.value);
   };
@@ -46,6 +60,7 @@ export function ChatInput({
     if (!trimmed || disabled || isOverLimit) return;
     onSend(trimmed);
     setValue('');
+    textareaRef.current?.focus();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -69,6 +84,7 @@ export function ChatInput({
           fullWidth
           multiline
           maxRows={4}
+          disabled={disabled}
           placeholder={isStreaming ? 'Responding…' : 'Ask a question…'}
           value={value}
           onChange={handleChange}
@@ -80,12 +96,24 @@ export function ChatInput({
             '& .MuiOutlinedInput-root': {
               borderRadius: '24px',
               bgcolor: 'background.paper',
+              transition: 'opacity 0.15s ease',
               '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                 borderColor: isOverLimit ? 'error.main' : 'primary.light',
                 borderWidth: '1.5px',
               },
               '& .MuiOutlinedInput-notchedOutline': {
                 borderColor: isOverLimit ? 'error.main' : undefined,
+              },
+              // BACKLOG.md C2 — `disabled` prop existed on this component
+              // already but was never wired to the field, so streaming
+              // never visibly locked the composer. MUI's disabled cursor
+              // + text opacity aren't enough on their own to read as
+              // "can't type right now" rather than "form field, but
+              // muted" — the extra opacity on the whole control makes it
+              // unambiguous.
+              '&.Mui-disabled': {
+                opacity: 0.6,
+                bgcolor: 'action.disabledBackground',
               },
             },
           }}
@@ -138,22 +166,40 @@ export function ChatInput({
         )}
       </Box>
 
-      {showCounter && (
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mt: 0.5,
+          px: 0.5,
+        }}
+      >
         <Typography
           variant="caption"
           sx={{
-            display: 'block',
-            textAlign: 'right',
-            mt: 0.5,
-            pr: 0.5,
-            color: isOverLimit ? 'error.main' : 'text.secondary',
-            fontWeight: isOverLimit ? 600 : 400,
-            transition: 'color 0.15s',
+            display: { xs: 'none', sm: 'block' },
+            color: 'text.disabled',
+            fontSize: '0.7rem',
           }}
         >
-          {charCount} / {MAX_CHARS}
+          Enter to send · Shift+Enter for new line
         </Typography>
-      )}
+
+        {showCounter && (
+          <Typography
+            variant="caption"
+            sx={{
+              textAlign: 'right',
+              color: isOverLimit ? 'error.main' : 'text.secondary',
+              fontWeight: isOverLimit ? 600 : 400,
+              transition: 'color 0.15s',
+            }}
+          >
+            {charCount} / {MAX_CHARS}
+          </Typography>
+        )}
+      </Box>
     </Box>
   );
 }
