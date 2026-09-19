@@ -13,447 +13,202 @@ item in whichever epic you're focused on; don't jump epics mid-PBI.
 Nothing below `3` belongs here — smaller chores go straight into a commit,
 not the backlog.
 
+Epics below are ordered by current priority — work top to bottom unless you
+have a specific reason to jump ahead.
+
 ---
 
 ## Epic A — Code health & CI gate cleanup (DONE)
 
 ---
 
-## Epic B — Long-term memory chat (RAG-integrated)
+## Epic B — Long-term memory chat, RAG-integrated (DONE)
 
-Goal: replace the current single lifelong per-user session with a real
-Claude.ai/ChatGPT-style chat experience — multiple named threads, full
-history retained, cross-session recall, and RAG retrieval that actually
-understands follow-up questions. This is the epic that has to land *before*
-the RAG-first UI redesign (Epic C) — a redesign built on a one-thread-forever
-data model would just get thrown away.
-
-Sequencing matters here more than in Epic A — B1 and B2 are the foundation
-everything else sits on; do them first and in order.
-
-### B1 — Design & migrate the conversation-thread data model — DONE (2026-09-18)
-**Effort:** 8
-**Where:** `server/src/modules/ai/` (new `AiConversation`/`AiMessage`
-schemas, replacing or supplementing `conversation-session.schema.ts`)
-**Why:** `ConversationSession` has a unique index on `userId` — one document
-per user, ever (`conversation-session.schema.ts:9`). There is no thread
-concept: a user cannot have multiple named conversations. Everything else in
-this epic depends on this changing first.
-**Acceptance criteria:**
-- New schema(s) support many threads per user: `AiConversation` (id, userId,
-  title, createdAt, updatedAt, summaryBuffer) and `AiMessage` (conversationId,
-  role, content, createdAt) or equivalent — your call on exact shape, but it
-  must support N threads per user and full message history per thread.
-- Migration path for existing singleton `ConversationSession` docs: each
-  becomes one `AiConversation` for its user (don't just drop existing state).
-- Ownership is enforced at the query level (a user can only read/write their
-  own threads) — this is new; the old model never needed it.
-- `getOrCreateSession`/`clearSession` equivalents are reworked around
-  `conversationId` instead of `userId` alone.
-
-**Resolved:** Added `AiConversation` (thread doc: `userId`, `title`,
-`summaryBuffer`, `recentMessages`) and `AiMessage` (`conversationId`,
-`role`, `content`, `createdAt` — schema only, unwired until B3 persists
-full raw history). `ConversationService.getOrCreateConversation(userId,
-conversationId?)` replaces `getOrCreateSession`: a passed `conversationId`
-is looked up scoped to `userId` and throws `NotFoundException` if it
-doesn't belong to that user (new — the singleton model had no ownership
-check to get wrong). `clearConversation(userId, conversationId)` is the
-`clearSession` equivalent, same ownership check. Legacy
-`ConversationSession` docs are migrated on `ConversationService`'s
-`onModuleInit` — each becomes one `AiConversation`, idempotently (tracked
-via a `migratedAt` marker so re-running on every boot is safe), and the
-legacy docs are kept, not deleted, so the migration is auditable.
-`AiController`'s `chat`/`chat/stream`/`clearSession` routes don't send a
-`conversationId` yet (no client UI for threads), so
-`getOrCreateConversation` falls back to the user's most-recently-updated
-thread when none is given — preserves today's one-thread-per-user
-behavior on the new data model until B2 wires real thread selection
-through from the client. Covered by `conversation.service.spec.ts`
-(ownership enforcement, fallback/create, migration idempotency).
-
-### B2 — Thread CRUD API (create / list / rename / delete) — DONE (2026-09-18)
-**Effort:** 5
-**Where:** `server/src/modules/ai/` controller + service, depends on B1
-**Why:** Once threads exist as a data model, you need endpoints to manage
-them — this is the server-side counterpart to the sidebar UI in B7.
-**Acceptance criteria:**
-- Endpoints: create thread, list a user's threads (sorted by
-  `updatedAt`), rename, delete. All auth-guarded and ownership-checked.
-- `chat/stream` and `chat` endpoints accept a `conversationId` and operate
-  on that thread's history instead of the old singleton session.
-- Deleting a thread removes its messages too (no orphaned `AiMessage` docs).
-
-**Resolved:** Added `ConversationController` (`ai/conversations` —
-`POST`/`GET`/`PATCH :id`/`DELETE :id`), all routed through
-`ConversationService`'s existing ownership-scoped methods
-(`createConversation`, `listConversations`, `renameConversation`,
-`deleteConversation`); auth is enforced by the global `JwtAuthGuard`
-already applied to every route (`AuthModule`'s `APP_GUARD`), matching the
-rest of this module — no per-route `@UseGuards` needed. `deleteConversation`
-also runs `messageModel.deleteMany({ conversationId })` — currently a
-no-op since B3 hasn't wired message persistence into `AiMessage` yet, but
-means the delete path is already correct once B3 lands, instead of leaving
-an orphan-cleanup gap to rediscover later. `ChatMessageDto` gained an
-optional `conversationId` (`@IsMongoId()`), threaded through
-`AiChatService.getChatResponse`/`streamChatResponse` into
-`getOrCreateConversation` — omitting it still falls back to the user's
-most-recently-updated thread (the B1 bridge), so existing callers are
-unaffected. Both the REST response and the SSE `citations` event now
-include `conversationId`, so a caller that didn't specify one learns which
-thread it landed in. Covered by `conversation.controller.spec.ts` and
-extended `conversation.service.spec.ts`/`ai-chat.service.spec.ts`.
-
-### B3 — Persist full raw message history per thread — DONE (2026-09-18)
-**Effort:** 5
-**Where:** `server/src/modules/ai/services/conversation.service.ts`
-**Why:** Today, once the 6-exchange sliding window fills, the oldest 3
-exchanges are `splice()`d out and folded into `summaryBuffer` — the raw text
-is gone forever (`conversation.service.ts`, `RECENT_LIMIT`/
-`SUMMARIZE_BATCH` logic). That's fine for *context-window* purposes but
-wrong for a "long-term memory" product feature: a user should be able to
-scroll up and see what they actually said, not a lossy AI-generated summary
-of it.
-**Acceptance criteria:**
-- Every message is persisted to `AiMessage` (from B1) in full, independent
-  of what the sliding-window/summary logic keeps "in context" for the next
-  Groq call.
-- The sliding-window + summarization mechanism (`CLAUDE.md` §4, don't
-  refactor its *purpose*) continues to bound what's sent to Groq per
-  request — this PBI adds persistence alongside it, it doesn't replace it.
-- A thread's full history is retrievable via the API for the frontend to
-  render on scroll-back (paginated, not one giant payload).
-
-**Resolved:** `ConversationService#appendMessages` now inserts both
-messages into `AiMessage` via `insertMany`, unconditionally — separate
-from `maybeCompressSummary`'s splice, which still only governs
-`recentMessages`/`summaryBuffer` (the Groq context bound, CLAUDE.md §4,
-untouched). Added `getMessages(userId, conversationId, dto)`
-(ownership-checked, paginated via the existing `PaginationService`,
-newest page first — same convention as the chat module's
-`GetMessagesDto`/`getMessages`), exposed as
-`GET ai/conversations/:id/messages`. The B1 legacy-session migration now
-also seeds `AiMessage` from each session's surviving `recentMessages` —
-text already folded into `summaryBuffer` before this fix stays
-unrecoverable (that's the bug this PBI closes going forward, not
-something to invent for the past), but a migrated thread's still-present
-raw messages no longer start life in `AiMessage` empty. Covered by
-extended `conversation.service.spec.ts`/`conversation.controller.spec.ts`.
-
-### B4 — Auto-generate conversation titles — DONE (2026-09-18)
-**Effort:** 3
-**Where:** server `AiConversation` creation flow, depends on B1/B2
-**Why:** ChatGPT/Claude-style sidebars show a short generated title per
-thread, not "New chat" forever. Cheap single-call feature once B1 exists.
-**Acceptance criteria:**
-- After the first exchange in a new thread, one cheap LLM call (same 8B
-  model already used for summary compression, per `CLAUDE.md` §4) generates
-  a short title, saved onto the `AiConversation` doc.
-- Title generation failure doesn't block or error the chat response — it's
-  a nice-to-have side effect, not on the critical path (explicit error
-  handling, not silent, but non-fatal — falls back to a default like the
-  first few words of the user's message).
-
-**Resolved:** Added `GroqService.generateTitle` (fast model, same one used
-for summary compression) and `ConversationService.maybeGenerateTitle`,
-called fire-and-forget (`void`) from `getChatResponse`/`streamChatResponse`
-right after the first exchange's `appendMessages`. Guarded by a new
-exported `DEFAULT_CONVERSATION_TITLE` constant from the schema — only
-fires while the thread still has that default, so a user-renamed title
-(B2) is never overwritten, and the `updateOne` filters on that same title
-so the guard holds even under a concurrent call. `maybeGenerateTitle`
-never throws: a failed Groq call is logged, then falls back to the first
-six words of the user's message (or the default title itself, if that's
-blank too). Covered by `groq.service.spec.ts` and extended
-`conversation.service.spec.ts`/`ai-chat.service.spec.ts`.
-
-### B5 — Contextualize follow-up queries before RAG retrieval — DONE (2026-09-18)
-**Effort:** 5
-**Where:** `server/src/modules/ai/services/retrieval.service.ts`,
-`server/src/modules/ai/services/groq.service.ts`
-**Why:** Confirmed gap — `retrieval.service.ts` embedded only the raw
-current-turn message, ignoring `summaryBuffer`/`recentMessages`. Multi-turn
-follow-ups lost context, degrading retrieval quality.
-**Acceptance criteria:**
-- Query is rewritten/expanded before embedding using conversation context (recent messages + summary).
-- Retrieval quality improvement verified with multi-turn query test cases.
-
-**Resolved:** Added `GroqService.contextualizeQuery` (fast model, expansion step)
-and updated `RetrievalService.retrieve` to call it, passing in conversation
-state from `AiChatService`. Added tests for `contextualizeQuery` in
-`groq.service.spec.ts` covering history-usage and no-history-fallback cases;
-updated `RetrievalService` tests to mock the new dependency. Covered by
-extended tests in both services.
-
-### B6 — Vector-backed cross-session long-term memory — DONE (2026-09-19)
-**Effort:** 8
-**Where:** new service alongside `VectorStoreService`, `RetrievalService`,
-`AiChatService`
-**Why:** This is the centerpiece of the epic — the actual "long-term memory"
-part, as opposed to B1-B5 which are the plumbing it needs to sit on. Right
-now recall is exactly one rolling summary string plus 6 exchanges; nothing
-survives across sessions except that summary. Claude.ai/ChatGPT's "memory"
-retrieves relevant facts from *past conversations*, not just the current
-one.
-**Acceptance criteria:**
-- Key facts/summaries from completed or aging threads get embedded and
-  stored in a separate Qdrant collection (or namespaced within the existing
-  one — your call, but don't conflate it with document-RAG vectors) keyed
-  by user.
-- At query time, this cross-session memory is retrieved alongside
-  document-RAG context (respecting the existing `SCORE_THRESHOLD`-style
-  relevance gate from A4) and injected into `buildMessages` distinctly from
-  document citations — a memory recall isn't a document citation, don't
-  conflate them in the UI either.
-- Respect the MongoDB-ObjectId-to-UUID conversion convention (`CLAUDE.md`
-  §4) for any new Qdrant point IDs.
-- Explicit error handling on this new external-call path per §3.3 — a
-  memory-store failure degrades to "no memory recall this turn," not a
-  broken chat response.
-
-**Resolved:** New `campus_memory` Qdrant collection via `MemoryStoreService`
-(mirrors `VectorStoreService`'s shape/`getCollections()` workaround but kept
-separate — memory recall is not document-RAG context). `MemoryService` sits
-on top: `storeMemory` embeds and upserts, keyed by `userId` in the payload,
-point IDs MD5-hashed to UUID per the `IngestionService` convention (hash of
-`${conversationId}_${Date.now()}` so a thread accumulates multiple memory
-points over its lifetime instead of overwriting one). `retrieveMemories`
-applies the same 0.6 score-threshold pattern as `RetrievalService`. Both
-methods catch and log internally rather than throwing — a failure degrades
-to "no memory stored/recalled this turn," never a broken chat response.
-Wired at the write side: `ConversationService#maybeCompressSummary` fires
-`memoryService.storeMemory` (fire-and-forget) with the raw exchange batch
-just spliced out of `recentMessages` — that's the "aging out" moment,
-and using the raw batch (not the ever-growing `summaryBuffer`) avoids
-re-embedding overlapping text on every compression. Wired at the read
-side: `RetrievalService.retrieve` now takes `userId`, calls
-`memoryService.retrieveMemories` alongside document-RAG search off the
-same contextualized query vector, and returns `memories` on
-`RetrievalResult` distinct from `context`. `GroqService.buildMessages`
-injects memories as their own system block ("Relevant memories from your
-past conversations... do not cite them as sources"), never folded into
-`AiChatService#buildCitations`. Covered by `memory.service.spec.ts` (new)
-and extended `retrieval.service.spec.ts`/`conversation.service.spec.ts`.
-
-### B7 — Frontend: conversation history sidebar — DONE (2026-09-19)
-**Effort:** 8
-**Where:** `client/src/features/ai-chat/`, depends on B1/B2
-**Why:** No thread-list UI exists at all today — `ai-chat.cache.ts` has one
-fixed query key for the whole app, one global conversation. This is the
-visible, "inspired by Claude/ChatGPT" part of the epic.
-**Acceptance criteria:**
-- Sidebar listing the user's threads (title, recency), matching the
-  existing streaming-hook architecture (`useStreamRefs`/`useDrainQueue`/
-  `useStreamMessage` — don't recombine them, per `CLAUDE.md` §4).
-- Create new thread, switch threads, rename, delete — wired to B2's API.
-- TanStack Query cache keyed per-`conversationId`, not the single global key
-  in `ai-chat.cache.ts` today.
-
-**Resolved:** `ai-chat.cache.ts`/`ai-chat.keys.ts` now key every
-conversation's message cache by `conversationId`
-(`aiChatKeys.conversation(id)`) instead of one fixed key — a new
-`NEW_THREAD_KEY` placeholder holds a brand-new thread's messages until the
-server assigns a real id, and `moveConversationCache` migrates that entry
-onto the real id once it arrives. `useStreamRefs`/`useDrainQueue`/
-`useStreamMessage` are parameterized to take the active `conversationId`
-(via a live ref, since a mid-stream thread resolution must land in the
-right cache entry) rather than recombined — per `CLAUDE.md` §4.
-`ConversationController`'s CRUD (create/list/rename/delete) is wired
-through new `AiChatService.getThreads/createThread/renameThread/
-deleteThread` methods and `useThreadsQuery`/`useCreateThread`/
-`useRenameThread`/`useDeleteThread` hooks. New `ThreadSidebar`/
-`ThreadListItem` components render the list (title + recency via
-`date-fns`), matching the real-time messenger's `ConversationList`
-pattern; `AiChatLayout` gives desktop a permanent sidebar (mirroring
-`ConversationsPage`), while mobile keeps the chat pane full-screen with
-the sidebar in a `Drawer` opened from `AiChatHeader` — a new chat is the
-primary action here, unlike the messenger where picking a person comes
-first. Router gained `/ai` (index, new-thread compose) and
-`/ai/:conversationId` (existing thread) child routes under
-`AiChatLayout`; `routeConfig.ts` got the matching pattern entry. The old
-single always-there "Clear" button (`useClearSession`/`clearSession`,
-tied to the pre-B1 singleton-session model) is removed from the UI in
-favor of per-thread Delete in the sidebar — it no longer fits a
-multi-thread world and nothing else referenced it. No automated frontend
-tests exist in this repo (client CI is typecheck+build only, no test
-job); verified via `tsc -b`/`vite build`/`eslint` all clean — did not
-verify interactively in a browser (needs a live backend + auth session).
-
-### B8 — Sync client history with server on load (single source of truth) — DONE (2026-09-19)
-**Effort:** 5
-**Where:** `client/src/features/ai-chat/hooks/useChatPageInit.ts` (or
-equivalent), depends on B2/B3
-**Why:** Confirmed gap — the client never fetches server-side history on
-mount; it relies solely on the IndexedDB-persisted TanStack Query cache. The
-server's `summaryBuffer`/thread state and what the client displays are two
-unsynced stores today: clear browser storage or switch devices and you see
-an empty chat while the server-side memory silently keeps influencing
-answers.
-**Acceptance criteria:**
-- On opening a thread, the client fetches history from the server (B3's
-  paginated endpoint) as the source of truth; IndexedDB/query-cache
-  persistence becomes an offline-read cache layered on top of that, not the
-  primary store.
-- Verify: clear browser storage, reload, open an existing thread — full
-  history reappears from the server, not just from cache.
-
-**Resolved:** `aiChatService.getMessages(conversationId)` hits B3's
-`GET ai/conversations/:id/messages` (a single generous page —
-`HISTORY_PAGE_LIMIT = 100` — not true infinite-scroll pagination; that's
-its own PBI, out of scope for what B8 actually asks for), reverses the
-server's newest-first order to chronological, and drops citations/
-retrievalStatus (AiMessage never persisted those — they're transient
-SSE/response payload). `useConversation(conversationId)` now fetches
-this when — and only when — the thread's local cache entry is empty:
-unconditionally refetching on every open was considered and rejected,
-because a thread just created in this session (B7) already has its
-correct optimistic messages, and `AiChatService.streamChatResponse`
-persists the exchange (`appendMessages`) only after the SSE "done" event
-is already flushed to the client — refetching immediately after
-resolving a new thread's id risks reading an incomplete history and
-clobbering correct optimistic state with it. An empty cache entry (fresh
-browser/device, or after `useDeleteThread` evicts one) is exactly the
-scenario the acceptance criteria's verify step describes, so "fetch iff
-empty" satisfies it without the race. `AiChatPage` shows a spinner while
-an existing thread's history is loading. Verified via `tsc -b`/
-`vite build`/`eslint`, not interactively (same constraint as B7 — needs a
-live backend + auth session).
-
-### B9 — Token-budget hardening for the assembled context — DONE (2026-09-19)
-**Effort:** 5
-**Where:** `server/src/modules/ai/services/groq.service.ts#buildMessages`,
-depends on B5/B6
-**Why:** Once B5 (query rewriting) and B6 (cross-session memory) both add
-more content into the same `buildMessages` call that already assembles
-`[system, summary?, ragContext?, recentMessages, query]`, there's a real
-risk of exceeding Groq's context window on a long thread with a lot of
-recalled memory — this wasn't a concern in the old fixed 6-exchange design
-but becomes one once memory is unbounded input.
-**Acceptance criteria:**
-- Token-count the assembled message array before sending; if over budget,
-  drop lowest-priority content first (long-term memory recall before
-  document RAG context before recent exchanges — your call on priority
-  order, but document the reasoning).
-- No silent truncation — if content gets dropped, that's a debug-loggable
-  event per §3.3, not invisible.
-
-**Resolved:** `GroqService.buildMessages` now assembles mandatory content
-(system prompt + summary + the current user query — never dropped, the
-request is meaningless without them) separately from three optional
-blocks, then calls a new `assembleWithinBudget` that measures the total
-against `aiCfg.maxPromptTokens` (new `GROQ_MAX_PROMPT_TOKENS` env var,
-default 6000) using a chars/4 estimator — a real tokenizer (e.g.
-tiktoken) was deliberately not added, since Groq serves Llama models,
-not OpenAI's cl100k vocabulary, so a GPT tokenizer would just be a
-precise count for the wrong thing; this is a safety-net budget, not a
-billing-accurate one. Drop order when over budget: cross-session memory
-recall (B6) first, then document RAG context, then the oldest recent
-exchanges one at a time — matching the priority reasoning in this PBI's
-own description (memory is the newest, least-load-bearing addition;
-recent exchanges are what actually keeps a reply coherent). Every drop
-is `logger.warn`ed with the token counts involved, never silent. Covered
-by new tests in `groq.service.spec.ts` (fits within budget, drops memory
-first, drops context next, trims oldest history last, never drops
-system/query even far over budget).
+Replaced the single lifelong per-user session with a real Claude/ChatGPT-style
+chat: multiple named threads with ownership checks (B1), thread CRUD API
+(B2), full raw message history persisted per thread independent of the
+context-window summary (B3), auto-generated thread titles (B4), query
+contextualization so follow-up questions retrieve correctly (B5),
+vector-backed cross-session memory recall in its own Qdrant collection (B6),
+a frontend thread sidebar with per-conversation cache keys (B7), server-as-
+source-of-truth history sync on thread open (B8), and a token budget on the
+assembled Groq prompt with a documented drop order (B9). All nine shipped
+2026-09-18/19 — see git log (`feat(ai):`/`feat(ai-chat):` commits) for
+implementation detail; this summary replaces the earlier PBI-by-PBI
+resolution notes now that the epic is closed.
 
 ---
 
-## Epic C — RAG-first UI redesign
+## Epic C — AI Chat UX polish
 
-**Re-scoped 2026-09-19, now that Epic B is functional.** Verified against
-current code, not the original guess: AI Chat already lives at its own
-`immersive`-mode route (`routeConfig.ts`) that hides `Sidebar`/`BottomNav`
-entirely, and B7 already gave it its own `AiChatLayout` — a permanent
-280px sidebar on desktop, a `Drawer` on mobile — which is exactly the
-"Claude.ai/ChatGPT-style persistent sidebar + main pane" shape the
-original C3 asked for. That changes what's actually left to do here: C3
-is largely done as a side effect of B7, and the real open question is C1
-(is chat the *landing* experience, not just a full-bleed page one nav
-click away) — C3's remaining scope depends on how C1 answers that, so do
-C1 first.
+**Decided 2026-09-19:** the dashboard and nav placement stay as they are —
+AI Chat remains a nav item with a dashboard CTA widget, not the landing
+surface. (This supersedes an earlier proposal, drafted the same day and
+never started, to make chat the landing experience — reverted per direct
+product direction before any code was touched.) Epic B made the chat
+feature architecturally complete (threads, memory, RAG, streaming); what's
+left is the surface-level UX work that makes it feel finished rather than
+functional-but-rough.
 
-### C1 — Make chat the landing experience, not a side tab
+### C1 — Message action toolbar: copy + like/dislike feedback
 **Effort:** 5
-**Where:** `client/src/app/router.tsx` (the `ROUTES.HOME` entry),
-`client/src/features/dashboard/pages/DashboardPage.tsx`,
-`client/src/shared/components/layout/{Sidebar,BottomNav}.tsx`
-**Why:** Confirmed gap — `/` (`ROUTES.HOME`) renders `DashboardPage`
-(`GreetingStatsCard`, an `AiAssistantCTA` banner, `TrendingResourcesRow`,
-`PlatformStatsBar`); AI Chat is `/ai`, one nav click away, exactly the "one
-feature among several" framing this epic exists to fix. Nothing about
-this requires guessing at a data model anymore — B1-B9 are done and B7
-already proved out the target layout shape.
+**Where:** `client/src/features/ai-chat/components/MessageBubble.tsx` (new
+toolbar), server `AiMessage` schema + `ConversationController` (new
+feedback field/endpoint)
+**Why:** Confirmed gap — `MessageBubble.tsx` has no action row at all
+today (no copy-to-clipboard, no like/dislike), and there's no feedback or
+rating concept anywhere in the server (`grep -rli feedback|rating`
+across `server/src/modules` turns up nothing). Every mainstream AI chat UI
+exposes this on assistant messages.
 **Acceptance criteria:**
-- Landing at `/` puts the user into chat (either `ROUTES.HOME` renders
-  `AiChatLayout`/`AiChatPage` directly, or `/` redirects to `/ai` — pick
-  one and document why; a redirect is simpler and keeps `/` and `/ai` as
-  one canonical route instead of two URLs for the same screen).
-- Decide explicitly whether `Sidebar`/`BottomNav` (global nav chrome)
-  stay visible while in chat, or chat keeps its current full-bleed
-  `immersive` mode with its own `AiChatLayout` sidebar instead. Today's
-  `immersive` mode hides global nav entirely — that was fine for a
-  side-tab feature reached deliberately, but may feel wrong for the
-  *default* screen (no way back to Resources/Community without opening
-  the AI thread drawer). Whichever is chosen, `Resources`/`Community`/
-  `Profile` must stay reachable in the same number of taps as today.
-- `GreetingStatsCard`/`TrendingResourcesRow`/`PlatformStatsBar` don't just
-  disappear — decide where their content goes (folded into chat's empty
-  state, moved to a secondary "overview" route, or dropped if genuinely
-  redundant with chat) rather than silently deleting a feature.
-- `BottomNav`/`Sidebar`'s nav item ordering/highlighting reflects chat as
-  primary (e.g. first position), not wherever it happened to land before.
+- A toolbar under each assistant message (hover-to-reveal on desktop,
+  always-visible on mobile) with: copy button, thumbs-up, thumbs-down.
+- `AiMessage` gains an optional `feedback: 'up' | 'down'` field; a small
+  ownership-checked endpoint sets/clears it, following the existing
+  `ConversationController` pattern.
+- Selecting a thumb toggles it; clicking the same one again clears it. At
+  most one active state per message.
+- Copy button copies the message's raw text/markdown, with a brief visual
+  confirmation (icon swap, not a toast that covers the message).
+- No regenerate button in this PBI — scope is deliberately limited to
+  copy + like/dislike. Regenerate touches streaming/resend logic and is
+  a separate, larger PBI if wanted later.
 
-### C2 — Inline resource cards on citations (replace the text-only chip)
+### C2 — Composer (input bar) refinement
+**Effort:** 3
+**Where:** `client/src/features/ai-chat/components/ChatInput.tsx`
+**Why:** Confirmed gaps in the current composer — no persistent
+Enter-to-send/Shift+Enter-for-newline hint (the keyboard behavior exists
+in `handleKeyDown` but is never surfaced to the user), and focus isn't
+restored to the textarea after sending a message (only after a prefill,
+via `ChatInput.tsx`'s existing `prefillValue` effect) — user has to
+reclick to keep typing.
+**Acceptance criteria:**
+- Textarea regains focus automatically right after a message is sent.
+- A subtle, low-emphasis hint communicates Enter-to-send /
+  Shift+Enter-for-newline, matching the keyboard behavior that already
+  exists.
+- The disabled-during-streaming state reads clearly as "can't type right
+  now," not just a color change — visual clarity only, no new behavior.
+
+### C3 — Inline resource cards on citations
 **Effort:** 3
 **Where:** `client/src/features/ai-chat/components/CitationChip.tsx`,
 `client/src/features/resources/components/ResourceCard.tsx`
-**Why:** Confirmed gap, smaller than the original framing — citations
-already deep-link to `/resources/:id` (`CitationChip.tsx`'s
-`CitationItem`, `handleClick` → `navigate`), so "leave chat to discover
-resources" is already partly solved. What's actually missing is that the
-citation list is a bespoke, text-only `CitationItem` row, not the
-richer `ResourceCard` used everywhere else in the app (thumbnail,
-type/subject chips, contributor) — inconsistent presentation for the
-same underlying resource. "Related resources" beyond direct citations
-(the original wording's other half) needs a new retrieval query with no
-backend support today and is real net-new scope, not a UI change — it's
-deliberately left out of this PBI; re-raise it as its own backlog item
-if wanted.
+**Why:** Confirmed gap, smaller than it first looks — citations already
+deep-link to `/resources/:id` (`CitationChip.tsx`'s `CitationItem`,
+`handleClick` → `navigate`). What's missing is that the citation list is
+a bespoke, text-only row, not the richer `ResourceCard` used everywhere
+else in the app (thumbnail, type/subject chips, contributor) —
+inconsistent presentation of the same underlying resource. "Related
+resources" beyond direct citations would need a new retrieval query with
+no backend support today; that's separate net-new scope, deliberately
+left out here.
 **Acceptance criteria:**
 - `CitationsChip`'s expanded list renders `ResourceCard` (or a compact
-  variant of it, if the full card doesn't fit the chat column width)
-  instead of the bespoke `CitationItem`, so a cited resource looks the
-  same whether you found it via chat or via `/resources`.
+  variant, if the full card doesn't fit the chat column width) instead of
+  the bespoke `CitationItem`.
 - Existing click-through-to-`/resources/:id` behavior is preserved.
-- No backend changes — this is a client-only presentational PBI.
+- No backend changes — client-only presentational PBI.
 
-### C3 — Reconcile AiChatLayout with whatever C1 decides for global nav
-**Effort:** 3 (down from the original placeholder's implied 8 — most of
-the actual layout work shipped as part of B7)
-**Where:** `client/src/features/ai-chat/pages/AiChatLayout.tsx`,
-`client/src/shared/components/layout/AppLayout.tsx`, depends on C1
-**Why:** B7 already built the persistent-sidebar-desktop /
-drawer-on-mobile shape this item originally asked for
-(`AiChatLayout.tsx`) — for the AI Chat feature in isolation. What's left
-is making that consistent with whatever C1 decides about global nav
-chrome: if C1 keeps `Sidebar`/`BottomNav` visible on the chat route,
-`AiChatLayout` needs to nest inside `AppLayout` instead of the
-`immersive` full-bleed mode it uses today (which currently assumes it
-owns the whole viewport — see `AiChatPage.tsx`'s `height: "100svh"`).
+### C4 — Copy button on code blocks
+**Effort:** 3
+**Where:** `client/src/features/ai-chat/components/MarkdownMessage.tsx`
+(`pre`/`code` renderers)
+**Why:** Confirmed gap — the `pre`/`code` components in
+`MarkdownMessage.tsx` render plain, no copy affordance. Every mainstream
+AI chat UI has a copy button on code blocks specifically, distinct from
+copying the whole message (C1).
 **Acceptance criteria:**
-- `AiChatLayout` renders correctly whether or not `AppLayout`'s chrome is
-  present around it, per C1's decision — no hardcoded full-viewport
-  height assumption if global nav now takes up part of the screen.
-- No regression to B7's mobile drawer or desktop permanent-sidebar
-  behavior.
+- Each fenced code block gets a small copy button (hover-to-reveal on
+  desktop, always-visible on mobile) that copies just that block's raw
+  text.
+- Visual confirmation on copy, consistent with C1's copy-button behavior.
 
 ---
 
-## Epic D — Google OAuth authentication
+## Epic D — Design system & theme overhaul
+
+Goal: replace the current look with two genuinely distinct, intentional
+themes — not the same palette auto-inverted — that read as a considered
+brand rather than a default MUI reskin. Confirmed via
+`client/src/theme/palette.ts`: light and dark today share the same primary
+(`#6C63FF`) and near-identical secondary (`#00D9A6`/`#00B894`) hues, varying
+only background/text lightness. This is a design pass — sign off on
+direction with real screens before rolling out broadly, and pick colors
+deliberately different between light and dark rather than one hue at two
+lightness values.
+
+### D1 — Define the new palette & design tokens
+**Effort:** 5
+**Where:** `client/src/theme/palette.ts`, `typography.ts`, `components.ts`
+**Why:** See epic goal — confirmed both modes share the same primary/
+secondary hues today.
+**Acceptance criteria:**
+- New primary/accent colors per mode — light and dark are encouraged to
+  use different hues, not just different lightness of the same hue.
+- Typography scale/weights reviewed alongside the new colors for overall
+  cohesion (`typography.ts` is separate from `palette.ts` today — confirm
+  it still fits the new palette's mood, adjust if not).
+- Rationale for the choice documented in this PBI's resolution (a short
+  note, not a design doc) so the "why" survives past this session.
+- Tokens only in this PBI — no component-level rollout yet (that's D2).
+
+### D2 — Apply the new theme across core surfaces + verify accessibility
+**Effort:** 5
+**Where:** `client/src/theme/components.ts`, spot-checked across
+Dashboard/AI Chat/Resources/Messenger/Contributors, depends on D1
+**Why:** A new palette is only as good as its application — MUI component
+overrides (buttons, chips, cards) need re-checking against the new
+tokens, and swapping the primary color can break contrast ratios that
+happened to work with the old one. Some old hex values may be hardcoded
+inline outside `palette.ts` (e.g. rgba variants of `#6C63FF` for
+action states) rather than referencing the palette — find and fix those
+too, not just the palette file itself.
+**Acceptance criteria:**
+- `componentOverrides` and any inline hardcoded old-palette colors
+  updated to the new tokens (grep for the old hex/rgba values first).
+- Manually verified in both light and dark mode across at least:
+  Dashboard, AI Chat, Resources list, Messenger, Contributors.
+- Text/background contrast checked (WCAG AA minimum) for both modes with
+  the new colors.
+
+---
+
+## Epic E — Complete the messenger & contributors features
+
+**Not fully audited yet** — this session found one concrete, confirmed gap
+in passing while scoping other epics; it wasn't a deliberate audit of
+either feature. Treat E1 as real and ready to execute, but don't assume
+the epic is fully scoped — run a proper audit pass (same "verify against
+current code, don't assume" discipline as the rest of this backlog) before
+writing more PBIs here.
+
+### E1 — Resolve real participant names/avatars in the messenger conversation list
+**Effort:** 3
+**Where:** `client/src/features/chat/components/ConversationListItem.tsx`
+**Why:** Confirmed gap — the component falls back to
+`otherParticipant?.name ?? otherParticipant?.email` directly, with an
+existing comment flagging it: "Resolve participant name from id — wire
+when user resolution is available." Verify first whether
+`ConversationParticipant` (`chat-dto.ts`) is already populated with a
+real `name` from the conversations endpoint (in which case this may
+already be closed, or smaller than the comment implies) before scoping
+a fix.
+**Acceptance criteria:**
+- Conversation list always shows a real display name (not a raw id or
+  bare email fallback) for the other participant, with an avatar sourced
+  the same way the rest of the app resolves user avatars.
+- Verify: start a conversation with a user who has a display name and a
+  profile photo set — both appear correctly in the list.
+
+---
+
+## Epic F — Google OAuth authentication
 
 Goal: let students sign in with their Google account instead of only
-email/password. Independent of Epics A-C — can be picked up any time,
-sequencing among D1-D3 matters (D1 is the schema foundation).
+email/password. Independent of the other epics — can be picked up any
+time; sequencing among F1-F3 matters (F1 is the schema foundation).
 
 Current state (verified against code): `server/src/modules/auth/` has only
 `local.strategy.ts` and `jwt.strategy.ts` (passport-local + passport-jwt,
@@ -463,7 +218,7 @@ no Google strategy, no callback route. `UserSchema`
 as `required: true` — that has to change before a passwordless OAuth user
 can be created.
 
-### D1 — User schema + config for OAuth-created accounts
+### F1 — User schema + config for OAuth-created accounts
 **Effort:** 3
 **Where:** `server/src/modules/user/schemas/user.schema.ts`,
 `server/src/modules/user/user.service.ts`, `server/.env.example`
@@ -486,15 +241,15 @@ strategy code can create one.
 - Existing local-signup flow (`AuthService#register`) unaffected — a
   regression here breaks the only auth path that currently works.
 
-### D2 — Google OAuth strategy + callback endpoints
+### F2 — Google OAuth strategy + callback endpoints
 **Effort:** 5
 **Where:** `server/src/modules/auth/` (new `google.strategy.ts`,
-controller routes), depends on D1
+controller routes), depends on F1
 **Why:** The actual OAuth flow — this is the PBI that makes "Sign in with
 Google" work end to end on the server.
 **Acceptance criteria:**
 - `passport-google-oauth20` strategy validates the Google profile, calls
-  D1's `findOrCreateGoogleUser`, and issues the same access/refresh token
+  F1's `findOrCreateGoogleUser`, and issues the same access/refresh token
   pair `AuthService#login` already issues for local login — one token
   contract for both auth methods, not a parallel one.
 - `GET /auth/google` (kicks off consent screen) and
@@ -508,19 +263,58 @@ Google" work end to end on the server.
   Google outage or a user who denies consent degrades to a clear
   redirect-with-error, not an unhandled exception).
 
-### D3 — Frontend "Sign in with Google" flow
+### F3 — Frontend "Sign in with Google" flow
 **Effort:** 3
 **Where:** `client/src/features/auth/` (or wherever login/signup UI
-lives), `client/src/app/providers/AuthProvider.tsx`, depends on D2
-**Why:** The visible half — a button plus handling D2's redirect-back so
+lives), `client/src/app/providers/AuthProvider.tsx`, depends on F2
+**Why:** The visible half — a button plus handling F2's redirect-back so
 the user actually lands authenticated in the app.
 **Acceptance criteria:**
 - "Continue with Google" button on the existing login/register screen,
   linking to the server's `GET /auth/google`.
-- A callback/landing route that receives D2's redirect, stores tokens via
+- A callback/landing route that receives F2's redirect, stores tokens via
   the existing `tokenStorage` utility, and populates `AuthProvider` the
   same way a normal login does (reuse `login`/`fetchProfile`, don't fork
   a second auth-bootstrap path).
-- Error case (user denies consent, or D2 redirects with an error) shows a
+- Error case (user denies consent, or F2 redirects with an error) shows a
   clear message on the login screen instead of a blank/broken redirect
   target.
+
+---
+
+## Epic G — Remaining features hardening
+
+Goal: a repo-wide cleanup pass, same spirit as Epic A, once Epics C-F have
+landed and accumulated their own rough edges. The two items below are
+concrete things spotted in passing while scoping other epics this
+session — not a full audit. Re-run an Epic-A-style pass (types, lint, dead
+code, error-handling gaps) once C-F are further along, since more will
+turn up.
+
+### G1 — Remove leftover debug console.log calls in the streaming client
+**Effort:** 3
+**Where:** `client/src/features/ai-chat/services/ai-chat.service.ts`
+**Why:** Confirmed — `streamMessage`'s per-chunk yield and its catch
+block still have `console.log("[GENERATOR RESUMED]", ...)` /
+`console.log("[SERVICE CATCH]", ...)` left over from earlier
+abort-handling debugging (the race-condition fixes documented in
+`CLAUDE.md` §4's streaming-hooks note) — never removed once the fix
+landed.
+**Acceptance criteria:**
+- Both `console.log` calls removed (or converted to a real, guarded debug
+  log if genuinely still useful — your call, but don't leave ad hoc
+  prints in production code).
+- Streaming/abort behavior unaffected — this is a log-only cleanup.
+
+### G2 — Remove unused `theme/theme.ts`
+**Effort:** 3
+**Where:** `client/src/theme/theme.ts`
+**Why:** Confirmed — `useThemeMode.ts` builds the live theme via
+`createAppTheme` from `theme/index.ts`; `theme/theme.ts` exports a
+separate theme hardcoded to `getPalette('dark')` regardless of the
+active mode, and nothing appears to import it. Verify zero import sites
+before deleting (`grep -rn "from '@/theme/theme'"` or equivalent) —
+don't delete on the strength of this note alone.
+**Acceptance criteria:**
+- Confirmed zero imports of `theme/theme.ts`'s export.
+- File removed; `tsc -b`/`vite build` still clean.
