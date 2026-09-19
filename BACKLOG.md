@@ -347,6 +347,38 @@ confirmed the dev server boots and serves both fonts. That visual pass
 (plus the still-open C2 composer check) is worth doing together before
 calling the theme visually final.
 
+### D3 — Icon set overhaul (MUI icons -> Lucide)
+**Effort:** 5
+**Where:** all 53 files under `client/src` importing from
+`@mui/icons-material` (136 individual icon imports, grepped and counted
+2026-09-19 — re-verify before starting, this count will drift) — spans
+chat, dashboard, admin, resources, messenger, contributors, onboarding.
+**Why:** User feedback — MUI's stock Material icon set reads as "basic
+corporate," undercutting the personality the new clay/terracotta +
+serif-heading theme (D1/D2) is going for. Confirmed via `package.json`:
+`@mui/icons-material` is the only icon dependency today, no `lucide-react`
+or equivalent installed yet.
+**Decision:** `lucide-react` — thin-line, consistent 24px grid, tree-
+shakable, neutral-geometric style that pairs with the warm accent without
+fighting it. Chosen by the user over Phosphor (more expressive but
+inconsistent bundle cost across weights) and Tabler (utility/dashboard-
+flavored) after a direct question in this session.
+**Acceptance criteria:**
+- `lucide-react` added as a dependency; `@mui/icons-material` usages
+  replaced file-by-file with the closest Lucide equivalent (icon names do
+  not map 1:1 — pick by visual/semantic match, not by string similarity).
+- No `@mui/icons-material` imports remain anywhere in `client/src` when
+  done (grep to confirm) — unless a specific icon has no reasonable
+  Lucide equivalent, in which case document the exception inline instead
+  of silently leaving old-library imports scattered around.
+- Icon sizing/color (`sx={{ fontSize }}`, `color="..."` props MUI icons
+  take directly) re-checked per usage — Lucide icons take `size`/`color`
+  as plain props, not MUI's `sx`, so this isn't a mechanical find-replace.
+- Spot-checked in both light and dark mode across the same five surfaces
+  as D2 (Dashboard, AI Chat, Resources, Messenger, Contributors).
+- `@mui/icons-material` removed from `package.json` once zero usages
+  remain (don't leave a dead dependency installed "just in case").
+
 ---
 
 ## Epic E — Complete the messenger & contributors features
