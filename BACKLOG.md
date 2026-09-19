@@ -232,6 +232,23 @@ WCAG contrast math (see D2) before finalizing — one shade (`dark` primary)
 was darkened from `#5B6EE8` to `#5266D6` to clear 4.5:1 against white
 button text.
 
+**Follow-up (user feedback, live-checked in browser):** light mode's
+first pass (`#F6F1E9` default / `#FFFCF7` paper) had a near-pure-white
+paper surface that read as glare/eyestrain on screen despite being
+"warm cream" on paper. Darkened both to matte tones — `#EFE8DA` default,
+`#F7F2E7` paper — and stepped the primary down accordingly (`#B5541F` ->
+`#A44C1B`) to hold >4.5:1 contrast for primary-colored text against the
+now-darker paper. Dark mode was left untouched (no complaint there, and
+its background was already near-black, not near-white). Not a full fix
+for the accessibility gap discovered in the process: warning/success/info
+text sitting on their own 12%-alpha chip backgrounds (e.g. status filter
+chips in `ProfileResourcesTab`) computes to 2.4-4.4:1, below AA-normal-text
+4.5:1 for several of them — pre-existing (same issue existed against the
+old near-white paper), not introduced by this change, and out of scope for
+a background-tone fix. Left as a known gap for D2's still-open manual
+accessibility pass rather than silently patching each chip's alpha/weight
+without the user in the loop on look.
+
 ### D2 — Apply the new theme across core surfaces + verify accessibility
 **Effort:** 5
 **Where:** `client/src/theme/components.ts`, spot-checked across

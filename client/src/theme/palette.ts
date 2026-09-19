@@ -7,7 +7,12 @@ import type { PaletteMode } from "@mui/material";
 //
 // Light ("paper & ink") — warm clay/terracotta primary on a warm cream
 // paper, cooled by a deep forest-teal secondary. Reads academic: ink on a
-// page, a highlighter accent, not a SaaS-purple template.
+// page, a highlighter accent, not a SaaS-purple template. Backgrounds are
+// deliberately matte (`#EFE8DA`/`#F7F2E7`), not near-white — an earlier
+// pass at `#F6F1E9`/`#FFFCF7` had a near-pure-white paper that read as
+// glare on screen. Primary darkened one step alongside (`#B5541F` ->
+// `#A44C1B`) to keep text-colored-primary contrast above 4.5:1 on the
+// now-darker paper.
 //
 // Dark ("midnight desk") — cool indigo primary on a near-black blue-slate,
 // warmed by an amber "desk lamp" secondary. The primary hue itself changes
@@ -66,9 +71,9 @@ export const getPalette = (mode: PaletteMode) =>
       }
     : {
         primary: {
-          main: "#B5541F",
+          main: "#A44C1B",
           light: "#D98A5C",
-          dark: "#8A3E15",
+          dark: "#7A3712",
           contrastText: "#FFFFFF",
         },
         secondary: {
@@ -99,8 +104,8 @@ export const getPalette = (mode: PaletteMode) =>
           dark: "#295A78",
         },
         background: {
-          default: "#F6F1E9",
-          paper: "#FFFCF7",
+          default: "#EFE8DA",
+          paper: "#F7F2E7",
         },
         text: {
           primary: "#2A2420",
@@ -109,8 +114,8 @@ export const getPalette = (mode: PaletteMode) =>
         },
         divider: "rgba(42, 36, 32, 0.13)",
         action: {
-          hover: "rgba(181, 84, 31, 0.06)",
-          selected: "rgba(181, 84, 31, 0.12)",
-          focus: "rgba(181, 84, 31, 0.10)",
+          hover: "rgba(164, 76, 27, 0.06)",
+          selected: "rgba(164, 76, 27, 0.12)",
+          focus: "rgba(164, 76, 27, 0.10)",
         },
       };
