@@ -235,7 +235,7 @@ past conversations... do not cite them as sources"), never folded into
 `AiChatService#buildCitations`. Covered by `memory.service.spec.ts` (new)
 and extended `retrieval.service.spec.ts`/`conversation.service.spec.ts`.
 
-### B7 — Frontend: conversation history sidebar
+### B7 — Frontend: conversation history sidebar — DONE (2026-09-19)
 **Effort:** 8
 **Where:** `client/src/features/ai-chat/`, depends on B1/B2
 **Why:** No thread-list UI exists at all today — `ai-chat.cache.ts` has one
@@ -248,6 +248,36 @@ visible, "inspired by Claude/ChatGPT" part of the epic.
 - Create new thread, switch threads, rename, delete — wired to B2's API.
 - TanStack Query cache keyed per-`conversationId`, not the single global key
   in `ai-chat.cache.ts` today.
+
+**Resolved:** `ai-chat.cache.ts`/`ai-chat.keys.ts` now key every
+conversation's message cache by `conversationId`
+(`aiChatKeys.conversation(id)`) instead of one fixed key — a new
+`NEW_THREAD_KEY` placeholder holds a brand-new thread's messages until the
+server assigns a real id, and `moveConversationCache` migrates that entry
+onto the real id once it arrives. `useStreamRefs`/`useDrainQueue`/
+`useStreamMessage` are parameterized to take the active `conversationId`
+(via a live ref, since a mid-stream thread resolution must land in the
+right cache entry) rather than recombined — per `CLAUDE.md` §4.
+`ConversationController`'s CRUD (create/list/rename/delete) is wired
+through new `AiChatService.getThreads/createThread/renameThread/
+deleteThread` methods and `useThreadsQuery`/`useCreateThread`/
+`useRenameThread`/`useDeleteThread` hooks. New `ThreadSidebar`/
+`ThreadListItem` components render the list (title + recency via
+`date-fns`), matching the real-time messenger's `ConversationList`
+pattern; `AiChatLayout` gives desktop a permanent sidebar (mirroring
+`ConversationsPage`), while mobile keeps the chat pane full-screen with
+the sidebar in a `Drawer` opened from `AiChatHeader` — a new chat is the
+primary action here, unlike the messenger where picking a person comes
+first. Router gained `/ai` (index, new-thread compose) and
+`/ai/:conversationId` (existing thread) child routes under
+`AiChatLayout`; `routeConfig.ts` got the matching pattern entry. The old
+single always-there "Clear" button (`useClearSession`/`clearSession`,
+tied to the pre-B1 singleton-session model) is removed from the UI in
+favor of per-thread Delete in the sidebar — it no longer fits a
+multi-thread world and nothing else referenced it. No automated frontend
+tests exist in this repo (client CI is typecheck+build only, no test
+job); verified via `tsc -b`/`vite build`/`eslint` all clean — did not
+verify interactively in a browser (needs a live backend + auth session).
 
 ### B8 — Sync client history with server on load (single source of truth)
 **Effort:** 5

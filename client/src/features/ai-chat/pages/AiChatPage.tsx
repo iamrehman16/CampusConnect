@@ -1,22 +1,52 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Box } from "@mui/material";
-import { useConversation, useClearSession } from "../hooks/ai-chat.hooks";
+import { useCallback, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { Box, Drawer, useMediaQuery, useTheme } from "@mui/material";
+import { useConversation, useThreadsQuery } from "../hooks/ai-chat.hooks";
 import { useStreamMessage } from "../hooks/useStreamMessage";
 import { useChatScroll } from "../hooks/useChatScroll";
 import { useChatPageInit } from "../hooks/useChatPageInit";
+import { moveConversationCache } from "../utils/ai-chat.cache";
+import { aiChatKeys, NEW_THREAD_KEY } from "../hooks/ai-chat.keys";
 import { AiChatHeader } from "../components/AiChatHeader";
 import { AiChatMessageList } from "../components/AiChatMessageList";
 import { ChatInput } from "../components/ChatInput";
+import { ThreadSidebar } from "../components/ThreadSidebar";
+import { ROUTES } from "@/shared/constants/routes";
 
 export default function AiChatPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const [prefill, setPrefill] = useState<string | undefined>(undefined);
+  const [threadsDrawerOpen, setThreadsDrawerOpen] = useState(false);
 
-  const { data: messages } = useConversation();
+  // No :conversationId → composing a brand new thread. The server assigns
+  // a real id on the first response (BACKLOG.md B7); until then messages
+  // live under the NEW_THREAD_KEY cache entry.
+  const { conversationId: routeConversationId } = useParams();
+  const conversationId = routeConversationId ?? NEW_THREAD_KEY;
+
+  const { data: threads } = useThreadsQuery();
+  const activeTitle = useMemo(
+    () => threads?.find((t) => t.id === routeConversationId)?.title,
+    [threads, routeConversationId],
+  );
+
+  const { data: messages } = useConversation(conversationId);
+
+  const onThreadResolved = useCallback(
+    (newConversationId: string) => {
+      moveConversationCache(queryClient, NEW_THREAD_KEY, newConversationId);
+      void queryClient.invalidateQueries({ queryKey: aiChatKeys.threads() });
+      navigate(`${ROUTES.AI_CHAT}/${newConversationId}`, { replace: true });
+    },
+    [queryClient, navigate],
+  );
+
   const { sendMessage, stop, isStreaming, isFetching, streamingBubble } =
-    useStreamMessage();
-  const { mutate: clearSession } = useClearSession();
+    useStreamMessage({ conversationId, onThreadResolved });
 
   const { scrollContainerRef, bottomRef, showScrollBtn, scrollToBottom } =
     useChatScroll({
@@ -26,6 +56,10 @@ export default function AiChatPage() {
     });
 
   useChatPageInit({ sendMessage });
+
+  const handleSend = (message: string) => {
+    sendMessage({ message, conversationId: routeConversationId });
+  };
 
   return (
     <Box
@@ -39,9 +73,9 @@ export default function AiChatPage() {
     >
       <AiChatHeader
         isStreaming={isStreaming}
-        showClear={messages.length > 0 && !isStreaming}
+        title={activeTitle}
         onBack={() => navigate("/", { replace: true })}
-        onClear={() => clearSession()}
+        onOpenThreads={isDesktop ? undefined : () => setThreadsDrawerOpen(true)}
       />
 
       <AiChatMessageList
@@ -66,7 +100,7 @@ export default function AiChatPage() {
         }}
       >
         <ChatInput
-          onSend={(message) => sendMessage({ message })}
+          onSend={handleSend}
           disabled={isStreaming} // input disabled for full duration
           isStreaming={isFetching} // stop button visible only while fetch is live
           onStop={stop}
@@ -74,6 +108,17 @@ export default function AiChatPage() {
           onPrefillConsumed={() => setPrefill(undefined)}
         />
       </Box>
+
+      {!isDesktop && (
+        <Drawer
+          anchor="left"
+          open={threadsDrawerOpen}
+          onClose={() => setThreadsDrawerOpen(false)}
+          PaperProps={{ sx: { width: 280 } }}
+        >
+          <ThreadSidebar onNavigate={() => setThreadsDrawerOpen(false)} />
+        </Drawer>
+      )}
     </Box>
   );
 }

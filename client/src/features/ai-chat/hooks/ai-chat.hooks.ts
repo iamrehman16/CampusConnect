@@ -2,34 +2,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { aiChatService } from "../services/ai-chat.service";
 import { aiChatKeys } from "./ai-chat.keys";
-import {
-  getConversation,
-  setConversation,
-  clearConversation,
-} from "../utils/ai-chat.cache";
-import { generateId } from "../utils/generate-id";
-import type {
-  ChatMessageDto,
-  ChatResponseDto,
-  ConversationMessage,
-} from "../types/ai-chat.dto";
-// ---------------------------------------------------------------------------
-// Mutation context — typed explicitly to avoid casting in onSuccess/onError
-// ---------------------------------------------------------------------------
-interface SendMessageContext {
-  snapshot: ConversationMessage[];
-  skeletonId: string;
-}
+import type { ConversationMessage } from "../types/ai-chat.dto";
 
 // ---------------------------------------------------------------------------
 // useConversation
-// Treats the React Query cache as local state storage for the conversation.
-// queryFn returns [] so it never hits the network; staleTime:Infinity keeps
-// it frozen for the lifetime of the session.
+// Treats the React Query cache as local state storage for one thread's
+// messages, keyed by conversationId (BACKLOG.md B7) — queryFn returns []
+// so it never hits the network; staleTime:Infinity keeps it frozen for the
+// lifetime of the session (server-side history sync is BACKLOG.md B8).
 // ---------------------------------------------------------------------------
-export function useConversation() {
+export function useConversation(conversationId: string) {
   return useQuery<ConversationMessage[]>({
-    queryKey: aiChatKeys.conversation(),
+    queryKey: aiChatKeys.conversation(conversationId),
     queryFn: () => [],
     staleTime: Infinity,
     gcTime: Infinity,
@@ -38,75 +22,51 @@ export function useConversation() {
 }
 
 // ---------------------------------------------------------------------------
-// useSendMessage
-// Optimistic flow:
-//   1. Append user bubble immediately (confirmed, isPending omitted)
-//   2. Append skeleton assistant bubble (isPending: true) as placeholder
-//   3. onSuccess → patch skeleton in-place with real response + citations
-//   4. onError   → remove skeleton only; user bubble stays so they can retry
+// Thread CRUD (BACKLOG.md B7) — wired to B2's ai/conversations endpoints.
 // ---------------------------------------------------------------------------
-export function useSendMessage() {
+export function useThreadsQuery() {
+  return useQuery({
+    queryKey: aiChatKeys.threads(),
+    queryFn: () => aiChatService.getThreads(),
+    staleTime: 1000 * 30,
+  });
+}
+
+export function useCreateThread() {
   const queryClient = useQueryClient();
 
-  return useMutation<
-    ChatResponseDto,
-    Error,
-    ChatMessageDto,
-    SendMessageContext
-  >({
-    mutationFn: (dto) => aiChatService.sendMessage(dto),
-
-    onMutate: async (dto) => {
-      await queryClient.cancelQueries({ queryKey: aiChatKeys.conversation() });
-
-      const snapshot = getConversation(queryClient);
-      const skeletonId = generateId();
-
-      setConversation(queryClient, (prev) => [
-        ...prev,
-        { id: generateId(), role: "user", content: dto.message },
-        { id: skeletonId, role: "assistant", content: "", isPending: true },
-      ]);
-
-      return { snapshot, skeletonId };
-    },
-
-    onSuccess: (response, _dto, { skeletonId }) => {
-      setConversation(queryClient, (prev) =>
-        prev.map((msg) =>
-          msg.id === skeletonId
-            ? {
-                ...msg,
-                content: response.answer,
-                citations: response.citations,
-                retrievalStatus: response.retrievalStatus,
-                isPending: false,
-              }
-            : msg,
-        ),
-      );
-    },
-
-    onError: (_error, _dto, context) => {
-      // context can be undefined if onMutate threw before returning
-      if (!context) return;
-      setConversation(queryClient, (prev) =>
-        prev.filter((msg) => msg.id !== context.skeletonId),
-      );
+  return useMutation({
+    mutationFn: (title?: string) => aiChatService.createThread(title),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: aiChatKeys.threads() });
     },
   });
 }
 
-// ---------------------------------------------------------------------------
-// useClearSession
-// Fires the backend session delete (extracts userId from JWT server-side),
-// then wipes the local conversation cache on success.
-// ---------------------------------------------------------------------------
-export function useClearSession() {
+export function useRenameThread() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => aiChatService.clearSession(),
-    onSuccess: () => clearConversation(queryClient),
+    mutationFn: ({ conversationId, title }: { conversationId: string; title: string }) =>
+      aiChatService.renameThread(conversationId, title),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: aiChatKeys.threads() });
+    },
+  });
+}
+
+export function useDeleteThread() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (conversationId: string) =>
+      aiChatService.deleteThread(conversationId),
+    onSuccess: (_data, conversationId) => {
+      void queryClient.invalidateQueries({ queryKey: aiChatKeys.threads() });
+      queryClient.removeQueries({
+        queryKey: aiChatKeys.conversation(conversationId),
+        exact: true,
+      });
+    },
   });
 }

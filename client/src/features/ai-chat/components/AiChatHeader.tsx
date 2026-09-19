@@ -1,19 +1,22 @@
-import { Box, Button, IconButton, Typography } from "@mui/material";
+import { Box, IconButton, Typography } from "@mui/material";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
+import MenuIcon from "@mui/icons-material/Menu";
 import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
 
 interface AiChatHeaderProps {
   isStreaming: boolean;
-  showClear: boolean;
+  title?: string;
   onBack: () => void;
-  onClear: () => void;
+  // Mobile only — opens the thread-history drawer (BACKLOG.md B7). The
+  // desktop layout has a permanent sidebar instead (AiChatLayout).
+  onOpenThreads?: () => void;
 }
 
 export function AiChatHeader({
   isStreaming,
-  showClear,
+  title,
   onBack,
-  onClear,
+  onOpenThreads,
 }: AiChatHeaderProps) {
   return (
     <Box
@@ -55,9 +58,13 @@ export function AiChatHeader({
         >
           <SmartToyOutlinedIcon sx={{ color: "#fff", fontSize: 20 }} />
         </Box>
-        <Box>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
-            Campus AI
+        <Box sx={{ minWidth: 0 }}>
+          <Typography
+            variant="subtitle1"
+            noWrap
+            sx={{ fontWeight: 600, lineHeight: 1.2 }}
+          >
+            {title || "Campus AI"}
           </Typography>
           <Typography variant="caption" sx={{ color: "text.secondary" }}>
             {isStreaming ? "Responding…" : "Ask anything about your courses"}
@@ -65,21 +72,15 @@ export function AiChatHeader({
         </Box>
       </Box>
 
-      {showClear && (
-        <Button
+      {onOpenThreads && (
+        <IconButton
           size="small"
-          variant="outlined"
-          onClick={onClear}
-          sx={{
-            color: "text.secondary",
-            borderColor: "divider",
-            fontSize: "0.75rem",
-            minHeight: 32,
-            flexShrink: 0,
-          }}
+          onClick={onOpenThreads}
+          sx={{ color: "text.primary", flexShrink: 0 }}
+          aria-label="Chat history"
         >
-          Clear
-        </Button>
+          <MenuIcon sx={{ fontSize: 20 }} />
+        </IconButton>
       )}
     </Box>
   );

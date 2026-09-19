@@ -1,6 +1,7 @@
 // services/ai-chat.service.ts
 import api from "@/shared/api/axios.instance";
 import type {
+  AiConversationThread,
   ChatMessageDto,
   ChatResponseDto,
   Citation,
@@ -13,6 +14,7 @@ export type SseCitationsEvent = {
   type: "citations";
   citations: Citation[];
   retrievalStatus: RetrievalStatus;
+  conversationId: string;
 };
 export type SseDoneEvent = { type: "done" };
 export type SseErrorEvent = { type: "error"; message: string };
@@ -22,14 +24,51 @@ export type SseEvent =
   | SseDoneEvent
   | SseErrorEvent;
 
+// Server's AiConversation shape has more fields (summaryBuffer,
+// recentMessages) the sidebar has no use for, and uses Mongoose's _id —
+// normalize down to what the UI needs, same convention as chat-service.ts.
+type RawThread = { _id?: string; id?: string; title: string; updatedAt: string };
+
+function normalizeThread(thread: RawThread): AiConversationThread {
+  return {
+    id: thread.id ?? thread._id ?? "",
+    title: thread.title,
+    updatedAt: thread.updatedAt,
+  };
+}
+
 export class AiChatService {
   async sendMessage(dto: ChatMessageDto): Promise<ChatResponseDto> {
     const { data } = await api.post<ChatResponseDto>("ai/chat", dto);
     return data;
   }
 
-  async clearSession(): Promise<void> {
-    await api.delete("ai/chat/session");
+  async getThreads(): Promise<AiConversationThread[]> {
+    const { data } = await api.get<RawThread[]>("ai/conversations");
+    return data.map(normalizeThread);
+  }
+
+  async createThread(title?: string): Promise<AiConversationThread> {
+    const { data } = await api.post<RawThread>(
+      "ai/conversations",
+      title ? { title } : {},
+    );
+    return normalizeThread(data);
+  }
+
+  async renameThread(
+    conversationId: string,
+    title: string,
+  ): Promise<AiConversationThread> {
+    const { data } = await api.patch<RawThread>(
+      `ai/conversations/${conversationId}`,
+      { title },
+    );
+    return normalizeThread(data);
+  }
+
+  async deleteThread(conversationId: string): Promise<void> {
+    await api.delete(`ai/conversations/${conversationId}`);
   }
 
   async *streamMessage(

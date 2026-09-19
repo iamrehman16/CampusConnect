@@ -22,6 +22,9 @@ const ResourceDetailPage = lazy(
   () => import("@/features/resources/pages/ResourceDetailPage"),
 );
 const AiChatPage = lazy(() => import("@/features/ai-chat/pages/AiChatPage"));
+const AiChatLayout = lazy(
+  () => import("@/features/ai-chat/pages/AiChatLayout"),
+);
 const ConversationsPage = lazy(
   () => import("@/features/chat/pages/ConversationsPage"),
 );
@@ -128,9 +131,13 @@ const router = createBrowserRouter([
             path: ROUTES.AI_CHAT,
             element: (
               <SuspenseWrapper>
-                <AiChatPage />
+                <AiChatLayout />
               </SuspenseWrapper>
             ),
+            children: [
+              { index: true, element: <AiChatPage /> },
+              { path: ":conversationId", element: <AiChatPage /> },
+            ],
           },
 
           // Real-time Chat

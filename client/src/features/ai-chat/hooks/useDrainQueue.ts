@@ -9,9 +9,13 @@ interface UseDrainQueueOptions {
   refs: ReturnType<typeof useStreamRefs>;
   setStreamingBubble: React.Dispatch<React.SetStateAction<ConversationMessage | null>>;
   setIsStreaming: React.Dispatch<React.SetStateAction<boolean>>;
+  // Cache key to commit into (BACKLOG.md B7) — the caller's current
+  // conversationId, or NEW_THREAD_KEY while a new thread's first message
+  // is still in flight and no real id has come back yet.
+  conversationIdRef: React.RefObject<string>;
 }
 
-export function useDrainQueue({ refs, setStreamingBubble, setIsStreaming }: UseDrainQueueOptions) {
+export function useDrainQueue({ refs, setStreamingBubble, setIsStreaming, conversationIdRef }: UseDrainQueueOptions) {
   const queryClient = useQueryClient();
   const { accRef, queueRef, renderRef, flushRef, pollCancelRef, citationsRef, retrievalStatusRef } = refs;
 
@@ -66,7 +70,7 @@ export function useDrainQueue({ refs, setStreamingBubble, setIsStreaming }: UseD
   // Calling reset() here would clear pollCancelRef before the poll loop sees it → double commit.
   const commitFinal = useCallback((assistantBubbleId: string) => {
     if (flushRef.current !== null) cancelAnimationFrame(flushRef.current!);
-    setConversation(queryClient, (prev) => [
+    setConversation(queryClient, conversationIdRef.current, (prev) => [
       ...prev,
       { 
         id: assistantBubbleId, 
@@ -79,7 +83,7 @@ export function useDrainQueue({ refs, setStreamingBubble, setIsStreaming }: UseD
     ]);
     setStreamingBubble(null);
     setIsStreaming(false);
-  }, [queryClient, accRef, flushRef, citationsRef, retrievalStatusRef, setStreamingBubble, setIsStreaming]);
+  }, [queryClient, accRef, flushRef, citationsRef, retrievalStatusRef, conversationIdRef, setStreamingBubble, setIsStreaming]);
 
   const waitForDrainThenCommit = useCallback((assistantBubbleId: string) => {
     const poll = () => {
@@ -97,7 +101,7 @@ export function useDrainQueue({ refs, setStreamingBubble, setIsStreaming }: UseD
     pollCancelRef.current = true;                  // stop any pending poll
     if (flushRef.current !== null) cancelAnimationFrame(flushRef.current!);
     queueRef.current = [];
-    setConversation(queryClient, (prev) => [
+    setConversation(queryClient, conversationIdRef.current, (prev) => [
       ...prev,
       { 
         id: assistantBubbleId, 
@@ -110,7 +114,7 @@ export function useDrainQueue({ refs, setStreamingBubble, setIsStreaming }: UseD
     ]);
     setStreamingBubble(null);
     setIsStreaming(false);
-  }, [queryClient, renderRef, flushRef, queueRef, pollCancelRef, citationsRef, retrievalStatusRef, setStreamingBubble, setIsStreaming]);
+  }, [queryClient, renderRef, flushRef, queueRef, pollCancelRef, citationsRef, retrievalStatusRef, conversationIdRef, setStreamingBubble, setIsStreaming]);
 
   // Stop while fetch is done but animation still playing — skip remaining animation
   const flushAndCommit = useCallback((assistantBubbleId: string) => {

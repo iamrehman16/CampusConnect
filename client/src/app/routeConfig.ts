@@ -15,6 +15,7 @@ const aichat = ROUTES.AI_CHAT;
 // We build this here rather than in ROUTES because ROUTES holds base paths —
 // the ":id" suffix is a routeConfig concern, not a navigation-link concern.
 const chat = ROUTES.CHAT + "/:conversationId";
+const aiThread = ROUTES.AI_CHAT + "/:conversationId";
 
 export type TopBarMode = "standard" | "contextual" | "immersive";
 
@@ -75,6 +76,11 @@ const routeConfig: Record<string, RouteConfig> = {
     showBottomNav: false,
   },
   [aichat]: {
+    title: "",
+    topBarMode: "immersive",
+    showBottomNav: false,
+  },
+  [aiThread]: {
     title: "",
     topBarMode: "immersive",
     showBottomNav: false,
