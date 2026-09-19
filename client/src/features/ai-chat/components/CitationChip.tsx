@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Chip, Collapse, Typography } from '@mui/material';
+import { Box, Card, CardActionArea, Chip, Collapse, Stack, Typography } from '@mui/material';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import type { Citation } from '../types/ai-chat.dto';
 
@@ -47,62 +47,76 @@ interface CitationItemProps {
   index: number;
 }
 
+// BACKLOG.md C3 — visually consistent with ResourceCard's design language
+// (icon badge, chip metadata, hover-lift Card) rather than reusing that
+// component directly: Citation only carries {title, pageNumber, semester,
+// course, resourceId} from the retrieval response, none of the fields
+// (fileType, uploadedBy, fileSize, approval status) ResourceCard actually
+// renders. Fetching each cited resource's full record just to reuse the
+// component would mean N extra requests per assistant message for a
+// citation list that's already collapsed by default — out of scope for a
+// client-only presentational PBI with "no backend changes."
 function CitationItem({ citation, index }: CitationItemProps) {
   const navigate = useNavigate();
 
-  const handleClick = () => {
-    navigate(`/resources/${citation.resourceId}`);
-  };
-
   return (
-    <Box
-      onClick={handleClick}
+    <Card
+      variant="outlined"
       sx={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: 1,
-        bgcolor: 'action.hover',
-        border: '1px solid',
         borderColor: 'divider',
-        borderRadius: '8px',
-        p: '7px 10px',
-        cursor: 'pointer',
-        transition: 'background-color 0.15s, border-color 0.15s',
-        '&:hover': {
-          bgcolor: 'action.selected',
-          borderColor: 'primary.light',
-        },
-        '&:active': {
-          bgcolor: 'action.focus',
-        },
+        borderRadius: '10px',
+        bgcolor: 'background.paper',
+        transition: 'border-color 0.15s',
+        '&:hover': { borderColor: 'primary.light' },
       }}
     >
-      <Box
-        sx={{
-          minWidth: 20,
-          height: 20,
-          borderRadius: '4px',
-          bgcolor: 'action.selected',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          mt: '1px',
-          flexShrink: 0,
-        }}
+      <CardActionArea
+        onClick={() => navigate(`/resources/${citation.resourceId}`)}
+        sx={{ display: 'flex', alignItems: 'center', gap: 1.25, px: 1.25, py: 1 }}
       >
-        <Typography sx={{ fontSize: '0.65rem', fontWeight: 700, color: 'primary.main' }}>
-          {index}
-        </Typography>
-      </Box>
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography sx={{ fontSize: '0.75rem', fontWeight: 500, color: 'text.primary', lineHeight: 1.4 }}>
-          {citation.title}
-        </Typography>
-        <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', mt: '2px' }}>
-          {citation.course} · Sem {citation.semester} · Page.{citation.pageNumber}
-        </Typography>
-      </Box>
-      <OpenInNewIcon sx={{ fontSize: 13, color: 'primary.main', opacity: 0.6, mt: '3px', flexShrink: 0 }} />
-    </Box>
+        <Box
+          sx={{
+            width: 26,
+            height: 26,
+            borderRadius: '6px',
+            bgcolor: 'action.selected',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'primary.main' }}>
+            {index}
+          </Typography>
+        </Box>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography
+            noWrap
+            sx={{ fontSize: '0.8rem', fontWeight: 600, color: 'text.primary', lineHeight: 1.4 }}
+          >
+            {citation.title}
+          </Typography>
+          <Stack direction="row" spacing={0.5} sx={{ mt: 0.4 }}>
+            <Chip
+              label={citation.course}
+              size="small"
+              sx={{ height: 18, fontSize: '0.65rem', '& .MuiChip-label': { px: 0.75 } }}
+            />
+            <Chip
+              label={`Sem ${citation.semester}`}
+              size="small"
+              sx={{ height: 18, fontSize: '0.65rem', '& .MuiChip-label': { px: 0.75 } }}
+            />
+            <Chip
+              label={`p.${citation.pageNumber}`}
+              size="small"
+              sx={{ height: 18, fontSize: '0.65rem', '& .MuiChip-label': { px: 0.75 } }}
+            />
+          </Stack>
+        </Box>
+        <OpenInNewIcon sx={{ fontSize: 14, color: 'primary.main', opacity: 0.6, flexShrink: 0 }} />
+      </CardActionArea>
+    </Card>
   );
 }

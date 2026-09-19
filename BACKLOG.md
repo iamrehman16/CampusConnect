@@ -148,6 +148,18 @@ left out here.
 - Existing click-through-to-`/resources/:id` behavior is preserved.
 - No backend changes — client-only presentational PBI.
 
+**Status: DONE.** Confirmed during implementation that reusing
+`ResourceCard` verbatim isn't actually possible without a backend change:
+`Citation` only carries `{title, pageNumber, semester, course,
+resourceId}` from the retrieval response, not the `fileType`/
+`uploadedBy`/`fileSize`/approval-status fields `ResourceCard` renders —
+and fetching each cited resource's full record just for its card would
+mean N extra requests per assistant message. Built a compact card in
+`CitationChip.tsx` instead, borrowing `ResourceCard`'s visual language
+(hover-lift `Card`/`CardActionArea`, icon badge, chip row) but built only
+from what `Citation` actually has. Click-through to `/resources/:id`
+preserved. No backend changes. Client typecheck/build/lint clean.
+
 ### C4 — Copy button on code blocks
 **Effort:** 3
 **Where:** `client/src/features/ai-chat/components/MarkdownMessage.tsx`
@@ -161,6 +173,14 @@ copying the whole message (C1).
   desktop, always-visible on mobile) that copies just that block's raw
   text.
 - Visual confirmation on copy, consistent with C1's copy-button behavior.
+
+**Status: DONE.** `pre`'s renderer in `MarkdownMessage.tsx` now wraps the
+code block in a positioned container with a hover-reveal (always-visible
+on mobile) copy button, matching C1's icon-swap confirmation pattern. The
+raw text comes from a small `extractText` helper that flattens
+react-markdown's `code` children (which can be split across several text
+nodes) back into a plain string, rather than assuming a single string
+child. Client typecheck/build/lint clean.
 
 ---
 
