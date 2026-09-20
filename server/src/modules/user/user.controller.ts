@@ -43,7 +43,7 @@ export class UserController {
     return this.userService.updateProfile(req.user.id, dto);
   }
 
-  @Get('profile:id')
+  @Get('profile/:id')
   getUserProfile(@Param('id') id: string) {
     return this.userService.findOne(id);
   }
