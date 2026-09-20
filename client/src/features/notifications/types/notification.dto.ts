@@ -1,7 +1,9 @@
 export type NotificationType =
   | "resource_approved"
   | "resource_rejected"
-  | "new_message";
+  | "new_message"
+  | "contributor_application_approved"
+  | "contributor_application_rejected";
 
 export interface Notification {
   id: string;

@@ -8,6 +8,8 @@ export const DomainEvents = {
   RESOURCE_REJECTED: 'resource.rejected',
   RESOURCE_REMOVED: 'resource.removed',
   POST_UPVOTED: 'post.upvoted',
+  CONTRIBUTOR_APPLICATION_APPROVED: 'contributor_application.approved',
+  CONTRIBUTOR_APPLICATION_REJECTED: 'contributor_application.rejected',
   CHAT_MESSAGE_RECEIVED: 'chat.message.received',
   CHAT_CONVERSATION_READ: 'chat.conversation.read',
 } as const;
@@ -50,4 +52,11 @@ export interface ChatMessageReceivedEvent {
 export interface ChatConversationReadEvent {
   userId: string;
   conversationId: string;
+}
+
+export interface ContributorApplicationReviewedEvent {
+  applicantId: string;
+  applicationId: string;
+  /** Present on rejection. */
+  reason?: string;
 }

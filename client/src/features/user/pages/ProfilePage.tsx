@@ -22,6 +22,7 @@ import type { Resource } from "@/features/resources/types/resource.dto";
 import { EditResourceModal } from "@/features/resources/components/EditResourceModal";
 
 import ProfileHero from "../components/ProfileHero";
+import { ContributorApplicationCard } from "@/features/contributor-application/components/ContributorApplicationCard";
 import ProfilePostsTab from "../components/ProfilePostsTab";
 import ProfileResourcesTab from "../components/ProfileResourcesTab";
 import ProfileSettingsTab from "../components/ProfileSettingsTab";
@@ -157,6 +158,8 @@ const ProfilePage: React.FC = () => {
             </Stack>
           }
         />
+
+        <ContributorApplicationCard />
 
         {/* ── Tabs ─────────────────────────────────────────────────────── */}
         <Box

@@ -94,4 +94,36 @@ describe('NotificationListener', () => {
 
     expect(gateway.pushUnreadCount).not.toHaveBeenCalled();
   });
+
+  it('notifies an approved applicant', async () => {
+    const { listener, notifications, gateway, dto } = build();
+
+    await listener.onContributorApplicationApproved({
+      applicantId: 'u1',
+      applicationId: 'a1',
+    });
+
+    expect(notifications.record).toHaveBeenCalledWith(
+      'u1',
+      NotificationType.CONTRIBUTOR_APPLICATION_APPROVED,
+      {},
+    );
+    expect(gateway.push).toHaveBeenCalledWith('u1', dto);
+  });
+
+  it('notifies a rejected applicant with the reviewer reason', async () => {
+    const { listener, notifications } = build();
+
+    await listener.onContributorApplicationRejected({
+      applicantId: 'u1',
+      applicationId: 'a1',
+      reason: 'Not enough work',
+    });
+
+    expect(notifications.record).toHaveBeenCalledWith(
+      'u1',
+      NotificationType.CONTRIBUTOR_APPLICATION_REJECTED,
+      { reason: 'Not enough work' },
+    );
+  });
 });

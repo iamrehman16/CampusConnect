@@ -12,10 +12,13 @@ import OverviewSection from '../components/OverViewSection';
 import AnalyticsSection from '../components/AnalyticsSection';
 import ResourcesTab from '../components/ResourceTab';
 import UsersTab from '../components/UserTab';
+import ApplicationsTab from '../components/ApplicationsTab';
+import HowToRegIcon from '@mui/icons-material/HowToReg';
+import { useAdminApplications } from '@/features/contributor-application/hooks/application.hooks';
 import { useOverviewStats } from '../hooks/admin-hooks';
 import { PageContainer } from '@/shared/components/PageContainer';
 
-type TabValue = 'overview' | 'resources' | 'users';
+type TabValue = 'overview' | 'resources' | 'applications' | 'users';
 
 export default function AdminDashboardPage() {
   const [tab, setTab] = useState<TabValue>('overview');
@@ -24,6 +27,8 @@ export default function AdminDashboardPage() {
   // no extra fetch, staleTime means this is already in cache from OverviewSection
   const { data: stats } = useOverviewStats();
   const pendingCount = stats?.resources.pending ?? 0;
+  const { data: pendingApplications } = useAdminApplications('Pending');
+  const pendingApplicationCount = pendingApplications?.pages[0]?.total ?? 0;
 
   return (
     <PageContainer>
@@ -70,6 +75,21 @@ export default function AdminDashboardPage() {
             iconPosition="start"
           />
           <Tab
+            value="applications"
+            label={
+              <Badge
+                badgeContent={pendingApplicationCount}
+                color="warning"
+                max={99}
+                sx={{ '& .MuiBadge-badge': { right: -10, top: 4 } }}
+              >
+                Applications
+              </Badge>
+            }
+            icon={<HowToRegIcon fontSize="small" />}
+            iconPosition="start"
+          />
+          <Tab
             value="users"
             label="Users"
             icon={<ManageAccountsIcon fontSize="small" />}
@@ -86,6 +106,10 @@ export default function AdminDashboardPage() {
 
       <Box hidden={tab !== 'resources'}>
         <ResourcesTab />
+      </Box>
+
+      <Box hidden={tab !== 'applications'}>
+        <ApplicationsTab />
       </Box>
 
       <Box hidden={tab !== 'users'}>

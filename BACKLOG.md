@@ -699,6 +699,46 @@ admin approves/rejects, student is notified (depends on E4).
 - Application status and eligibility hint (score vs threshold) shown to the
   student.
 
+**Status: DONE (2026-09-20).** Decision implemented as agreed:
+admin-reviewed, score shown as a non-gating eligibility hint, applicant
+notified. New `server/src/modules/contributor-application/`:
+`ContributorApplication` schema (reason 30-1000 chars, optional http(s)
+`sampleUrl`, `status` Pending/Approved/Rejected, `scoreAtApplication`
+snapshot, reviewer + timestamps, `rejectionReason`). **One open application
+per user is enforced by a partial unique index** (`applicant` where Pending)
+mapped to 409 — no check-then-insert race; reviewed history is unconstrained
+so a rejected student can re-apply. Endpoints: `POST contributor-applications`
+(students only — contributors/admins get 400), `GET contributor-applications/me`
+(latest application + `score`/`threshold`/`eligible`/`canApply`), admin
+`GET admin/contributor-applications?status=` (oldest-first queue, populated
+applicant, per-row `eligible`), `PATCH .../:id/approve`, `PATCH .../:id/reject`
+(reason required). Approve **claims the application with an atomic
+`status: Pending` transition** (so a double click or second admin gets 404,
+not a second promotion), then promotes through the existing
+`UserService.updateRole`; if the role update fails the application is
+reverted to Pending and the error logged/rethrown (compensation, not a
+transaction). Threshold `CONTRIBUTOR_ELIGIBILITY_SCORE = 10` (= five unique
+post upvotes under E5) lives in one constant. Approve/reject emit domain
+events; E4 gained two notification types via the registry (approved ->
+`/resources`, rejected -> `/profile` with the reason). Client:
+`features/contributor-application/` — `ContributorApplicationCard` on the
+student's own profile (status chip, reputation progress toward the
+threshold, rejection reason + "Apply again", hidden for contributors/admins),
+`ApplyDialog` (react-hook-form: min-length, URL validation), admin
+**Applications** tab with a pending badge, status filter, approve and
+reject-with-reason. `AuthContext` gained `refreshUser()`, called when a
+`contributor_application_*` notification arrives, so contributor UI appears
+without re-login (server already reads the role from the DB per request).
+**Verified live** (local Mongo, real HTTP + socket): short reason / bad URL
+400, duplicate 409, students 403 on admin routes, empty reject reason 400,
+reject then approve, second approve 404, role flips to Contributor with no
+re-login, socket delivers the approval notification, contributor re-apply
+400, rejected student sees the reason and can re-apply, approved history
+listed. Server 136/136 tests, typecheck clean; client typecheck/lint/build
+clean. Not verified in a browser. Not built (out of scope): withdrawing a
+pending application; a re-apply cooldown after rejection; notifying admins
+when a new application arrives (they see the tab badge).
+
 ### E7 — Tiers & badges
 **Effort:** 3
 **Where:** shared tier config (server enum + client mapping),

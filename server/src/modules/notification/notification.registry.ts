@@ -18,6 +18,8 @@ export interface NotificationPayloads {
     senderName: string;
     preview: string;
   };
+  [NotificationType.CONTRIBUTOR_APPLICATION_APPROVED]: Record<string, never>;
+  [NotificationType.CONTRIBUTOR_APPLICATION_REJECTED]: { reason: string };
 }
 
 export interface NotificationContent {
@@ -62,5 +64,15 @@ export const notificationBuilders: Builders = {
     body: preview,
     link: `/chat/${conversationId}`,
     dedupeKey: newMessageDedupeKey(conversationId),
+  }),
+  [NotificationType.CONTRIBUTOR_APPLICATION_APPROVED]: () => ({
+    title: "You're now a contributor",
+    body: 'Your application was approved — you can now upload resources.',
+    link: '/resources',
+  }),
+  [NotificationType.CONTRIBUTOR_APPLICATION_REJECTED]: ({ reason }) => ({
+    title: 'Contributor application declined',
+    body: `Reason: ${reason}. You can apply again from your profile.`,
+    link: '/profile',
   }),
 };

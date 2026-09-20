@@ -16,6 +16,7 @@ import { ChatModule } from './modules/chat/chat.module';
 import { BullModule } from '@nestjs/bullmq';
 import { NotificationModule } from './modules/notification/notification.module';
 import { ReputationModule } from './modules/reputation/reputation.module';
+import { ContributorApplicationModule } from './modules/contributor-application/contributor-application.module';
 import { QueuesModule } from './modules/queues/queues.module';
 
 @Module({
@@ -63,6 +64,7 @@ import { QueuesModule } from './modules/queues/queues.module';
     QueuesModule,
     NotificationModule,
     ReputationModule,
+    ContributorApplicationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

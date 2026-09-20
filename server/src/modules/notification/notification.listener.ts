@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import {
   ChatConversationReadEvent,
+  ContributorApplicationReviewedEvent,
   ChatMessageReceivedEvent,
   DomainEvents,
   ResourceApprovedEvent,
@@ -65,6 +66,24 @@ export class NotificationListener {
       senderName,
       preview: event.preview,
     });
+  }
+
+  @OnEvent(DomainEvents.CONTRIBUTOR_APPLICATION_APPROVED, { async: true })
+  onContributorApplicationApproved(event: ContributorApplicationReviewedEvent) {
+    return this.notify(
+      event.applicantId,
+      NotificationType.CONTRIBUTOR_APPLICATION_APPROVED,
+      {},
+    );
+  }
+
+  @OnEvent(DomainEvents.CONTRIBUTOR_APPLICATION_REJECTED, { async: true })
+  onContributorApplicationRejected(event: ContributorApplicationReviewedEvent) {
+    return this.notify(
+      event.applicantId,
+      NotificationType.CONTRIBUTOR_APPLICATION_REJECTED,
+      { reason: event.reason ?? 'No reason given' },
+    );
   }
 
   /** Reading a conversation clears its grouped message notification. */
