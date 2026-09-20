@@ -1,6 +1,6 @@
 import type { InfiniteData, QueryClient } from "@tanstack/react-query";
 import type { PaginatedResult } from "@/shared/types/api.types";
-import type { Message } from "../types/chat-dto";
+import type { Conversation, Message } from "../types/chat-dto";
 import { chatKeys } from "../hooks/chat-keys";
 
 export const chatCacheUpdaters = (queryClient: QueryClient) => ({
@@ -80,6 +80,17 @@ export const chatCacheUpdaters = (queryClient: QueryClient) => ({
       },
     );
     queryClient.invalidateQueries({ queryKey: chatKeys.conversations() });
+  },
+
+  // Optimistically zero a conversation's unread badge in the list cache.
+  clearUnread(conversationId: string) {
+    queryClient.setQueryData(
+      chatKeys.conversations(),
+      (old: Conversation[] | undefined) =>
+        old?.map((c) =>
+          c.id === conversationId ? { ...c, unreadCount: 0 } : c,
+        ),
+    );
   },
 
   markSeen(conversationId: string, seenBy: string) {

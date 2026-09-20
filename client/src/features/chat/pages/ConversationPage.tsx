@@ -48,6 +48,8 @@ export default function ConversationPage() {
     (p) => p.id !== user?._id,
   );
 
+  const hasUnread = (conversation?.unreadCount ?? 0) > 0;
+
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useMessagesQuery(activeConversationId ?? "");
   const messages = useMemo(
@@ -63,23 +65,25 @@ export default function ConversationPage() {
     [messages],
   );
 
-  const { setActiveConversationId, clearUnread } = useChatUIStore();
-
+  const { setActiveConversationId } = useChatUIStore();
   useEffect(() => {
     if (!activeConversationId) return;
 
     setActiveConversationId(activeConversationId);
-    clearUnread(activeConversationId);
 
     return () => setActiveConversationId(null); // cleanup on unmount
-  }, [activeConversationId, setActiveConversationId, clearUnread]);
+  }, [activeConversationId, setActiveConversationId]);
 
   useEffect(() => {
     if (!activeConversationId || !latestMessage) return;
-    if (latestMessage.sender === user?._id || latestMessage.seenAt) return;
+    // Server's unreadCount also covers older unseen messages when the latest
+    // one is our own reply — don't rely on the latest message alone.
+    const latestNeedsSeen =
+      latestMessage.sender !== user?._id && !latestMessage.seenAt;
+    if (!latestNeedsSeen && !hasUnread) return;
 
     markSeen(activeConversationId);
-  }, [activeConversationId, latestMessage, markSeen, user?._id]);
+  }, [activeConversationId, latestMessage, hasUnread, markSeen, user?._id]);
 
   if (!activeConversationId) {
     return <Navigate to={ROUTES.CHAT} replace />;

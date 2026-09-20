@@ -19,9 +19,6 @@ export class Message {
   @Prop({ type: String, required: true, trim: true, maxlength: 2000 })
   content: string;
 
-  @Prop({ type: Boolean, default: false })
-  seen: boolean;
-
   @Prop({ type: Date, default: null })
   seenAt: Date | null;
 

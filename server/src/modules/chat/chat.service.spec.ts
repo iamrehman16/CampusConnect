@@ -132,3 +132,31 @@ describe('ChatService#onModuleInit — participantsKey backfill', () => {
     expect(conversationModel.updateOne).not.toHaveBeenCalled();
   });
 });
+
+describe('ChatService#getUserConversations — unreadCount', () => {
+  it('attaches per-conversation unread counts from one grouped query, defaulting to 0', async () => {
+    const userId = new Types.ObjectId().toString();
+    const convWithUnread = new Types.ObjectId();
+    const convAllRead = new Types.ObjectId();
+
+    const query = chainable([{ _id: convWithUnread }, { _id: convAllRead }]);
+    (query as MockQuery & { sort: jest.Mock }).sort = jest
+      .fn()
+      .mockReturnValue(query);
+    const conversationModel = { find: jest.fn().mockReturnValue(query) };
+    const aggregate = jest.fn().mockReturnValue({
+      exec: jest.fn().mockResolvedValue([{ _id: convWithUnread, count: 3 }]),
+    });
+
+    const chatService = new ChatService(
+      conversationModel as unknown as Model<ConversationDocument>,
+      { aggregate } as unknown as Model<MessageDocument>,
+      {} as unknown as PaginationService,
+    );
+
+    const result = await chatService.getUserConversations(userId);
+
+    expect(aggregate).toHaveBeenCalledTimes(1);
+    expect(result.map((c) => c.unreadCount)).toEqual([3, 0]);
+  });
+});

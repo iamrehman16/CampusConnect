@@ -109,7 +109,16 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         dto,
         senderId,
       );
-      socket.to(dto.conversationId).emit('new_message', message);
+      // Deliver to the conversation room (open chat) AND the receiver's
+      // personal room (joined on connect) — otherwise a recipient who isn't
+      // currently viewing this conversation never hears about the message,
+      // which makes unread badges impossible. Socket.IO delivers once per
+      // socket even when it's in both rooms.
+      const receiverId = await this.chatService.getReceiverIdFromConversation(
+        dto.conversationId,
+        senderId,
+      );
+      socket.to(dto.conversationId).to(receiverId).emit('new_message', message);
       return message;
     } catch (err) {
       this.logger.error(

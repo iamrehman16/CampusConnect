@@ -126,13 +126,53 @@ export class ChatService implements OnModuleInit {
   }
 
   async getUserConversations(userId: string) {
-    return this.conversationModel
-      .find({ participants: new Types.ObjectId(userId) })
+    const userObjectId = new Types.ObjectId(userId);
+
+    const conversations = await this.conversationModel
+      .find({ participants: userObjectId })
       .populate('participants', PARTICIPANT_PUBLIC_FIELDS)
       .populate('lastMessage')
       .sort({ lastMessageAt: -1 })
       .lean()
       .exec();
+
+    const unreadByConversation = await this.getUnreadCounts(
+      userObjectId,
+      conversations.map((c) => c._id),
+    );
+
+    return conversations.map((c) => ({
+      ...c,
+      unreadCount: unreadByConversation.get(c._id.toString()) ?? 0,
+    }));
+  }
+
+  /**
+   * Unread = messages from the other participant with no `seenAt`.
+   * One grouped query for all of the user's conversations (no N+1); uses
+   * the existing { conversationId, createdAt } index for the match.
+   */
+  private async getUnreadCounts(
+    userId: Types.ObjectId,
+    conversationIds: Types.ObjectId[],
+  ): Promise<Map<string, number>> {
+    if (conversationIds.length === 0) return new Map();
+
+    const rows = await this.messageModel
+      .aggregate<{ _id: Types.ObjectId; count: number }>([
+        {
+          $match: {
+            conversationId: { $in: conversationIds },
+            sender: { $ne: userId },
+            seenAt: null,
+            isDeleted: false,
+          },
+        },
+        { $group: { _id: '$conversationId', count: { $sum: 1 } } },
+      ])
+      .exec();
+
+    return new Map(rows.map((r) => [r._id.toString(), r.count]));
   }
 
   async getMessages(userId: string, dto: GetMessagesDto) {

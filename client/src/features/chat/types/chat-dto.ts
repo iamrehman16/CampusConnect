@@ -16,6 +16,8 @@ export interface Conversation {
   participants: ConversationParticipant[];
   lastMessage: Message | null;
   lastMessageAt: string;
+  /** Messages from the other participant not yet seen. Server is source of truth. */
+  unreadCount: number;
   createdAt: Date;
   updatedAt: Date;
 }

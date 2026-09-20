@@ -14,7 +14,7 @@ import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { ROUTES } from "@/shared/constants/routes";
-import { useChatUIStore } from "@/features/chat/store/chat-ui.store";
+import { useTotalUnread } from "@/features/chat/hooks/chat-hooks";
 import { useThemeModeContext } from "@/shared/hooks/useThemeModeContext";
 import { usePwaInstall } from "@/shared/hooks/usePwaInstall";
 
@@ -40,9 +40,7 @@ export default function StandardBar({ title, onAvatarClick }: StandardBarProps) 
   const { mode, toggle } = useThemeModeContext();
   const { isInstallable, triggerInstall } = usePwaInstall();
 
-  const totalUnread = useChatUIStore((s) =>
-    Object.values(s.unreadCounts).reduce((sum, n) => sum + n, 0),
-  );
+  const totalUnread = useTotalUnread();
 
   return (
     <AppBar

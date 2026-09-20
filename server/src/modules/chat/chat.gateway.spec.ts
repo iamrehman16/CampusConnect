@@ -75,4 +75,31 @@ describe('ChatGateway', () => {
       expect.objectContaining({ message: expect.any(String) }),
     );
   });
+
+  it('handleSendMessage delivers new_message to the conversation room and the receiver personal room', async () => {
+    const message = { id: 'm1' };
+    const chatService = {
+      createMessageIdempotent: jest.fn().mockResolvedValue(message),
+      getReceiverIdFromConversation: jest.fn().mockResolvedValue('user-2'),
+    };
+    const gateway = new ChatGateway(
+      chatService as unknown as ChatService,
+      {} as WsJwtGuard,
+    );
+    const emit = jest.fn();
+    const secondTo = jest.fn().mockReturnValue({ emit });
+    const firstTo = jest.fn().mockReturnValue({ to: secondTo });
+    const socket = { ...mockSocket(), to: firstTo };
+    socket.data.userId = 'user-1';
+
+    await gateway.handleSendMessage(socket as unknown as AppSocket, {
+      conversationId: 'conv-1',
+      content: 'hi',
+      clientId: 'c1',
+    });
+
+    expect(firstTo).toHaveBeenCalledWith('conv-1');
+    expect(secondTo).toHaveBeenCalledWith('user-2');
+    expect(emit).toHaveBeenCalledWith('new_message', message);
+  });
 });

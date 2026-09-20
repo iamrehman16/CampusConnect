@@ -9,6 +9,7 @@ import TopBar from "./TopBar";
 import ProfileDrawer from "./ProfileDrawer";
 import { useUIStore } from "@/shared/store/ui.store";
 import { getRouteConfig } from "@/app/routeConfig";
+import { useChatUnreadSync } from "@/features/chat/hooks/useChatUnreadSync";
 
 /**
  * Main application layout shell.
@@ -17,6 +18,7 @@ import { getRouteConfig } from "@/app/routeConfig";
  */
 export default function AppLayout() {
   const theme = useTheme();
+  useChatUnreadSync();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const { sidebarCollapsed } = useUIStore();
   const sidebarWidth = sidebarCollapsed

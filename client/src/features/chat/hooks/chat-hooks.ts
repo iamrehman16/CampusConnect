@@ -18,6 +18,17 @@ export function useConversationsQuery() {
   });
 }
 
+export function useTotalUnread(): number {
+  const { data } = useQuery({
+    queryKey: chatKeys.conversations(),
+    queryFn: () => chatService.getMyConversations(),
+    staleTime: 1000 * 30,
+    select: (conversations) =>
+      conversations.reduce((sum, c) => sum + c.unreadCount, 0),
+  });
+  return data ?? 0;
+}
+
 export function useMessagesQuery(conversationId: string) {
   // Anchor timestamp — set once on mount, never changes for this hook instance
   const beforeRef = useRef(new Date().toISOString());

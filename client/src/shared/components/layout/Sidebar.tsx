@@ -1,4 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
+import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
 import Drawer from '@mui/material/Drawer';
 import List from '@mui/material/List';
@@ -28,6 +29,7 @@ import { UserRole } from '@/shared/types/enums';
 import { People } from '@mui/icons-material';
 import { useUIStore } from '@/shared/store/ui.store';
 import { useThemeModeContext } from '@/shared/hooks/useThemeModeContext';
+import { useTotalUnread } from '@/features/chat/hooks/chat-hooks';
 
 export const SIDEBAR_WIDTH = 260;
 export const SIDEBAR_COLLAPSED_WIDTH = 64;
@@ -56,6 +58,8 @@ export default function Sidebar() {
   const theme = useTheme();
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
   const { mode, toggle } = useThemeModeContext();
+
+  const totalUnread = useTotalUnread();
 
   const isAdmin = user?.role === UserRole.ADMIN;
 
@@ -152,7 +156,13 @@ export default function Sidebar() {
                   color: isActive(item.path) ? 'primary.main' : 'text.secondary',
                 }}
               >
-                {item.icon}
+                {item.path === ROUTES.CHAT ? (
+                  <Badge badgeContent={totalUnread} color="error" max={99}>
+                    {item.icon}
+                  </Badge>
+                ) : (
+                  item.icon
+                )}
               </ListItemIcon>
 
               {/* Label — hidden when collapsed */}

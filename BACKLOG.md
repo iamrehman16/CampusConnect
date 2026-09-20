@@ -511,6 +511,25 @@ messenger expectation and prerequisite for mentorship UX.
 - Resolve the unused `Message.seen` boolean (remove or document) — one
   source of truth (`seenAt`).
 
+**Status: DONE (2026-09-20).** Root cause: an unread badge already existed
+on the topbar but could never fire — `useChatSocket()` (the `new_message`
+listener) is mounted only in `ConversationPage`, and the gateway emitted
+`new_message` only to the conversation room, which only that page joins. The
+count also lived in a client-only zustand map, so a reload zeroed it. Fix:
+`GET conversations` now returns `unreadCount` per conversation (one grouped
+aggregate, no N+1); the gateway also emits `new_message` to the receiver's
+personal room (`socket.to(convId).to(receiverId)`, deduped by Socket.IO); a
+new app-wide `useChatUnreadSync` (mounted in `AppLayout`) refetches the list
+on incoming messages and clears on `messages_seen`; `useTotalUnread` derives
+the total from the query cache and feeds the topbar and the desktop sidebar
+Messages badge; list rows bold with a count chip. Zustand unread state
+removed (server = source of truth); unused `Message.seen` field removed.
+`ConversationPage` now also marks seen when older unseen messages exist even
+if the latest message is the user's own. Server: 86/86 tests, lint,
+typecheck clean; client typecheck/lint/build clean. Not verified with two
+live browser sessions. No new index added — the aggregate rides the
+existing `{conversationId, createdAt}` index; revisit if it shows up slow.
+
 ### E3 — Presence & typing indicators
 **Effort:** 3
 **Where:** `chat.gateway.ts`, `chat-socket.service.ts`, `ConversationPage`

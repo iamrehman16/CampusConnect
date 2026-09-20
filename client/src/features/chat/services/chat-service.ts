@@ -35,6 +35,7 @@ function normalizeConversation(conversation: RawConversation): Conversation {
   return {
     ...conversation,
     id: conversation.id ?? conversation._id ?? "",
+    unreadCount: conversation.unreadCount ?? 0,
     participants: conversation.participants.map(normalizeParticipant),
     lastMessage: conversation.lastMessage
       ? normalizeMessage(conversation.lastMessage)

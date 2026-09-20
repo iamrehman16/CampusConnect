@@ -1,4 +1,4 @@
-import { Avatar, Box, ListItemButton, Typography } from "@mui/material";
+import { Avatar, Badge, Box, ListItemButton, Typography } from "@mui/material";
 import type { Conversation } from "../types/chat-dto";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/shared/hooks/useAuth";
@@ -19,6 +19,7 @@ export function ConversationListItem({
     (p) => p.id !== user?._id,
   );
 
+  const hasUnread = conversation.unreadCount > 0;
   const displayName = otherParticipant?.name?.trim() || "Unknown user";
 
   return (
@@ -46,7 +47,11 @@ export function ConversationListItem({
         <Box
           sx={{ display: "flex", justifyContent: "space-between", mb: 0.25 }}
         >
-          <Typography variant="body2" fontWeight={600} noWrap>
+          <Typography
+            variant="body2"
+            fontWeight={hasUnread ? 700 : 600}
+            noWrap
+          >
             {displayName}
           </Typography>
           {conversation.lastMessageAt && (
@@ -72,6 +77,15 @@ export function ConversationListItem({
           {conversation.lastMessage?.content ?? "No messages yet"}
         </Typography>
       </Box>
+      {hasUnread && (
+        <Badge
+          badgeContent={conversation.unreadCount}
+          color="primary"
+          max={99}
+          sx={{ alignSelf: "center", mr: 1.5 }}
+          aria-label={`${conversation.unreadCount} unread messages`}
+        />
+      )}
     </ListItemButton>
   );
 }
