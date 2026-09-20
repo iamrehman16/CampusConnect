@@ -30,10 +30,12 @@ import { ConfigType } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import { JOBS, QUEUES } from '../queues/queue.constants';
 import { Queue } from 'bullmq';
+import { populatedId } from '../../common/utils/populated-id';
 import {
   DomainEvents,
   ResourceApprovedEvent,
   ResourceRejectedEvent,
+  ResourceRemovedEvent,
 } from '../../common/events/domain-events';
 import { IngestResourceJobPayload } from '../queues/interfaces/ingest-resource-job.interface';
 import {
@@ -48,17 +50,13 @@ const UPLOADED_BY_POPULATE = { path: 'uploadedBy', select: 'name email' };
 
 /** `uploadedBy` is populated to `{ _id, name, email }` by UPLOADED_BY_POPULATE. */
 function populatedUploaderId(resource: { uploadedBy: unknown }): string {
-  const uploader = resource.uploadedBy;
-  if (uploader instanceof Types.ObjectId) return uploader.toString();
-  if (
-    typeof uploader === 'object' &&
-    uploader !== null &&
-    '_id' in uploader &&
-    uploader._id instanceof Types.ObjectId
-  ) {
-    return uploader._id.toString();
+  const id = populatedId(resource.uploadedBy);
+  if (!id) {
+    throw new InternalServerErrorException(
+      'Resource has no resolvable uploader',
+    );
   }
-  throw new InternalServerErrorException('Resource has no resolvable uploader');
+  return id;
 }
 
 interface ResourceStatsFacetResult {
@@ -244,6 +242,13 @@ export class ResourceService {
 
     if (!resource)
       throw new NotFoundException('Resource not found or ownership mismatch');
+
+    if (resource.approvalStatus === ApprovalStatus.APPROVED) {
+      this.eventEmitter.emit(DomainEvents.RESOURCE_REMOVED, {
+        resourceId: resource._id.toString(),
+        uploaderId: populatedUploaderId(resource),
+      } satisfies ResourceRemovedEvent);
+    }
 
     if (resource.cloudinaryPublicId) {
       this.cloudinaryService

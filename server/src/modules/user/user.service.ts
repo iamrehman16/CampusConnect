@@ -130,6 +130,31 @@ export class UserService {
     return updatedUser.toObject();
   }
 
+  /**
+   * `contributionScore` is derived from the reputation ledger — only the
+   * reputation module should call these (see ReputationService).
+   */
+  async adjustContributionScore(id: string, delta: number): Promise<void> {
+    await this.userModel
+      .updateOne({ _id: id }, { $inc: { contributionScore: delta } })
+      .exec();
+  }
+
+  async setContributionScore(id: string, score: number): Promise<void> {
+    await this.userModel
+      .updateOne({ _id: id }, { contributionScore: score })
+      .exec();
+  }
+
+  async zeroContributionScoresExcept(ids: string[]): Promise<void> {
+    await this.userModel
+      .updateMany(
+        { _id: { $nin: ids }, contributionScore: { $ne: 0 } },
+        { contributionScore: 0 },
+      )
+      .exec();
+  }
+
   async touchLastSeen(id: string, at: Date): Promise<void> {
     await this.userModel.updateOne({ _id: id }, { lastSeenAt: at }).exec();
   }

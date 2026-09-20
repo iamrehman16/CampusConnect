@@ -19,6 +19,12 @@ import {
 import { Roles } from '../user/enums/user-role.enum';
 import { PostQueryBuilder } from './queries/build-post-query';
 import { PostQueryDto } from './dto/post-query.dto';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+  DomainEvents,
+  PostUpvotedEvent,
+} from '../../common/events/domain-events';
+import { populatedId } from '../../common/utils/populated-id';
 
 interface PostStatsFacetResult {
   total: Array<{ count: number }>;
@@ -34,6 +40,7 @@ export class PostService {
     @InjectModel(Comment.name) private commentModel: Model<CommentDocument>,
     @InjectConnection() private readonly connection: Connection,
     private readonly paginationService: PaginationService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async createPost(dto: CreatePostDto, userId: string) {
@@ -166,7 +173,9 @@ export class PostService {
       .lean()
       .exec();
 
+    let added = false;
     if (!post) {
+      added = true;
       post = await this.postModel
         .findOneAndUpdate(
           { _id: postId, isDeleted: false },
@@ -179,6 +188,17 @@ export class PostService {
     }
 
     if (!post) throw new NotFoundException('Post not found');
+
+    if (added) {
+      const authorId = populatedId(post.author);
+      if (authorId) {
+        this.eventEmitter.emit(DomainEvents.POST_UPVOTED, {
+          postId: id,
+          authorId,
+          voterId: userId,
+        } satisfies PostUpvotedEvent);
+      }
+    }
     return post;
   }
 

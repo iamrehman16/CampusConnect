@@ -1,4 +1,4 @@
-import { IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { Roles } from '../enums/user-role.enum';
 import { UserStatus } from '../enums/user-status.enum';
 
@@ -14,10 +14,6 @@ export class AdminUpdateUserDto {
   @IsOptional()
   @IsEnum(UserStatus)
   accountStatus?: UserStatus;
-
-  @IsOptional()
-  @IsNumber()
-  contributionScore?: number;
 
   @IsOptional()
   @IsString()

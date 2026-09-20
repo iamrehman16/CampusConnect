@@ -5,6 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Model, Types } from 'mongoose';
 import { ResourceDocument } from './schemas/resource.schema';
 import { Queue } from 'bullmq';
+import { ApprovalStatus } from './enums/approval-status.enum';
 
 describe('ResourceService', () => {
   it('should be defined', () => {
@@ -100,6 +101,47 @@ describe('ResourceService moderation events', () => {
     const { service, eventEmitter } = build(updateChain(null));
 
     await expect(service.reject(resourceId.toString(), 'x')).rejects.toThrow();
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  it('remove emits resource.removed only for an approved resource', async () => {
+    const approved = {
+      ...populatedResource,
+      approvalStatus: ApprovalStatus.APPROVED,
+      cloudinaryPublicId: '',
+    };
+    const pending = {
+      ...populatedResource,
+      approvalStatus: ApprovalStatus.PENDING,
+      cloudinaryPublicId: '',
+    };
+
+    const a = build(updateChain(approved));
+    await a.service.remove(resourceId.toString(), uploaderId.toString(), false);
+    expect(a.eventEmitter.emit).toHaveBeenCalledWith('resource.removed', {
+      resourceId: resourceId.toString(),
+      uploaderId: uploaderId.toString(),
+    });
+
+    const p = build(updateChain(pending));
+    await p.service.remove(resourceId.toString(), uploaderId.toString(), false);
+    expect(p.eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  it('update never emits resource.removed (editing an approved resource must not cost points)', async () => {
+    const approved = {
+      ...populatedResource,
+      approvalStatus: ApprovalStatus.APPROVED,
+    };
+    const { service, eventEmitter } = build(updateChain(approved));
+
+    await service.update(
+      resourceId.toString(),
+      { title: 'New title' },
+      uploaderId.toString(),
+      false,
+    );
+
     expect(eventEmitter.emit).not.toHaveBeenCalled();
   });
 });

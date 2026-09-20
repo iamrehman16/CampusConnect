@@ -6,6 +6,8 @@
 export const DomainEvents = {
   RESOURCE_APPROVED: 'resource.approved',
   RESOURCE_REJECTED: 'resource.rejected',
+  RESOURCE_REMOVED: 'resource.removed',
+  POST_UPVOTED: 'post.upvoted',
   CHAT_MESSAGE_RECEIVED: 'chat.message.received',
   CHAT_CONVERSATION_READ: 'chat.conversation.read',
 } as const;
@@ -21,6 +23,19 @@ export interface ResourceRejectedEvent {
   title: string;
   uploaderId: string;
   reason: string;
+}
+
+/** An APPROVED resource was soft-deleted (reputation must be reversed). */
+export interface ResourceRemovedEvent {
+  resourceId: string;
+  uploaderId: string;
+}
+
+/** A user newly upvoted someone else's post (not emitted on un-upvote). */
+export interface PostUpvotedEvent {
+  postId: string;
+  authorId: string;
+  voterId: string;
 }
 
 /** Emitted only when the receiver is NOT currently viewing the conversation. */

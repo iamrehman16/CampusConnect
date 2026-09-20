@@ -641,6 +641,46 @@ make contributors feel valued is inert.
 - Idempotent backfill for existing approved resources/upvotes.
 - Score history queryable per user (feeds E15). Tests cover idempotency.
 
+**Status: DONE (2026-09-20).** New `server/src/modules/reputation/`:
+append-only `ReputationEvent` ledger (unique `(type, sourceId)` = the
+idempotency key; corrections are negative rows, never edits) with
+`User.contributionScore` as a denormalized sum kept via `$inc`. One typed
+price list (`reputation.points.ts`, exhaustive over `AwardableEventType`):
+resource approved **+10**, post upvote received **+2**. Producers emit domain
+events (new: `resource.removed`, `post.upvoted`; `resource.approved` is
+shared with E4) and `ReputationListener` is the only consumer (failures are
+logged, never break the request). Rules: upvotes are keyed
+`postId:voterId` so each voter counts **once ever** — un-upvote doesn't
+claw back, re-upvote doesn't re-award, so toggling can't be farmed;
+self-upvotes ignored; removing an *approved* resource writes one negative
+row equal to what that resource earned (sum of its ledger rows), and only
+`remove()` emits it — a regression test pins that `update()` doesn't (the
+first draft put the emit in `update()`, which the new test caught: editing
+an approved resource would have wiped its points).
+`GET reputation/me/history` (paginated, newest first, feeds E15) and
+`POST admin/reputation/backfill` (idempotent: awards pre-ledger approved
+resources/upvotes, then rebuilds every score from the ledger). `contributionScore`
+is now **derived**: removed from the admin create/update DTOs (a write now
+400s under the whitelist pipe); the admin table only displays it, so no
+client change. Shared `populatedId()` util replaces E4's local helper.
+**Deliberate scope decisions:** (1) download milestones are NOT scored —
+`GET resources/:id/download` is `@Public()`/anonymous, so the count is
+trivially inflatable; a follow-up would need authenticated
+unique-downloader tracking (raw downloads still feed E15's dashboard).
+(2) Deleting a post does not reverse its upvote points (small; would need a
+per-post sum like resources). (3) Ledger write + `$inc` is not
+transactional (would need a replica set everywhere) — on failure the row is
+written, the error is logged with full context, and `backfill` /
+`recomputeAllScores` repairs the drift. AI-citation (E14) and mentorship
+(E11) events plug in by adding an enum value + a price. **Verified live**
+(local Mongo, real HTTP): upvote +2, toggle off/on stays 2, self-upvote
+stays 2, non-admin backfill 403, backfill awards then re-runs with 0
+awarded, deleting an approved resource returns the score to the pre-resource
+value, history lists the rows, admin score write 400s. The dev DB now holds
+6 real backfilled ledger rows and legacy hand-set scores were recomputed.
+Server 122/122 tests, typecheck clean. Not verified: the approve ->
++10 path live (needs the ingestion queue; unit-tested).
+
 ### E6 — Become a contributor: application + promotion path
 **Effort:** 5
 **Where:** `user` module (application schema/endpoints), admin UI queue,

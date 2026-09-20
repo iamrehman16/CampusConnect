@@ -28,9 +28,6 @@ export class AdminCreateUserDto {
   accountStatus?: UserStatus;
 
   @IsOptional()
-  contributionScore?: number;
-
-  @IsOptional()
   academicInfo?: string;
 
   @IsOptional()
