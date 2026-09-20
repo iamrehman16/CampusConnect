@@ -14,7 +14,9 @@ Nothing below `3` belongs here — smaller chores go straight into a commit,
 not the backlog.
 
 Epics below are ordered by current priority — work top to bottom unless you
-have a specific reason to jump ahead.
+have a specific reason to jump ahead. **Current focus: Epic E.** Epic D
+(design/theme) is postponed by product decision (2026-09-20); its D1/D2 work
+stays as shipped and D3 is untouched.
 
 ---
 
@@ -184,7 +186,7 @@ child. Client typecheck/build/lint clean.
 
 ---
 
-## Epic D — Design system & theme overhaul
+## Epic D — Design system & theme overhaul (POSTPONED 2026-09-20 — resume after Epic E)
 
 Goal: replace the current look with two genuinely distinct, intentional
 themes — not the same palette auto-inverted — that read as a considered
@@ -381,32 +383,364 @@ flavored) after a direct question in this session.
 
 ---
 
-## Epic E — Complete the messenger & contributors features
+## Epic E — Contributors, mentorship & the messenger (ACTIVE — current focus)
 
-**Not fully audited yet** — this session found one concrete, confirmed gap
-in passing while scoping other epics; it wasn't a deliberate audit of
-either feature. Treat E1 as real and ready to execute, but don't assume
-the epic is fully scoped — run a proper audit pass (same "verify against
-current code, don't assume" discipline as the rest of this backlog) before
-writing more PBIs here.
+**Audited 2026-09-20 against current code.** This epic supersedes the earlier
+"complete the messenger & contributors" stub. Contributors and chat are the
+two weakest areas of the app: both exist as *plumbing*, neither delivers
+*value*, and neither is connected to the rest of the product.
 
-### E1 — Resolve real participant names/avatars in the messenger conversation list
+### Why these two features exist
+
+CampusConnect's core loop is resources -> understanding. Files and an AI
+assistant get a student most of the way; the last mile is a *person* — the
+senior who wrote the notes, the peer who aced the course. Contributors are
+the supply side (they create the trusted resources the RAG assistant also
+answers from); the messenger is the delivery channel for human help. Done
+right they form a loop: **find a resource -> trust its author -> ask them ->
+get helped -> author earns reputation -> more people contribute.** Mentorship
+is what turns a document library into a community.
+
+### Audit: current state (verified against code)
+
+- **Contributor is just a role string.** Only an admin can set it
+  (`PATCH users/:id/role`); there is no path for a student to *become* one —
+  yet only Contributor/Admin can upload (`resource.controller.ts`). Students
+  cannot contribute at all.
+- **`contributionScore` is dead.** Schema field, default 0, admin-editable;
+  nothing ever increments it (`grep` across `server/src`). No badges, tiers,
+  or leaderboard beyond an admin-only `TopContributorsTable`.
+- **`isOpenToMentor`, `expertise`, `interests` are collected in onboarding
+  and consumed by nothing** except displaying tags on the profile hero.
+  `ContributorsPage` is `useUsers({ role: 'Contributor' })` — a role filter,
+  not a mentor directory: no search, no expertise/department filter, no
+  open-to-mentor filter, avatar is the email's first letter, and the card
+  shows the raw email + role chip.
+- **The only contributor -> chat bridge is a cold "Message" button.** No
+  context (which resource? which question?), no request/accept step, no
+  mentor capacity control, spam-prone.
+- **Messenger is a bare 1:1 DM.** Works (idempotent sends, seen receipts,
+  optimistic UI) but: no unread counts or nav badge, no presence/typing
+  (`ChatGateway.connectedUsers` + `addUserSocket`/`removeUserSocket` are
+  dead code — never called), no notifications of any kind anywhere in the
+  app (`grep -i notification` = nothing), conversations populate only
+  `name email` (no avatar; list avatar has no `src`), `Message.seen` boolean
+  is unused beside `seenAt`, no block/report.
+- **Integration is zero.** Resources don't link to mentoring; the AI
+  assistant's citations (`Citation`) don't carry the contributor; C1's
+  thumbs-down feedback goes nowhere; the dashboard's "available mentors" is
+  just `count(role=Contributor)` (`dashboard.service.ts:72`), not actual
+  open mentors.
+- **Possible bug to verify:** `user.controller.ts` declares
+  `@Get('profile:id')` (no slash) while the client calls
+  `/users/profile/${id}`. Confirm the public profile route actually resolves
+  before building on it (folded into E1).
+
+### Product vision — how it fits together
+
+1. **Reputation** — contributors earn a real, explainable score (approved
+   resources, downloads, AI citations, upvotes, mentee ratings) -> tiers and
+   badges. Students can *become* contributors through a clear path.
+2. **Mentor discovery** — a searchable directory of people open to mentor,
+   filterable by department/subject/semester, with recommended matches for
+   the current student based on their interests.
+3. **Mentorship as a lifecycle, not a DM** — request (with intro message) ->
+   accept/decline -> active -> complete + feedback. Mentors control capacity.
+4. **Contextual chat** — "Ask the contributor" from any resource or post
+   opens a conversation with that item attached as a card.
+5. **AI -> human handoff** — when the assistant can't answer well (thumbs-
+   down, low retrieval score), it suggests the contributors behind the
+   relevant subject/resources. Citations show who wrote the source.
+6. **A messenger people can trust and live in** — unread, presence, typing,
+   notifications, block/report.
+
+### Sequencing
+
+Foundations first (E1-E4) — mentorship on top of a messenger with no unread
+badge or notifications would be unusable. Then reputation (E5-E7), mentorship
+(E8-E12), then cross-feature integration (E13-E15), safety last but before
+any public launch (E16). Within a phase, top to bottom.
+
+---
+### Phase 1 — Messenger foundations
+
+### E1 — Messenger identity: avatars, verified names, profile-route check
 **Effort:** 3
-**Where:** `client/src/features/chat/components/ConversationListItem.tsx`
-**Why:** Confirmed gap — the component falls back to
-`otherParticipant?.name ?? otherParticipant?.email` directly, with an
-existing comment flagging it: "Resolve participant name from id — wire
-when user resolution is available." Verify first whether
-`ConversationParticipant` (`chat-dto.ts`) is already populated with a
-real `name` from the conversations endpoint (in which case this may
-already be closed, or smaller than the comment implies) before scoping
-a fix.
+**Where:** `server/src/modules/chat/chat.service.ts` (`populate('participants', 'name email')` x3),
+`client/src/features/chat/components/ConversationListItem.tsx` (+ `ConversationPage` header),
+`chat-dto.ts`, `server/src/modules/user/user.controller.ts`
+**Why:** The old E1 premise is partly stale — names *are* populated
+server-side and `chat-service.ts` normalizes `_id` -> `id`, so the name
+renders. What is really missing: `avatar` is never populated (list avatar has
+no `src`), the fallback shows a raw email, and the stale "wire when user
+resolution is available" comment remains. Also verify the
+`profile:id` vs `profile/:id` route mismatch (see audit).
 **Acceptance criteria:**
-- Conversation list always shows a real display name (not a raw id or
-  bare email fallback) for the other participant, with an avatar sourced
-  the same way the rest of the app resolves user avatars.
-- Verify: start a conversation with a user who has a display name and a
-  profile photo set — both appear correctly in the list.
+- Conversation payloads include `avatar` (and `role`) for participants;
+  `ConversationParticipant` type updated; list + open-conversation header
+  render avatar with initial fallback, name with "Unknown user" fallback
+  (never a raw email).
+- Public-profile fetch route confirmed working end to end; fixed if not
+  (own commit if it's a separate root cause).
+- Stale comment removed.
+
+**Status: DONE (2026-09-20).** Server now populates `name avatar role` on
+all four conversation queries (shared `PARTICIPANT_PUBLIC_FIELDS`); email is
+no longer sent to the counterpart at all. List item and conversation header
+render the avatar (initial fallback) and "Unknown user" instead of an email.
+Route check: **real bug confirmed** — `@Get('profile:id')` compiles to a
+pattern matching `/users/profile<id>` only (verified with `path-to-regexp`),
+so the client's `/users/profile/:id` 404'd and public profiles never loaded.
+Fixed to `profile/:id` (separate concern; separate commit). Server chat +
+user specs green, typecheck clean; client typecheck/lint clean. Not verified
+in a running browser.
+
+### E2 — Unread counts, nav badge, read state
+**Effort:** 5
+**Where:** `chat.service.ts` / `chat.gateway.ts`, `message.schema.ts`,
+`client/src/features/chat/store/chat-ui.store.ts`, `Sidebar`/`BottomNav`
+**Why:** No way to know a message arrived unless the chat is open. Core
+messenger expectation and prerequisite for mentorship UX.
+**Acceptance criteria:**
+- Server returns `unreadCount` per conversation (count of others' messages
+  with `seenAt: null`, indexed query — no N+1) in `GET conversations`.
+- New-message socket event increments unread for non-active conversations;
+  `mark_seen` clears; total unread shown as a badge on the Messages nav item
+  (sidebar + bottom nav).
+- Conversation list bolds unread rows and shows the count chip.
+- Resolve the unused `Message.seen` boolean (remove or document) — one
+  source of truth (`seenAt`).
+
+### E3 — Presence & typing indicators
+**Effort:** 3
+**Where:** `chat.gateway.ts`, `chat-socket.service.ts`, `ConversationPage`
+**Why:** `connectedUsers` map and `addUserSocket`/`removeUserSocket` exist
+but are never called. Presence tells a student whether a mentor is around.
+**Acceptance criteria:**
+- Gateway tracks connect/disconnect per user (multi-socket safe), emits
+  `presence` to conversation counterparts; "online / last seen" in header.
+- `typing` start/stop events (throttled client side), shown in feed.
+- Dead-code helpers wired up or deleted — no orphans left.
+
+### E4 — In-app notifications (module + bell)
+**Effort:** 8
+**Where:** new `server/src/modules/notification/` (schema, service,
+controller, gateway push), `@nestjs/event-emitter` (already a dependency),
+client `features/notifications/`, topbar bell
+**Why:** Nothing in the app tells a user anything happened. Mentorship
+requests, replies while away, approvals, and reputation milestones all need
+one shared channel — build once, reuse across E5-E16.
+**Acceptance criteria:**
+- `Notification` schema (`user`, `type`, `payload`, `readAt`), indexed by
+  `user` + `createdAt`; list/mark-read/mark-all endpoints, ownership-checked.
+- Emitted via domain events (no notification logic inside chat/resource
+  services): resource approved/rejected, new message while recipient is not
+  in that conversation, plus a typed registry so E10/E5 add types cleanly.
+- Real-time push over the existing Socket.IO auth; topbar bell with unread
+  count and dropdown; click deep-links to the target.
+- Retention/cleanup policy documented (TTL index or scheduled prune).
+
+---
+### Phase 2 — Reputation & the contributor pathway
+
+### E5 — Contribution score engine
+**Effort:** 5
+**Where:** new `server/src/modules/reputation/` (ledger schema + service),
+listeners on resource/post/mentorship events, `user.service.ts`
+**Why:** `contributionScore` never changes — the single field that could
+make contributors feel valued is inert.
+**Acceptance criteria:**
+- Append-only `ReputationEvent` ledger (`user`, `type`, `points`, `sourceId`,
+  unique on `type`+`sourceId` for idempotency); `contributionScore` is a
+  denormalized sum kept in sync atomically (`$inc`).
+- Point table in one typed config: resource approved, download milestones,
+  post upvote received, resource cited by AI (E14), mentorship completed /
+  rated (E11). Reversals (resource later deleted/rejected) write negative
+  events.
+- Idempotent backfill for existing approved resources/upvotes.
+- Score history queryable per user (feeds E15). Tests cover idempotency.
+
+### E6 — Become a contributor: application + promotion path
+**Effort:** 5
+**Where:** `user` module (application schema/endpoints), admin UI queue,
+`ProfileSettingsTab`
+**Why:** Upload is gated to Contributor/Admin but students can't get there
+except by an admin editing a role by hand. Supply of contributors is
+currently zero-by-default.
+**Decided 2026-09-20:** admin-reviewed application, with score shown to the
+student as an eligibility hint (not an automatic promotion). Student submits,
+admin approves/rejects, student is notified (depends on E4).
+**Acceptance criteria:**
+- Student can submit an application (reason + optional sample); one open
+  application at a time; status visible on their profile.
+- Admin queue to approve/reject with reason; approval flips role through the
+  existing `updateRole` path and emits a notification (E4).
+- Application status and eligibility hint (score vs threshold) shown to the
+  student.
+
+### E7 — Tiers & badges
+**Effort:** 3
+**Where:** shared tier config (server enum + client mapping),
+`ProfileHero`, `ContributorCard`, resource cards
+**Why:** Score is meaningless as a raw number; tiers (e.g. Newcomer ->
+Contributor -> Trusted -> Mentor Star) and a few milestone badges make it
+legible and aspirational.
+**Acceptance criteria:**
+- Tier derived from score by one pure, unit-tested function (single source
+  of truth, exposed in the user payload — not recomputed differently on the
+  client).
+- Tier chip on profile, directory card, and resource author byline; badge
+  strip on profile (first upload, 100 downloads, first mentee, etc.).
+
+---
+### Phase 3 — Mentorship
+
+### E8 — Mentor profile: availability & capacity
+**Effort:** 3
+**Where:** `user.schema.ts`, `update-user-profile.dto.ts`,
+`ProfileSettingsTab`, `ProfileHero`
+**Why:** `isOpenToMentor` is a bare boolean set once in onboarding and
+never editable meaningfully or shown. Mentors need to say what they help
+with and how much load they'll take.
+**Acceptance criteria:**
+- Add `mentorBio`, `mentorTopics` (subjects/courses), `maxActiveMentees`
+  (default 3) with validation; editable in settings; `isOpenToMentor`
+  toggle editable post-onboarding.
+- Profile hero shows an "Open to mentor" state with topics and remaining
+  capacity (capacity itself enforced in E10).
+- Text index / index on `isOpenToMentor` for E9 queries.
+
+### E9 — Mentor directory & discovery (replaces ContributorsPage)
+**Effort:** 5
+**Where:** `user` module (`GET users/mentors` with a query builder, following
+`build-user-query.ts`), `client/src/features/contributors/`
+**Why:** Today's page is a role list with a cold Message button and no way
+to find the *right* person.
+**Acceptance criteria:**
+- Endpoint returns only safe public fields (no email), filters:
+  search text, department, semester range, expertise/topic, open-to-mentor,
+  has-capacity; sort by score / recently active; paginated.
+- Page with filter bar, cards showing avatar, name, tier (E7), expertise
+  tags, department/semester, capacity, and primary CTA **Request mentorship**
+  (secondary: View profile). Email no longer displayed.
+- Empty/loading/error states; URL-synced filters.
+
+### E10 — Mentorship request lifecycle
+**Effort:** 8
+**Where:** new `server/src/modules/mentorship/` (schema, service,
+controller, events), client `features/mentorship/`; uses E4 notifications
+and chat's `findOrCreateConversation`
+**Why:** Turns "DM a stranger" into a structured relationship with consent
+and capacity control.
+**Acceptance criteria:**
+- `Mentorship` schema: `mentor`, `mentee`, `status`
+  (`pending|active|declined|cancelled|completed`), `topic`, `introMessage`,
+  timestamps; unique partial index prevents duplicate open requests per pair.
+- Endpoints: request, accept, decline, cancel, complete; state transitions
+  validated in one place (pure function, unit-tested); capacity
+  (`maxActiveMentees`) enforced atomically on accept; cannot request
+  yourself or a non-open mentor.
+- Accept auto-opens the conversation (with the intro message as first
+  message) and notifies the mentee; request/decline notify the counterpart.
+- UI: mentor inbox (pending requests, active mentees), mentee "My mentors"
+  with status; request dialog with topic + intro (min length).
+
+### E11 — Mentorship feedback & skill endorsements
+**Effort:** 5
+**Where:** `mentorship` module, `reputation` events, profile UI
+**Why:** Closes the loop — mentors get credit, future mentees get social
+proof, and quality is measurable.
+**Acceptance criteria:**
+- On `complete`, mentee can leave a 1-5 rating + short review (one per
+  mentorship, immutable after a grace window); mentor average and count on
+  the profile/directory card.
+- Mentees can endorse specific expertise tags of a mentor they've worked
+  with; endorsement counts shown next to tags.
+- Completed mentorship + rating emit reputation events (E5).
+- Abuse guard: only participants of a completed mentorship can rate/endorse.
+
+### E12 — Recommended mentors (matching)
+**Effort:** 5
+**Where:** `mentorship`/`user` service (`GET mentors/recommended`),
+`DashboardPage` widget, directory "For you" sort
+**Why:** Interests, department, semester and expertise are collected at
+onboarding and never used — free signal for matching.
+**Acceptance criteria:**
+- Deterministic, documented scoring function (interest/expertise overlap,
+  same department, mentor semester > mentee's, capacity, rating) — pure and
+  unit-tested; no ML.
+- Dashboard "Recommended mentors" widget (replaces the bare
+  `availableMentors` count with a real open-mentor count) and a "For you"
+  sort in E9.
+- Graceful cold start when a student has no interests set.
+
+---
+### Phase 4 — Integrating the features
+
+### E13 — Contextual chat: "Ask the contributor"
+**Effort:** 5
+**Where:** `message.schema.ts` (+ optional `context`/`kind`), chat DTOs,
+`ResourceDetailPage`, `PostCard`, `MessageBubble`
+**Why:** The natural moment to ask for help is while looking at a specific
+resource or post. Context makes the conversation useful from message one.
+**Acceptance criteria:**
+- Message gains a typed `kind` (`text | resource | post`) and `context`
+  ref; validated server-side; renders as a rich card in the feed (reuses
+  existing resource card styling), click-through to the item.
+- "Ask the author" on resource detail and post detail: starts (or reuses)
+  the conversation and pre-attaches the item; if the author is a mentor with
+  capacity it can offer "Request mentorship" (E10) instead of a plain DM.
+- Doesn't break idempotent `clientId` de-dup (CLAUDE.md §4).
+
+### E14 — Contributor attribution + AI "ask a human" handoff
+**Effort:** 5
+**Where:** `ai-chat.service.ts` `buildCitations()` + `Citation` type,
+`CitationChip.tsx`, C1 feedback flow, `MessageBubble.tsx` (AI)
+**Why:** Ties the RAG assistant to the people behind its sources — the
+strongest integration in the epic. Also gives contributors credit when their
+material powers answers.
+**Acceptance criteria:**
+- `Citation` carries uploader `{id, name, avatar, tier}` (resolved in one
+  batched lookup per response — no N+1); citation card shows the contributor.
+- When the assistant's retrieval is weak (top score under a documented
+  threshold) or the user thumbs-downs (C1 `feedback: 'down'`), an inline
+  "Ask a human" card suggests up to 3 mentors matched on the cited/related
+  subject/course (E12 scoring reuse) with a one-click request (E10).
+- Each distinct resource citation emits a debounced "cited by AI" reputation
+  event to its uploader (E5) — deduped per (resource, day) to prevent gaming.
+- Does not change the "Groq is instructed not to cite inline" decision
+  (CLAUDE.md §4) — citations remain programmatic.
+
+### E15 — Contributor impact dashboard & leaderboard
+**Effort:** 5
+**Where:** `dashboard` module (extend `my-stats`), `DashboardPage`,
+`ContributorsPage`
+**Why:** Contributors should see the effect of their work: it's the
+retention lever for the supply side.
+**Acceptance criteria:**
+- "My impact" panel for contributors: score + history sparkline (E5
+  ledger), downloads, AI citations, active/completed mentees, average
+  rating, next-tier progress.
+- Public leaderboard (top contributors this month / all time), opt-out
+  respected; reuses existing top-contributors aggregation where possible.
+- Follows the dataviz conventions already used in admin charts (Recharts).
+
+---
+### Phase 5 — Safety
+
+### E16 — Block, report & chat moderation
+**Effort:** 5
+**Where:** `chat` module (block list, report schema), admin dashboard tab,
+gateway guard
+**Why:** Open messaging between strangers (especially once mentorship makes
+contact easier) is an abuse vector; needed before any wider rollout.
+**Acceptance criteria:**
+- User can block/unblock; blocked pairs cannot send messages or (E10)
+  request mentorship; enforced in the gateway/service, not only the UI.
+- Report a message/conversation/mentor with a reason; admin queue to
+  review, warn, or suspend (reusing `UserStatus`).
+- Reported message content is retained for review even if the sender
+  soft-deletes it.
 
 ---
 
