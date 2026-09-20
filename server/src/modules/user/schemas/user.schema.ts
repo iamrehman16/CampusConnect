@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Roles } from '../enums/user-role.enum';
 import { UserStatus } from '../enums/user-status.enum';
 import { HydratedDocument } from 'mongoose';
+import { ReputationTier } from '../../reputation/tiers';
 
 @Schema({
   timestamps: true,
@@ -33,6 +34,17 @@ export class User {
 
   @Prop({ default: 0 })
   contributionScore: number;
+
+  /**
+   * Derived from contributionScore via tierForScore(); written only together
+   * with the score (see UserService) so it is always consistent.
+   */
+  @Prop({
+    type: String,
+    enum: ReputationTier,
+    default: ReputationTier.NEWCOMER,
+  })
+  tier: ReputationTier;
 
   @Prop({ default: UserStatus.ACTIVE, enum: UserStatus, type: String })
   accountStatus: UserStatus;

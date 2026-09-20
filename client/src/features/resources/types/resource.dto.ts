@@ -1,3 +1,4 @@
+import type { ReputationTier } from "@/features/reputation/types/reputation.types";
 // resource/types/resource.dto.ts
 import type { ResourceType } from "@/shared/types/enums";
 import type { ApprovalStatus } from "@/shared/types/enums";
@@ -11,6 +12,7 @@ export interface ResourceAuthor {
   _id: string;
   name: string;
   email: string;
+  tier?: ReputationTier;
 }
 
 // ─── Core entity ──────────────────────────────────────────────────────────────

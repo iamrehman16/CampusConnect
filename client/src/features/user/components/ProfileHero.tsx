@@ -22,6 +22,8 @@ import {
   PhotoCamera,
 } from "@mui/icons-material";
 import { UserRole } from "@/shared/types/enums";
+import { TierChip } from "@/features/reputation/components/TierChip";
+import { BadgeStrip } from "@/features/reputation/components/BadgeStrip";
 import type {
   ProfileStats,
   ProfileUserViewModel,
@@ -208,6 +210,7 @@ const ProfileHero: React.FC<ProfileHeroProps> = ({
                           }}
                         />
                       )}
+                      <TierChip tier={user?.tier} />
                     </Stack>
                     {joinDate && (
                       <Stack
@@ -271,6 +274,13 @@ const ProfileHero: React.FC<ProfileHeroProps> = ({
                     ))}
                   </Stack>
                 ) : null}
+
+                <Box sx={{ mt: 1 }}>
+                  <BadgeStrip
+                    userId={user?.id}
+                    justify={{ xs: 'center', sm: 'flex-start' }}
+                  />
+                </Box>
 
                 {user?.interests?.length ? (
                   <Box sx={{ mt: 1 }}>

@@ -1,5 +1,6 @@
 import type { User } from "@/shared/types/auth.types";
 import type { UserRole } from "@/shared/types/enums";
+import type { ReputationTier } from "@/features/reputation/types/reputation.types";
 
 export interface ProfileUserViewModel {
   id: string;
@@ -12,6 +13,7 @@ export interface ProfileUserViewModel {
   interests?: string[];
   semester?: number;
   role: UserRole;
+  tier?: ReputationTier;
   createdAt: string;
 }
 
@@ -52,6 +54,7 @@ export const toProfileUserViewModel = (
       : [],
     semester: user.semester,
     role: user.role,
+    tier: user.tier,
     createdAt: user.createdAt,
   };
 };

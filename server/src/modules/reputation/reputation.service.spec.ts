@@ -210,3 +210,24 @@ describe('ReputationService#backfill', () => {
     ]);
   });
 });
+
+describe('ReputationService#getBadges', () => {
+  it('derives badges from live counts of approved resources, posts and unique upvotes', async () => {
+    const count = (n: number) =>
+      jest.fn().mockReturnValue({ exec: jest.fn().mockResolvedValue(n) });
+    const { service } = build({
+      event: { countDocuments: count(10) },
+      resource: { countDocuments: count(5) },
+      post: { countDocuments: count(2) },
+    });
+
+    const badges = await service.getBadges(userId);
+
+    expect(badges.map((b) => b.key)).toEqual([
+      'first_resource',
+      'resource_library',
+      'first_post',
+      'well_received',
+    ]);
+  });
+});

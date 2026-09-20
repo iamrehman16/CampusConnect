@@ -12,6 +12,7 @@ import {
   ReputationEventDto,
 } from './dto/reputation-event.dto';
 import { UserService } from '../user/user.service';
+import { EarnedBadge, evaluateBadges } from './badges';
 import {
   PaginatedResult,
   PaginationService,
@@ -85,6 +86,29 @@ export class ReputationService {
       -earned.total,
       resourceId,
     );
+  }
+
+  /** Badges the user currently qualifies for (computed, never stored). */
+  async getBadges(userId: string): Promise<EarnedBadge[]> {
+    const user = new Types.ObjectId(userId);
+    const [approvedResources, posts, upvotesReceived] = await Promise.all([
+      this.resourceModel
+        .countDocuments({
+          uploadedBy: user,
+          approvalStatus: ApprovalStatus.APPROVED,
+          isDeleted: false,
+        })
+        .exec(),
+      this.postModel.countDocuments({ author: user, isDeleted: false }).exec(),
+      this.eventModel
+        .countDocuments({
+          user,
+          type: ReputationEventType.POST_UPVOTE_RECEIVED,
+        })
+        .exec(),
+    ]);
+
+    return evaluateBadges({ approvedResources, posts, upvotesReceived });
   }
 
   async getHistory(

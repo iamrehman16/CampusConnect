@@ -24,6 +24,7 @@ import { FileType, ApprovalStatus } from '@/shared/types/enums';
 import type { Resource } from '../types/resource.dto';
 import { ROUTES } from '@/shared/constants/routes';
 import { UserRole } from '@/shared/types/enums';
+import { TierChip } from '@/features/reputation/components/TierChip';
 
 // ─── File type config ────────────────────────────────────────────────────────
 
@@ -206,11 +207,18 @@ export function ResourceCard({ resource, onEdit, onDelete }: ResourceCardProps) 
 
           {/* Footer: uploader + downloads + size */}
           <Stack direction="row" alignItems="center" justifyContent="space-between">
-            <Tooltip title={resource.uploadedBy.name}>
-              <Typography variant="caption" color="text.secondary" noWrap maxWidth={100}>
-                {resource.uploadedBy.name}
-              </Typography>
-            </Tooltip>
+            <Stack direction="row" alignItems="center" gap={0.5} minWidth={0}>
+              <Tooltip title={resource.uploadedBy.name}>
+                <Typography variant="caption" color="text.secondary" noWrap maxWidth={100}>
+                  {resource.uploadedBy.name}
+                </Typography>
+              </Tooltip>
+              <TierChip
+                tier={resource.uploadedBy.tier}
+                hideNewcomer
+                sx={{ height: 16, fontSize: '0.6rem' }}
+              />
+            </Stack>
 
             <Stack direction="row" alignItems="center" gap={1.5}>
               <Stack direction="row" alignItems="center" gap={0.4}>

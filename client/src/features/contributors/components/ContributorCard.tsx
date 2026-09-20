@@ -10,6 +10,7 @@ import {
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import { useChatTrigger } from "@/features/chat/hooks/chat-hooks";
 import type { User } from "@/shared/types/auth.types";
+import { TierChip } from "@/features/reputation/components/TierChip";
 
 interface Props {
   user: User;
@@ -35,14 +36,12 @@ export function ContributorCard({ user }: Props) {
           </Box>
         </Box>
 
-        {user.role && (
-          <Chip
-            label={user.role}
-            size="small"
-            variant="outlined"
-            sx={{ alignSelf: "flex-start" }}
-          />
-        )}
+        <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap" }}>
+          {user.role && (
+            <Chip label={user.role} size="small" variant="outlined" />
+          )}
+          <TierChip tier={user.tier} />
+        </Box>
 
         <Button
           size="small"

@@ -11,6 +11,11 @@ import * as bcrypt from 'bcrypt';
 import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { Roles } from './enums/user-role.enum';
+import {
+  ReputationTier,
+  tierForScore,
+  tierMongoExpression,
+} from '../reputation/tiers';
 import { UserStatus } from './enums/user-status.enum';
 import { AdminCreateUserDto } from './dto/admin-create-user.dto';
 import {
@@ -135,22 +140,49 @@ export class UserService {
    * reputation module should call these (see ReputationService).
    */
   async adjustContributionScore(id: string, delta: number): Promise<void> {
+    // Pipeline update: score and tier are computed in ONE atomic write, the
+    // tier from the same threshold table as tierForScore().
     await this.userModel
-      .updateOne({ _id: id }, { $inc: { contributionScore: delta } })
+      .updateOne(
+        { _id: id },
+        [
+          {
+            $set: {
+              contributionScore: {
+                $max: [
+                  0,
+                  { $add: [{ $ifNull: ['$contributionScore', 0] }, delta] },
+                ],
+              },
+            },
+          },
+          { $set: { tier: tierMongoExpression('$contributionScore') } },
+        ],
+        { updatePipeline: true },
+      )
       .exec();
   }
 
   async setContributionScore(id: string, score: number): Promise<void> {
     await this.userModel
-      .updateOne({ _id: id }, { contributionScore: score })
+      .updateOne(
+        { _id: id },
+        { contributionScore: score, tier: tierForScore(score) },
+      )
       .exec();
   }
 
   async zeroContributionScoresExcept(ids: string[]): Promise<void> {
     await this.userModel
       .updateMany(
-        { _id: { $nin: ids }, contributionScore: { $ne: 0 } },
-        { contributionScore: 0 },
+        {
+          _id: { $nin: ids },
+          $or: [
+            { contributionScore: { $ne: 0 } },
+            { tier: { $ne: ReputationTier.NEWCOMER } },
+          ],
+        },
+        { contributionScore: 0, tier: ReputationTier.NEWCOMER },
       )
       .exec();
   }

@@ -1,4 +1,5 @@
 import type { UserRole } from './enums';
+import type { ReputationTier } from '@/features/reputation/types/reputation.types';
 
 /**
  * User profile as returned by GET /api/users/profile.
@@ -17,6 +18,7 @@ export interface User {
   expertise?: string[];
   isOpenToMentor?: boolean;
   contributionScore?: number;
+  tier?: ReputationTier;
   accountStatus?: string;
   createdAt:string;
   academicInfo?: string;

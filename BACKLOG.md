@@ -756,6 +756,40 @@ legible and aspirational.
 ---
 ### Phase 3 — Mentorship
 
+**Status: DONE (2026-09-20).** Tiers: **Newcomer (0), Regular (10),
+Trusted (50), Star (150)** — one `TIER_THRESHOLDS` table in
+`server/src/modules/reputation/tiers.ts` generates BOTH the pure
+`tierForScore()` and the Mongo `$switch` used to store the tier, and a test
+evaluates the generated expression for every score 0-400 against the
+function, so the stored tier cannot disagree with it. `User.tier` is a real
+stored field (so it survives `.lean()`/populate — a Mongoose virtual would
+not), written **together with the score in one atomic aggregation-pipeline
+update** (`adjustContributionScore` now clamps at 0 and sets the tier from the
+same write; `setContributionScore`/`zeroContributionScoresExcept` keep it
+consistent; the E5 backfill re-stamps everyone). Uploader populates now also
+select `tier`, so resource cards/detail carry it. Badges are **computed at
+read time, never stored** (`badges.ts`, pure, unit-tested; delete your only
+resource and "First resource" goes away): First resource, Resource library
+(5 approved), Conversation starter (first post), Well received (10 unique
+upvotes, from the E5 ledger). `GET reputation/users/:id/badges`. No
+download-based badge (anonymous endpoint, farmable — see E5); "First mentee"
+etc. arrive with E10/E11 by adding a stat + a definition. Client:
+`features/reputation/` (`TierChip` — display map is exhaustive over the tier
+type, `BadgeStrip`, hooks); tier chip on the profile hero (own + public), the
+contributor card, and the resource card/detail byline (Newcomer hidden on
+bylines as noise); badge strip on the profile hero. **A live run caught a real
+bug the mocked tests could not:** Mongoose rejects an array (pipeline) update
+unless `{ updatePipeline: true }` is passed, so the first version failed every
+score write (E5's designed drift-logging path fired correctly, and the
+backfill 500'd); fixed and pinned with a test asserting the option.
+Verified live: new user newcomer/0; 6 approved resources -> 60/Trusted;
+deleting resources moved 50 Trusted -> 40 Regular -> ... -> 0 Newcomer;
+uploader tier in the resource list payload; badges endpoint; bad id 400.
+Server 156/156 tests, typecheck clean; client typecheck/lint/build clean;
+not verified in a browser. Note: the dev DB's users were re-stamped with
+tiers by the backfill run. Thresholds are display-tuning constants — adjust
+in `tiers.ts` and re-run `POST admin/reputation/backfill`.
+
 ### E8 — Mentor profile: availability & capacity
 **Effort:** 3
 **Where:** `user.schema.ts`, `update-user-profile.dto.ts`,

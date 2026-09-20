@@ -33,6 +33,7 @@ import { ROUTES } from '@/shared/constants/routes';
 import resourceService from '../services/resource.service';
 import { formatRelativeTime } from '@/shared/utils/format';
 import { PageContainer } from '@/shared/components/PageContainer';
+import { TierChip } from '@/features/reputation/components/TierChip';
 
 // ─── File type config (mirrors ResourceCard) ──────────────────────────────────
 
@@ -291,6 +292,7 @@ export default function ResourceDetailPage() {
               <Typography variant="body2" fontWeight={500}>
                 {resource.uploadedBy.name}
               </Typography>
+              <TierChip tier={resource.uploadedBy.tier} hideNewcomer />
             </Stack>
           </Stack>
 

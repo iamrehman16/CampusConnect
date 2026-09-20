@@ -46,7 +46,10 @@ import {
   TopContributorDto,
 } from '../dashboard/dto/resource-analytics.dto';
 
-const UPLOADED_BY_POPULATE = { path: 'uploadedBy', select: 'name email' };
+const UPLOADED_BY_POPULATE = {
+  path: 'uploadedBy',
+  select: 'name email tier',
+};
 
 /** `uploadedBy` is populated to `{ _id, name, email }` by UPLOADED_BY_POPULATE. */
 function populatedUploaderId(resource: { uploadedBy: unknown }): string {
