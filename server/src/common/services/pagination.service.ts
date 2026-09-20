@@ -19,6 +19,8 @@ export class PaginationService {
     dto: BaseQueryDto,
     queryBuilder: IQueryBuilder<any>,
     sortBuilder: ISortBuilder,
+    /** Optional field projection (e.g. 'name avatar') for public-safe listings. */
+    select?: string,
   ): Promise<PaginatedResult<T>> {
     const filter = queryBuilder.build(dto);
     const sort = sortBuilder.build(dto);
@@ -27,7 +29,12 @@ export class PaginationService {
     const skip = (page - 1) * limit;
 
     const [data, total] = await Promise.all([
-      model.find(filter).sort(sort).skip(skip).limit(limit).lean().exec(),
+      (select ? model.find(filter).select(select) : model.find(filter))
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .lean()
+        .exec(),
       model.countDocuments(filter).lean().exec(),
     ]);
 

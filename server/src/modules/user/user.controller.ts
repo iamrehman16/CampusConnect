@@ -14,6 +14,7 @@ import { RegisterUserDto } from './dto/register-user.dto';
 import { Public } from '../auth/decorators/public.decorator';
 import { CurrentUser } from '../auth/types/current-user';
 import { UserQueryDto } from './dto/user-query.dto';
+import { MentorQueryDto } from './dto/mentor-query.dto';
 
 @Controller('users')
 export class UserController {
@@ -33,6 +34,12 @@ export class UserController {
   @Get()
   findAll(@Query() dto: UserQueryDto) {
     return this.userService.findAll(dto);
+  }
+
+  /** Public mentor directory (safe fields only). Declared before ':id' routes. */
+  @Get('mentors')
+  findMentors(@Req() req: { user: CurrentUser }, @Query() dto: MentorQueryDto) {
+    return this.userService.findMentors(dto, req.user.id);
   }
 
   @Patch('profile')

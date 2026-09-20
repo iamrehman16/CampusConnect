@@ -847,6 +847,46 @@ to find the *right* person.
   (secondary: View profile). Email no longer displayed.
 - Empty/loading/error states; URL-synced filters.
 
+**Status: DONE (2026-09-20)** — with two deliberate deviations, below.
+Server: `GET users/mentors` (`UserService.findMentors`) — active accounts
+with `isOpenToMentor`, excluding the requester, filtered by `search`
+(name / mentoring topics / expertise — **never email**), `department`
+(exact, case-insensitive), `topic` (substring over topics + expertise),
+`semesterMin`/`semesterMax`, `sort` = `score` (default) | `active` (by
+`lastSeenAt`, which is used only to order and is not exposed), paginated
+with a stable `_id` tiebreaker. Response is an explicit `MentorSummaryDto`
+whitelist mapped from a field-projected query (`PaginationService.paginate`
+gained an optional `select`), so a future schema field can't leak by
+accident. All free text goes through `escapeRegex`. Client
+(`features/contributors/`, route unchanged): filter bar (debounced search
+and topic, department, semester range, sort) **synced to the URL** so it is
+shareable and survives refresh/back; responsive grid of `MentorCard`
+(avatar, name, tier, department/semester, bio, topic chips with "+n",
+"takes up to N mentees", reputation); infinite scroll; skeleton, empty
+(with "clear filters") and error+retry states. Nav label "Contributors" ->
+"Mentors", page "Find a mentor"; old `ContributorCard`/`ContributorGrid`
+(which showed the email) removed. **Verified live** (real HTTP, real Mongo):
+default open-only score-desc, closed mentors and the requester hidden,
+suspended accounts hidden, department/topic/semester-range/search filters,
+`sort=active` ordering, pagination, unauth 401, bad sort / semester 400,
+**search by an email fragment returns nothing, `search=.*` is matched
+literally (empty), and no `@` appears anywhere in the payload.** Server 190
+tests green, typecheck clean; client typecheck/lint/build clean; not
+verified in a browser.
+**Deviations from the AC:** (1) the primary CTA is **Message**, not
+"Request mentorship" — the request flow is E10; the card carries a comment
+and E10 swaps the button. (2) **No `has-capacity` filter** — capacity is
+"remaining slots", which needs active mentorships (E10); shipping it now
+would be a dead no-op. E10 adds it (and turns the card's "up to N" into
+"N slots left").
+**Found in passing (separate commits):** `?unreadOnly=true` on
+`GET notifications` always parsed as `false` (E4 latent bug — the global
+pipe's implicit conversion runs before the `@Transform`), fixed with a test
+through the production pipe; and `GET /users` (the endpoint the old page
+used) returned full user documents, emails included, to every authenticated
+user — locked to Admin in its own commit, since after this PBI only the
+admin table needs it.
+
 ### E10 — Mentorship request lifecycle
 **Effort:** 8
 **Where:** new `server/src/modules/mentorship/` (schema, service,

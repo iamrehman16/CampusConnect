@@ -62,7 +62,7 @@ export function ConversationList() {
             No conversations yet
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Find a contributor and start a conversation.
+            Find a mentor and start a conversation.
           </Typography>
         </Box>
 
@@ -76,7 +76,7 @@ export function ConversationList() {
             "&:hover": { textDecoration: "underline" },
           }}
         >
-          Browse contributors →
+          Find a mentor →
         </Typography>
       </Box>
     );

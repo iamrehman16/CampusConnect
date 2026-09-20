@@ -43,7 +43,7 @@ const MAIN_NAV = [
   { label: 'Resources', icon: <LibraryBooksIcon />, path: ROUTES.RESOURCES },
   { label: 'AI Assistant', icon: <SmartToyIcon />, path: ROUTES.AI_CHAT },
   { label: 'Messages', icon: <ChatIcon />, path: ROUTES.CHAT },
-  { label: 'Contributors', icon: <People />, path: ROUTES.CONTRIBUTORS },
+  { label: 'Mentors', icon: <People />, path: ROUTES.CONTRIBUTORS },
   { label: 'Community', icon: <ForumIcon />, path: ROUTES.COMMUNITY },
 ];
 

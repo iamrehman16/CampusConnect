@@ -41,8 +41,8 @@ const CommunityPage = lazy(
   () => import("@/features/community/pages/CommunityPage"),
 );
 
-const ContributorsPage = lazy(
-  () => import("@/features/contributors/pages/ContributorsPage"),
+const MentorDirectoryPage = lazy(
+  () => import("@/features/contributors/pages/MentorDirectoryPage"),
 );
 
 const ProfilePage = lazy(() => import("@/features/user/pages/ProfilePage"));
@@ -203,7 +203,7 @@ const router = createBrowserRouter([
             element: (
               <SuspenseWrapper>
                 <MainLayout>
-                  <ContributorsPage />
+                  <MentorDirectoryPage />
                 </MainLayout>
               </SuspenseWrapper>
             ),

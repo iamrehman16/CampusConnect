@@ -64,7 +64,7 @@ const routeConfig: Record<string, RouteConfig> = {
     showBottomNav: true,
   },
   [contributors]: {
-    title: "Contributors",
+    title: "Mentors",
     topBarMode: "contextual",
     showBottomNav: true,
   },

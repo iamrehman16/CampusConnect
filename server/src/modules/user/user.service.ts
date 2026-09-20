@@ -6,7 +6,7 @@ import {
 import { AdminUpdateUserDto } from './dto/update-admin-profile.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { User } from './schemas/user.schema';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 import { RegisterUserDto } from './dto/register-user.dto';
@@ -29,11 +29,20 @@ import {
 } from '../../common/services/pagination.service';
 import { UserQueryBuilder } from './queries/build-user-query';
 import { UserSortBuilder } from './queries/build-user-sort';
+import { MentorQueryDto } from './dto/mentor-query.dto';
+import { MentorSummaryDto } from './dto/mentor-summary.dto';
+import { MentorQueryBuilder } from './queries/build-mentor-query';
+import { MentorSortBuilder } from './queries/build-mentor-sort';
+
+// Fields loaded for the public mentor directory (mirrors MentorSummaryDto).
+const MENTOR_PUBLIC_FIELDS =
+  'name avatar department semester role tier contributionScore expertise mentorBio mentorTopics maxActiveMentees';
 import { CompleteOnboardingDto } from './dto/complete-onboarding.dto';
 
 @Injectable()
 export class UserService {
   private readonly queryBuilder = new UserQueryBuilder();
+  private readonly mentorSortBuilder = new MentorSortBuilder();
   private readonly sortBuilder = new UserSortBuilder();
 
   constructor(
@@ -91,6 +100,38 @@ export class UserService {
       this.queryBuilder,
       this.sortBuilder,
     );
+  }
+
+  /** Public mentor directory — safe fields only (see MentorSummaryDto). */
+  async findMentors(
+    dto: MentorQueryDto,
+    requesterId: string,
+  ): Promise<PaginatedResult<MentorSummaryDto>> {
+    const result = await this.paginationService.paginate(
+      this.userModel,
+      dto,
+      new MentorQueryBuilder(requesterId),
+      this.mentorSortBuilder,
+      MENTOR_PUBLIC_FIELDS,
+    );
+
+    return {
+      ...result,
+      data: result.data.map((u) => ({
+        id: (u as User & { _id: Types.ObjectId })._id.toString(),
+        name: u.name ?? '',
+        avatar: u.avatar,
+        department: u.department,
+        semester: u.semester,
+        role: u.role,
+        tier: u.tier,
+        contributionScore: u.contributionScore,
+        expertise: u.expertise ?? [],
+        mentorBio: u.mentorBio,
+        mentorTopics: u.mentorTopics ?? [],
+        maxActiveMentees: u.maxActiveMentees ?? 3,
+      })),
+    };
   }
 
   async findOne(userId: string) {
