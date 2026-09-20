@@ -14,6 +14,7 @@ import LightModeIcon from "@mui/icons-material/LightMode";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { ROUTES } from "@/shared/constants/routes";
+import { NotificationBell } from "@/features/notifications/components/NotificationBell";
 import { useTotalUnread } from "@/features/chat/hooks/chat-hooks";
 import { useThemeModeContext } from "@/shared/hooks/useThemeModeContext";
 import { usePwaInstall } from "@/shared/hooks/usePwaInstall";
@@ -127,6 +128,8 @@ export default function StandardBar({ title, onAvatarClick }: StandardBarProps) 
               <DarkModeIcon fontSize="small" />
             )}
           </IconButton>
+
+          <NotificationBell />
 
           <IconButton
             onClick={() => navigate(ROUTES.CHAT)}

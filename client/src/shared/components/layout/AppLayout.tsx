@@ -10,6 +10,7 @@ import ProfileDrawer from "./ProfileDrawer";
 import { useUIStore } from "@/shared/store/ui.store";
 import { getRouteConfig } from "@/app/routeConfig";
 import { useChatPresenceSync } from "@/features/chat/hooks/useChatPresenceSync";
+import { useNotificationSync } from "@/features/notifications/hooks/useNotificationSync";
 import { useChatUnreadSync } from "@/features/chat/hooks/useChatUnreadSync";
 
 /**
@@ -21,6 +22,7 @@ export default function AppLayout() {
   const theme = useTheme();
   useChatUnreadSync();
   useChatPresenceSync();
+  useNotificationSync();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const { sidebarCollapsed } = useUIStore();
   const sidebarWidth = sidebarCollapsed

@@ -1,5 +1,6 @@
 import toast from "react-hot-toast";
 import { io, Socket } from "socket.io-client";
+import type { Notification } from "@/features/notifications/types/notification.dto";
 import { config } from "@/shared/constants/config";
 import type {
   CreateMessageDto,
@@ -148,6 +149,25 @@ class ChatSocketService {
     }
     this.socket.on("typing", cb);
     return () => this.socket?.off("typing", cb);
+  }
+
+  // Notifications share this socket (server: NotificationGateway, same
+  // `/chat` namespace) — typed here so the singleton stays the only place
+  // that touches the raw socket.
+  onNotification(cb: Listener<Notification>): () => void {
+    if (!this.socket) {
+      throw new Error("Socket not connected");
+    }
+    this.socket.on("notification", cb);
+    return () => this.socket?.off("notification", cb);
+  }
+
+  onNotificationUnreadCount(cb: Listener<{ count: number }>): () => void {
+    if (!this.socket) {
+      throw new Error("Socket not connected");
+    }
+    this.socket.on("notification_unread_count", cb);
+    return () => this.socket?.off("notification_unread_count", cb);
   }
 
   onMessageDeleted(cb: Listener<DeleteMessageDto>): () => void {

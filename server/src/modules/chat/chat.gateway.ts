@@ -24,7 +24,13 @@ import { DeleteMessageDto } from './dto/delete-message.dto';
 import { MarkSeenDto } from './dto/mark-seen.dto';
 import { TypingDto } from './dto/typing.dto';
 import { PresenceService } from './presence.service';
-import { AppSocket } from './types/app-socket';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+  ChatConversationReadEvent,
+  ChatMessageReceivedEvent,
+  DomainEvents,
+} from '../../common/events/domain-events';
+import { AppSocket, ChatSocketData } from './types/app-socket';
 
 // @UseGuards(WsJwtGuard) already rejects sockets with no userId at
 // runtime before these handlers run; this narrows `string | undefined`
@@ -55,6 +61,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly chatService: ChatService,
     private readonly wsJwtGuard: WsJwtGuard,
     private readonly presence: PresenceService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async handleConnection(socket: AppSocket) {
@@ -174,6 +181,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         senderId,
       );
       socket.to(dto.conversationId).to(receiverId).emit('new_message', message);
+      await this.notifyIfReceiverAway(
+        dto.conversationId,
+        senderId,
+        receiverId,
+        dto.content,
+      );
       return message;
     } catch (err) {
       this.logger.error(
@@ -197,6 +210,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const userId = requireUserId(socket);
     try {
       await this.chatService.markSeen(conversationId, userId);
+      this.eventEmitter.emit(DomainEvents.CHAT_CONVERSATION_READ, {
+        userId,
+        conversationId,
+      } satisfies ChatConversationReadEvent);
       const dto: MarkSeenDto = { conversationId, seenBy: userId };
       this.server.to(conversationId).emit('messages_seen', dto);
     } catch (err) {
@@ -229,6 +246,39 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         err,
       );
       socket.emit('chat_error', { message: 'Failed to delete message' });
+    }
+  }
+
+  /**
+   * Emit a domain event (-> notification) only when the receiver isn't in the
+   * conversation room, i.e. isn't looking at it. Best-effort: the message is
+   * already persisted and delivered, so a failure here is logged, not thrown.
+   */
+  private async notifyIfReceiverAway(
+    conversationId: string,
+    senderId: string,
+    receiverId: string,
+    content: string,
+  ): Promise<void> {
+    try {
+      const inRoom = await this.server.in(conversationId).fetchSockets();
+      if (
+        inRoom.some((s) => (s.data as ChatSocketData).userId === receiverId)
+      ) {
+        return;
+      }
+
+      this.eventEmitter.emit(DomainEvents.CHAT_MESSAGE_RECEIVED, {
+        conversationId,
+        senderId,
+        receiverId,
+        preview: content.length > 120 ? `${content.slice(0, 117)}...` : content,
+      } satisfies ChatMessageReceivedEvent);
+    } catch (err) {
+      this.logger.error(
+        `Failed to evaluate message notification for conversation ${conversationId}:`,
+        err,
+      );
     }
   }
 

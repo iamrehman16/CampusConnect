@@ -29,6 +29,10 @@ import { UserRole } from '@/shared/types/enums';
 import { People } from '@mui/icons-material';
 import { useUIStore } from '@/shared/store/ui.store';
 import { useThemeModeContext } from '@/shared/hooks/useThemeModeContext';
+import { NotificationPopover } from '@/features/notifications/components/NotificationPopover';
+import { useUnreadNotificationCount } from '@/features/notifications/hooks/notification.hooks';
+import NotificationsIcon from '@mui/icons-material/NotificationsNone';
+import { useState } from 'react';
 import { useTotalUnread } from '@/features/chat/hooks/chat-hooks';
 
 export const SIDEBAR_WIDTH = 260;
@@ -60,6 +64,8 @@ export default function Sidebar() {
   const { mode, toggle } = useThemeModeContext();
 
   const totalUnread = useTotalUnread();
+  const { data: unreadNotifications = 0 } = useUnreadNotificationCount();
+  const [notifAnchor, setNotifAnchor] = useState<HTMLElement | null>(null);
 
   const isAdmin = user?.role === UserRole.ADMIN;
 
@@ -276,6 +282,39 @@ export default function Sidebar() {
             </ListItemButton>
           </Tooltip>
         ))}
+        <Tooltip title={sidebarCollapsed ? 'Notifications' : ''} placement="right" arrow>
+          <ListItemButton
+            onClick={(e) => setNotifAnchor(e.currentTarget)}
+            sx={{
+              borderRadius: 1,
+              mb: 0.5,
+              minHeight: 44,
+              justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+              px: sidebarCollapsed ? 1 : 1.5,
+              borderLeft: '3px solid transparent',
+            }}
+          >
+            <ListItemIcon
+              sx={{ minWidth: sidebarCollapsed ? 'unset' : 40, color: 'text.secondary' }}
+            >
+              <Badge badgeContent={unreadNotifications} color="error" max={99}>
+                <NotificationsIcon />
+              </Badge>
+            </ListItemIcon>
+            {!sidebarCollapsed && (
+              <ListItemText
+                primary="Notifications"
+                primaryTypographyProps={{ fontWeight: 500, fontSize: '0.875rem' }}
+              />
+            )}
+          </ListItemButton>
+        </Tooltip>
+        <NotificationPopover
+          anchorEl={notifAnchor}
+          onClose={() => setNotifAnchor(null)}
+          anchorOrigin={{ vertical: 'center', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        />
         <Tooltip
           title={sidebarCollapsed
             ? (mode === 'dark' ? 'Light mode' : 'Dark mode')

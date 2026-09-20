@@ -1,7 +1,9 @@
+import { Server } from 'socket.io';
 import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
 import { WsJwtGuard } from './guards/websocket.jwt.guard';
 import { PresenceService } from './presence.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AppSocket, ChatSocketData } from './types/app-socket';
 
 type MockSocket = {
@@ -34,6 +36,7 @@ describe('ChatGateway', () => {
       {} as ChatService,
       wsJwtGuard as WsJwtGuard,
       {} as PresenceService,
+      {} as EventEmitter2,
     );
     const socket = mockSocket();
     socket.join.mockRejectedValue(new Error('cluster adapter join failed'));
@@ -53,6 +56,7 @@ describe('ChatGateway', () => {
       chatService as unknown as ChatService,
       {} as WsJwtGuard,
       {} as PresenceService,
+      {} as EventEmitter2,
     );
     const socket = mockSocket();
     socket.data.userId = 'user-1';
@@ -81,6 +85,7 @@ describe('ChatGateway', () => {
       chatService as unknown as ChatService,
       {} as WsJwtGuard,
       {} as PresenceService,
+      {} as EventEmitter2,
     );
     const socket = mockSocket();
     socket.data.userId = 'intruder';
@@ -106,6 +111,7 @@ describe('ChatGateway', () => {
       chatService as unknown as ChatService,
       {} as WsJwtGuard,
       {} as PresenceService,
+      {} as EventEmitter2,
     );
     const socket = mockSocket();
     socket.data.userId = 'user-1';
@@ -125,32 +131,69 @@ describe('ChatGateway', () => {
     );
   });
 
-  it('handleSendMessage delivers new_message to the conversation room and the receiver personal room', async () => {
-    const message = { id: 'm1' };
-    const chatService = {
-      createMessageIdempotent: jest.fn().mockResolvedValue(message),
-      getReceiverIdFromConversation: jest.fn().mockResolvedValue('user-2'),
-    };
-    const gateway = new ChatGateway(
-      chatService as unknown as ChatService,
-      {} as WsJwtGuard,
-      {} as PresenceService,
-    );
-    const emit = jest.fn();
-    const secondTo = jest.fn().mockReturnValue({ emit });
-    const firstTo = jest.fn().mockReturnValue({ to: secondTo });
-    const socket = { ...mockSocket(), to: firstTo };
-    socket.data.userId = 'user-1';
+  describe('handleSendMessage', () => {
+    function setup(socketsInRoom: { data: { userId?: string } }[]) {
+      const message = { id: 'm1' };
+      const chatService = {
+        createMessageIdempotent: jest.fn().mockResolvedValue(message),
+        getReceiverIdFromConversation: jest.fn().mockResolvedValue('user-2'),
+      };
+      const eventEmitter = { emit: jest.fn() };
+      const gateway = new ChatGateway(
+        chatService as unknown as ChatService,
+        {} as WsJwtGuard,
+        {} as PresenceService,
+        eventEmitter as unknown as EventEmitter2,
+      );
+      gateway.server = {
+        in: jest.fn().mockReturnValue({
+          fetchSockets: jest.fn().mockResolvedValue(socketsInRoom),
+        }),
+      } as unknown as Server;
+      const emit = jest.fn();
+      const secondTo = jest.fn().mockReturnValue({ emit });
+      const firstTo = jest.fn().mockReturnValue({ to: secondTo });
+      const socket = { ...mockSocket(), to: firstTo };
+      socket.data.userId = 'user-1';
+      const send = () =>
+        gateway.handleSendMessage(socket as unknown as AppSocket, {
+          conversationId: 'conv-1',
+          content: 'hi',
+          clientId: 'c1',
+        });
+      return { message, eventEmitter, firstTo, secondTo, emit, send };
+    }
 
-    await gateway.handleSendMessage(socket as unknown as AppSocket, {
-      conversationId: 'conv-1',
-      content: 'hi',
-      clientId: 'c1',
+    it('delivers new_message to the conversation room and the receiver personal room', async () => {
+      const { message, firstTo, secondTo, emit, send } = setup([]);
+
+      await send();
+
+      expect(firstTo).toHaveBeenCalledWith('conv-1');
+      expect(secondTo).toHaveBeenCalledWith('user-2');
+      expect(emit).toHaveBeenCalledWith('new_message', message);
     });
 
-    expect(firstTo).toHaveBeenCalledWith('conv-1');
-    expect(secondTo).toHaveBeenCalledWith('user-2');
-    expect(emit).toHaveBeenCalledWith('new_message', message);
+    it('emits a chat.message.received domain event when the receiver is not in the room', async () => {
+      const { eventEmitter, send } = setup([{ data: { userId: 'user-1' } }]);
+
+      await send();
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith('chat.message.received', {
+        conversationId: 'conv-1',
+        senderId: 'user-1',
+        receiverId: 'user-2',
+        preview: 'hi',
+      });
+    });
+
+    it('does not emit the domain event when the receiver is viewing the conversation', async () => {
+      const { eventEmitter, send } = setup([{ data: { userId: 'user-2' } }]);
+
+      await send();
+
+      expect(eventEmitter.emit).not.toHaveBeenCalled();
+    });
   });
 
   it('handleTyping relays to the conversation room only when the socket has joined it', () => {
@@ -158,6 +201,7 @@ describe('ChatGateway', () => {
       {} as ChatService,
       {} as WsJwtGuard,
       {} as PresenceService,
+      {} as EventEmitter2,
     );
     const emit = jest.fn();
     const to = jest.fn().mockReturnValue({ emit });
@@ -197,6 +241,7 @@ describe('ChatGateway', () => {
       chatService as unknown as ChatService,
       {} as WsJwtGuard,
       presence as unknown as PresenceService,
+      {} as EventEmitter2,
     );
     const socket = mockSocket();
     socket.data.userId = 'user-1';

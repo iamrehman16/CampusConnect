@@ -30,6 +30,11 @@ import { ConfigType } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import { JOBS, QUEUES } from '../queues/queue.constants';
 import { Queue } from 'bullmq';
+import {
+  DomainEvents,
+  ResourceApprovedEvent,
+  ResourceRejectedEvent,
+} from '../../common/events/domain-events';
 import { IngestResourceJobPayload } from '../queues/interfaces/ingest-resource-job.interface';
 import {
   ApprovalFunnelDto,
@@ -40,6 +45,21 @@ import {
 } from '../dashboard/dto/resource-analytics.dto';
 
 const UPLOADED_BY_POPULATE = { path: 'uploadedBy', select: 'name email' };
+
+/** `uploadedBy` is populated to `{ _id, name, email }` by UPLOADED_BY_POPULATE. */
+function populatedUploaderId(resource: { uploadedBy: unknown }): string {
+  const uploader = resource.uploadedBy;
+  if (uploader instanceof Types.ObjectId) return uploader.toString();
+  if (
+    typeof uploader === 'object' &&
+    uploader !== null &&
+    '_id' in uploader &&
+    uploader._id instanceof Types.ObjectId
+  ) {
+    return uploader._id.toString();
+  }
+  throw new InternalServerErrorException('Resource has no resolvable uploader');
+}
 
 interface ResourceStatsFacetResult {
   total?: number;
@@ -304,6 +324,12 @@ export class ResourceService {
       removeOnFail: 200,
     });
 
+    this.eventEmitter.emit(DomainEvents.RESOURCE_APPROVED, {
+      resourceId: resource._id.toString(),
+      title: resource.title,
+      uploaderId: populatedUploaderId(resource),
+    } satisfies ResourceApprovedEvent);
+
     return resource;
   }
 
@@ -320,6 +346,14 @@ export class ResourceService {
 
     if (!resource)
       throw new NotFoundException('Resource not found or not pending');
+
+    this.eventEmitter.emit(DomainEvents.RESOURCE_REJECTED, {
+      resourceId: resource._id.toString(),
+      title: resource.title,
+      uploaderId: populatedUploaderId(resource),
+      reason,
+    } satisfies ResourceRejectedEvent);
+
     return resource;
   }
 

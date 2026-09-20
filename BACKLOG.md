@@ -584,6 +584,46 @@ one shared channel — build once, reuse across E5-E16.
 ---
 ### Phase 2 — Reputation & the contributor pathway
 
+**Status: DONE (2026-09-20).** New `server/src/modules/notification/`:
+`Notification` schema (`user`, `type`, `title`, `body`, `link`, `count`,
+`isRead`, `readAt`, `dedupeKey`), ownership-scoped endpoints
+(`GET notifications`, `GET notifications/unread-count`,
+`PATCH notifications/:id/read`, `PATCH notifications/read-all`; a foreign id
+404s because the update filter includes the caller), realtime push, and a
+**typed registry** (`notification.registry.ts`): each `NotificationType`
+declares a payload interface and a builder; the mapped `Builders` type is
+exhaustive, so adding a type (E6/E10) without a builder won't compile.
+Producers emit domain events (`common/events/domain-events.ts`) and know
+nothing about notifications: `resource.approved` / `resource.rejected`
+(`ResourceService`, which already injected `EventEmitter2` but never used
+it) and `chat.message.received` (`ChatGateway`, emitted only when the
+receiver has no socket in the conversation room). `NotificationListener` is
+the only consumer; a failure there is logged with context and never breaks
+the originating request. Message notifications are **grouped**: a unique
+partial index on `(user, dedupeKey)` where unread backs an upsert that bumps
+`count`, with a retry path for the E11000 race. Reading a conversation
+emits `chat.conversation.read`, which clears that grouped notification and
+pushes the new total (`notification_unread_count`). Push rides the existing
+`/chat` socket via a second gateway in the same namespace (relies on
+ChatGateway's "room == user id" convention — documented in the class).
+Retention: TTL index on `updatedAt`, 60 days. Client:
+`features/notifications/` (service, hooks, `useNotificationSync`, bell +
+popover with mark-read / mark-all / load more, deep-link on click, toast for
+non-message types); bell in the mobile top bar, a Notifications item with
+badge in the desktop sidebar. **Verified live** against local Mongo/Redis
+with two socket.io clients: grouping (count 1 -> 2, same id), recipient in
+the room gets none, sender none, intruder cannot join the room, cross-user
+mark-read 404s, mark_seen clears + pushes count 0. Server 107/107 tests,
+typecheck clean; client typecheck/lint/build clean. Not verified: the
+resource approve/reject path live (unit-tested only — needs Cloudinary +
+ingestion queue), and the browser UI itself.
+Known limits: a client retry of an already-persisted message re-emits the
+event and can over-count a grouped notification by one; the chat push path
+is single-instance like presence. Pre-existing, unrelated: 4 lint errors in
+`server/src/modules/ai/services/groq.service.spec.ts`
+(`no-unsafe-assignment`) — CLAUDE.md §5 says server lint is clean, so this
+regressed at some point; not touched here.
+
 ### E5 — Contribution score engine
 **Effort:** 5
 **Where:** new `server/src/modules/reputation/` (ledger schema + service),
