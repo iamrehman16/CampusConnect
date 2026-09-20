@@ -14,8 +14,16 @@ export interface ProfileUserViewModel {
   semester?: number;
   role: UserRole;
   tier?: ReputationTier;
+  isOpenToMentor: boolean;
+  mentorBio?: string;
+  mentorTopics: string[];
+  maxActiveMentees: number;
   createdAt: string;
 }
+
+/** Mirrors the server default (`maxActiveMentees` on the user schema). */
+export const DEFAULT_MAX_ACTIVE_MENTEES = 3;
+export const MAX_MENTOR_TOPICS = 10;
 
 export interface ProfileStats {
   totalPosts: number;
@@ -55,6 +63,10 @@ export const toProfileUserViewModel = (
     semester: user.semester,
     role: user.role,
     tier: user.tier,
+    isOpenToMentor: user.isOpenToMentor ?? false,
+    mentorBio: user.mentorBio,
+    mentorTopics: user.mentorTopics ?? [],
+    maxActiveMentees: user.maxActiveMentees ?? DEFAULT_MAX_ACTIVE_MENTEES,
     createdAt: user.createdAt,
   };
 };

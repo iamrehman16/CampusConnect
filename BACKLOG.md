@@ -805,6 +805,33 @@ with and how much load they'll take.
   capacity (capacity itself enforced in E10).
 - Text index / index on `isOpenToMentor` for E9 queries.
 
+**Status: DONE (2026-09-20).** User schema gains `mentorBio` (<=500),
+`mentorTopics` (string[]) and `maxActiveMentees` (default 3, 1-10), plus a
+`{ isOpenToMentor: 1, contributionScore: -1 }` index for E9's "open mentors,
+best first" query. `UpdateUserProfileDto` accepts `isOpenToMentor`,
+`mentorBio`, `mentorTopics` (max 10, each <=40 chars; normalized by a shared
+`normalizeTags` — trim, drop empties, case-insensitive de-dupe — through the
+global `transform: true` pipe) and `maxActiveMentees`; DTO tests cover the
+bounds and normalization. Client: a **Mentoring** section in Profile ->
+Settings (post-onboarding toggle for `isOpenToMentor`; bio, freeSolo topic
+chips, capacity select shown only while open) and a public
+`MentorProfileBlock` in the profile hero (own + public profiles): "Open to
+mentor" chip, bio, topic chips, "Takes up to N mentees". Verified live
+through the real ValidationPipe: defaults (closed / 3 / no topics), a valid
+patch with topic normalization (`['  DSA ','dsa','','OS']` -> `['DSA','OS']`),
+400 for capacity 11, 11 topics, a 501-char bio and an unknown field
+(`role` — and the stored profile stayed unchanged), public profile shows the
+mentor fields, toggling off works. Server 167 tests total green, typecheck
+clean; client typecheck/lint/build clean; not verified in a browser.
+**Deferred by design:** "remaining capacity" needs active mentorships, which
+don't exist until E10 — the hero shows the configured maximum now and E10
+switches it to remaining slots; capacity is not enforced here (E10, on
+accept). Turning mentoring on does not require topics (a mentor with none
+still appears, just without topics) — E9's directory can rank/label that.
+Separately discovered: the profile avatar picker's `PATCH users/profile
+{avatar}` returns 400 (avatar isn't in the DTO whitelist) — fixed in its own
+commit, not part of E8.
+
 ### E9 — Mentor directory & discovery (replaces ContributorsPage)
 **Effort:** 5
 **Where:** `user` module (`GET users/mentors` with a query builder, following

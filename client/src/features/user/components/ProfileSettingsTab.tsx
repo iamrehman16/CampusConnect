@@ -1,18 +1,26 @@
 import React, { useState } from "react";
 import {
+  Autocomplete,
   Box,
   Button,
+  Chip,
   CircularProgress,
   Divider,
+  FormControlLabel,
   MenuItem,
   Stack,
+  Switch,
   TextField,
   Typography,
 } from "@mui/material";
 import { alpha, type Theme } from "@mui/material/styles";
 import { Save } from "@mui/icons-material";
 import type { UpdateUserDto } from "../types/user.dto";
-import type { ProfileUserViewModel } from "../types/profile.types";
+import {
+  DEFAULT_MAX_ACTIVE_MENTEES,
+  MAX_MENTOR_TOPICS,
+  type ProfileUserViewModel,
+} from "../types/profile.types";
 
 interface ProfileSettingsTabProps {
   user: ProfileUserViewModel | null;
@@ -21,6 +29,10 @@ interface ProfileSettingsTabProps {
 }
 
 const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8];
+const CAPACITIES = Array.from({ length: 10 }, (_, i) => i + 1);
+
+const sameTopics = (a: string[], b: string[]) =>
+  a.length === b.length && a.every((t, i) => t === b[i]);
 
 // BACKLOG.md D2 — was hardcoded to the old primary (#6C63FF) and a bare
 // white-overlay background; now themed so it tracks the current
@@ -45,6 +57,10 @@ const ProfileSettingsTab: React.FC<ProfileSettingsTabProps> = ({
     academicInfo: user?.academicInfo ?? "",
     expertise: user?.expertise ?? "",
     semester: user?.semester ?? "",
+    isOpenToMentor: user?.isOpenToMentor ?? false,
+    mentorBio: user?.mentorBio ?? "",
+    mentorTopics: user?.mentorTopics ?? ([] as string[]),
+    maxActiveMentees: user?.maxActiveMentees ?? DEFAULT_MAX_ACTIVE_MENTEES,
   });
   // Tracks which user id `form` was last synced from, so the form resets
   // once the initially-null user data loads (adjusting state during render,
@@ -58,6 +74,10 @@ const ProfileSettingsTab: React.FC<ProfileSettingsTabProps> = ({
       academicInfo: user.academicInfo ?? "",
       expertise: user.expertise ?? "",
       semester: user.semester ?? "",
+      isOpenToMentor: user.isOpenToMentor,
+      mentorBio: user.mentorBio ?? "",
+      mentorTopics: user.mentorTopics,
+      maxActiveMentees: user.maxActiveMentees,
     });
   }
 
@@ -65,7 +85,12 @@ const ProfileSettingsTab: React.FC<ProfileSettingsTabProps> = ({
     form.name !== (user?.name ?? "") ||
     form.academicInfo !== (user?.academicInfo ?? "") ||
     form.expertise !== (user?.expertise ?? "") ||
-    Number(form.semester) !== (user?.semester ?? 0);
+    Number(form.semester) !== (user?.semester ?? 0) ||
+    form.isOpenToMentor !== (user?.isOpenToMentor ?? false) ||
+    form.mentorBio !== (user?.mentorBio ?? "") ||
+    !sameTopics(form.mentorTopics, user?.mentorTopics ?? []) ||
+    form.maxActiveMentees !==
+      (user?.maxActiveMentees ?? DEFAULT_MAX_ACTIVE_MENTEES);
 
   const handleChange =
     (field: keyof typeof form) =>
@@ -83,6 +108,21 @@ const ProfileSettingsTab: React.FC<ProfileSettingsTabProps> = ({
       dto.expertise = form.expertise.trim();
     }
     if (form.semester) dto.semester = Number(form.semester);
+    if (form.isOpenToMentor !== (user?.isOpenToMentor ?? false)) {
+      dto.isOpenToMentor = form.isOpenToMentor;
+    }
+    if (form.mentorBio !== (user?.mentorBio ?? "")) {
+      dto.mentorBio = form.mentorBio.trim();
+    }
+    if (!sameTopics(form.mentorTopics, user?.mentorTopics ?? [])) {
+      dto.mentorTopics = form.mentorTopics;
+    }
+    if (
+      form.maxActiveMentees !==
+      (user?.maxActiveMentees ?? DEFAULT_MAX_ACTIVE_MENTEES)
+    ) {
+      dto.maxActiveMentees = form.maxActiveMentees;
+    }
     onSave(dto);
   };
 
@@ -152,6 +192,99 @@ const ProfileSettingsTab: React.FC<ProfileSettingsTabProps> = ({
           ))}
         </TextField>
       </Stack>
+
+      <Divider sx={{ my: 3, borderColor: "divider" }} />
+
+      <Typography
+        variant="subtitle2"
+        color="text.secondary"
+        sx={{ mb: 1, textTransform: "uppercase", letterSpacing: "0.08em", fontSize: "0.7rem" }}
+      >
+        Mentoring
+      </Typography>
+
+      <FormControlLabel
+        control={
+          <Switch
+            checked={form.isOpenToMentor}
+            onChange={(e) =>
+              setForm((prev) => ({ ...prev, isOpenToMentor: e.target.checked }))
+            }
+          />
+        }
+        label="I'm open to mentoring other students"
+        sx={{ mb: 1 }}
+      />
+
+      {form.isOpenToMentor && (
+        <Stack spacing={2.5} sx={{ mt: 1 }}>
+          <TextField
+            label="What can you help with?"
+            value={form.mentorBio}
+            onChange={handleChange("mentorBio")}
+            fullWidth
+            multiline
+            rows={3}
+            size="small"
+            sx={fieldSx}
+            inputProps={{ maxLength: 500 }}
+            helperText={`${form.mentorBio.length}/500`}
+            FormHelperTextProps={{ sx: { textAlign: "right", mr: 0 } }}
+          />
+
+          <Autocomplete
+            multiple
+            freeSolo
+            options={[] as string[]}
+            value={form.mentorTopics}
+            onChange={(_, value) =>
+              setForm((prev) => ({
+                ...prev,
+                mentorTopics: Array.from(
+                  new Set(value.map((v) => v.trim()).filter(Boolean)),
+                ).slice(0, MAX_MENTOR_TOPICS),
+              }))
+            }
+            renderTags={(value, getTagProps) =>
+              value.map((topic, index) => {
+                const { key, ...tagProps } = getTagProps({ index });
+                return <Chip key={key} label={topic} size="small" {...tagProps} />;
+              })
+            }
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Topics you mentor on"
+                placeholder="Type a subject or course and press Enter"
+                size="small"
+                sx={fieldSx}
+                helperText={`Up to ${MAX_MENTOR_TOPICS} topics · ${form.mentorTopics.length} added`}
+              />
+            )}
+          />
+
+          <TextField
+            select
+            label="Maximum mentees at a time"
+            value={form.maxActiveMentees}
+            onChange={(e) =>
+              setForm((prev) => ({
+                ...prev,
+                maxActiveMentees: Number(e.target.value),
+              }))
+            }
+            fullWidth
+            size="small"
+            sx={fieldSx}
+          >
+            {CAPACITIES.map((n) => (
+              <MenuItem key={n} value={n}>
+                {n}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Stack>
+      )}
 
       <Divider sx={{ my: 3, borderColor: "divider" }} />
 

@@ -13,6 +13,10 @@ export interface UpdateUserDto{
     semester?:number;
     avatar?:string;
     password?:string;
+    isOpenToMentor?:boolean;
+    mentorBio?:string;
+    mentorTopics?:string[];
+    maxActiveMentees?:number;
 }
 
 export interface UpdateUserStatusDto{

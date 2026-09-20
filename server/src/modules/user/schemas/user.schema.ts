@@ -58,6 +58,19 @@ export class User {
   @Prop({ required: false, default: false })
   isOpenToMentor?: boolean;
 
+  // ── Mentor profile (BACKLOG.md E8) ─────────────────────────────────────
+  /** What this person helps with, in their own words. */
+  @Prop({ required: false, maxlength: 500 })
+  mentorBio?: string;
+
+  /** Subjects/courses they will mentor on (drives E9 directory filters). */
+  @Prop({ type: [String], default: [] })
+  mentorTopics?: string[];
+
+  /** Cap on simultaneous mentees; enforced when accepting requests (E10). */
+  @Prop({ required: false, default: 3, min: 1, max: 10 })
+  maxActiveMentees?: number;
+
   @Prop({ required: false })
   avatar?: string;
 
@@ -80,3 +93,5 @@ export type UserDocument = HydratedDocument<User>;
 export const UserSchema = SchemaFactory.createForClass(User);
 
 UserSchema.index({ name: 'text', email: 'text' });
+// Mentor directory (E9): open mentors, best-reputation first.
+UserSchema.index({ isOpenToMentor: 1, contributionScore: -1 });

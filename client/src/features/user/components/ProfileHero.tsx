@@ -23,6 +23,7 @@ import {
 } from "@mui/icons-material";
 import { UserRole } from "@/shared/types/enums";
 import { TierChip } from "@/features/reputation/components/TierChip";
+import { MentorProfileBlock } from "./MentorProfileBlock";
 import { BadgeStrip } from "@/features/reputation/components/BadgeStrip";
 import type {
   ProfileStats,
@@ -281,6 +282,13 @@ const ProfileHero: React.FC<ProfileHeroProps> = ({
                     justify={{ xs: 'center', sm: 'flex-start' }}
                   />
                 </Box>
+
+                {user && (
+                  <MentorProfileBlock
+                    user={user}
+                    justify={{ xs: 'center', sm: 'flex-start' }}
+                  />
+                )}
 
                 {user?.interests?.length ? (
                   <Box sx={{ mt: 1 }}>

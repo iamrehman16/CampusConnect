@@ -17,6 +17,9 @@ export interface User {
   interests?: string[];
   expertise?: string[];
   isOpenToMentor?: boolean;
+  mentorBio?: string;
+  mentorTopics?: string[];
+  maxActiveMentees?: number;
   contributionScore?: number;
   tier?: ReputationTier;
   accountStatus?: string;
