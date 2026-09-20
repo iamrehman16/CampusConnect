@@ -6,6 +6,8 @@ import type {
   DeleteMessageDto,
   MarkSeenDto,
   Message,
+  PresenceEvent,
+  TypingEvent,
 } from "../types/chat-dto";
 
 type Listener<T> = (payload: T) => void;
@@ -85,6 +87,28 @@ class ChatSocketService {
     this.socket.emit("mark_seen", conversationId);
   }
 
+  /** Ids of conversation partners currently online (server ack). */
+  getOnlinePartners(): Promise<string[]> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error("Socket not connected"));
+        return;
+      }
+      this.socket
+        .timeout(5000)
+        .emit("get_presence", (err: Error | null, ids: string[]) =>
+          err ? reject(err) : resolve(ids),
+        );
+    });
+  }
+
+  emitTyping(conversationId: string, isTyping: boolean): void {
+    if (!this.socket) {
+      throw new Error("Socket not connected");
+    }
+    this.socket.emit("typing", { conversationId, isTyping });
+  }
+
   deleteMessage(dto: DeleteMessageDto): void {
     if (!this.socket) {
       throw new Error("Socket not connected");
@@ -108,6 +132,22 @@ class ChatSocketService {
     }
     this.socket.on("messages_seen", cb);
     return () => this.socket?.off("messages_seen", cb);
+  }
+
+  onPresence(cb: Listener<PresenceEvent>): () => void {
+    if (!this.socket) {
+      throw new Error("Socket not connected");
+    }
+    this.socket.on("presence", cb);
+    return () => this.socket?.off("presence", cb);
+  }
+
+  onTyping(cb: Listener<TypingEvent>): () => void {
+    if (!this.socket) {
+      throw new Error("Socket not connected");
+    }
+    this.socket.on("typing", cb);
+    return () => this.socket?.off("typing", cb);
   }
 
   onMessageDeleted(cb: Listener<DeleteMessageDto>): () => void {

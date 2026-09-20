@@ -9,6 +9,7 @@ export interface ConversationParticipant {
   name?: string;
   avatar?: string;
   role?: string;
+  lastSeenAt?: string | null;
 }
 
 export interface Conversation {
@@ -55,4 +56,16 @@ export interface Message {
 export interface MarkSeenDto {
   conversationId: string;
   seenBy: string;
+}
+
+export interface PresenceEvent {
+  userId: string;
+  online: boolean;
+  lastSeenAt?: string;
+}
+
+export interface TypingEvent {
+  conversationId: string;
+  userId: string;
+  isTyping: boolean;
 }

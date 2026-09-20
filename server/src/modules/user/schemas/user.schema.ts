@@ -57,6 +57,10 @@ export class User {
 
   @Prop({ required: false, default: false })
   isOnboarded?: boolean;
+
+  // Set when a user's last chat socket disconnects (see PresenceService).
+  @Prop({ type: Date, default: null })
+  lastSeenAt?: Date | null;
 }
 
 export type UserDocument = HydratedDocument<User>;

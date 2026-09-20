@@ -22,6 +22,8 @@ import { WsExceptionFilter } from './filters/websocket-exception.filter';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { DeleteMessageDto } from './dto/delete-message.dto';
 import { MarkSeenDto } from './dto/mark-seen.dto';
+import { TypingDto } from './dto/typing.dto';
+import { PresenceService } from './presence.service';
 import { AppSocket } from './types/app-socket';
 
 // @UseGuards(WsJwtGuard) already rejects sockets with no userId at
@@ -48,11 +50,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   server: Server;
 
   private readonly logger = new Logger(ChatGateway.name);
-  private connectedUsers = new Map<string, Set<string>>();
 
   constructor(
     private readonly chatService: ChatService,
     private readonly wsJwtGuard: WsJwtGuard,
+    private readonly presence: PresenceService,
   ) {}
 
   async handleConnection(socket: AppSocket) {
@@ -64,6 +66,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // user identity room (key change)
       await socket.join(user.id);
 
+      await this.announceConnect(socket, user.id);
+
       this.logger.log(`User ${user.id} connected`);
     } catch (err) {
       this.logger.error('Error in handleConnection:', err);
@@ -71,12 +75,59 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  handleDisconnect(socket: AppSocket) {
+  async handleDisconnect(socket: AppSocket) {
     const userId = socket.data.userId;
+    if (!userId) return;
 
-    if (userId) {
-      this.logger.log(`User ${userId} disconnected socket ${socket.id}`);
+    this.logger.log(`User ${userId} disconnected socket ${socket.id}`);
+
+    try {
+      const lastSeenAt = await this.presence.disconnect(userId, socket.id);
+      if (!lastSeenAt) return;
+
+      const partnerIds =
+        await this.chatService.getConversationPartnerIds(userId);
+      if (partnerIds.length === 0) return;
+
+      this.server
+        .to(partnerIds)
+        .emit('presence', { userId, online: false, lastSeenAt });
+    } catch (err) {
+      this.logger.error(`Error broadcasting offline for ${userId}:`, err);
     }
+  }
+
+  @UseGuards(WsJwtGuard)
+  @SubscribeMessage('get_presence')
+  async handleGetPresence(@ConnectedSocket() socket: AppSocket) {
+    const userId = requireUserId(socket);
+    try {
+      const partnerIds =
+        await this.chatService.getConversationPartnerIds(userId);
+      return this.presence.filterOnline(partnerIds);
+    } catch (err) {
+      this.logger.error(`Error in handleGetPresence for user ${userId}:`, err);
+      socket.emit('chat_error', { message: 'Failed to load presence' });
+      return [];
+    }
+  }
+
+  @UseGuards(WsJwtGuard)
+  @SubscribeMessage('typing')
+  handleTyping(
+    @ConnectedSocket() socket: AppSocket,
+    @MessageBody() dto: TypingDto,
+  ) {
+    const userId = requireUserId(socket);
+    // Room membership is participant-verified in join_conversation, so it
+    // doubles as the authorization check here (no DB hit per keystroke).
+    if (!socket.rooms.has(dto.conversationId)) return;
+
+    socket.to(dto.conversationId).emit('typing', {
+      conversationId: dto.conversationId,
+      userId,
+      isTyping: dto.isTyping,
+    });
   }
 
   @UseGuards(WsJwtGuard)
@@ -181,22 +232,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  //private helpers
-  private addUserSocket(userId: string, socketId: string) {
-    if (!this.connectedUsers.has(userId)) {
-      this.connectedUsers.set(userId, new Set());
-    }
-    this.connectedUsers.get(userId)!.add(socketId);
-  }
+  /**
+   * On a user's first live socket: tell their conversation partners they're
+   * online. (The reverse — which partners are online — is pulled by the
+   * client via `get_presence`, so it can't be lost to a listener-registration
+   * race at connect time.)
+   */
+  private async announceConnect(socket: AppSocket, userId: string) {
+    const isFirstSocket = this.presence.connect(userId, socket.id);
+    const partnerIds = await this.chatService.getConversationPartnerIds(userId);
 
-  private removeUserSocket(userId: string, socketId: string) {
-    const sockets = this.connectedUsers.get(userId);
-    if (!sockets) return;
-
-    sockets.delete(socketId);
-
-    if (sockets.size === 0) {
-      this.connectedUsers.delete(userId);
+    if (isFirstSocket && partnerIds.length > 0) {
+      this.server.to(partnerIds).emit('presence', { userId, online: true });
     }
   }
 }

@@ -1,6 +1,7 @@
 import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
 import { WsJwtGuard } from './guards/websocket.jwt.guard';
+import { PresenceService } from './presence.service';
 import { AppSocket, ChatSocketData } from './types/app-socket';
 
 type MockSocket = {
@@ -32,6 +33,7 @@ describe('ChatGateway', () => {
     const gateway = new ChatGateway(
       {} as ChatService,
       wsJwtGuard as WsJwtGuard,
+      {} as PresenceService,
     );
     const socket = mockSocket();
     socket.join.mockRejectedValue(new Error('cluster adapter join failed'));
@@ -50,6 +52,7 @@ describe('ChatGateway', () => {
     const gateway = new ChatGateway(
       chatService as unknown as ChatService,
       {} as WsJwtGuard,
+      {} as PresenceService,
     );
     const socket = mockSocket();
     socket.data.userId = 'user-1';
@@ -77,6 +80,7 @@ describe('ChatGateway', () => {
     const gateway = new ChatGateway(
       chatService as unknown as ChatService,
       {} as WsJwtGuard,
+      {} as PresenceService,
     );
     const socket = mockSocket();
     socket.data.userId = 'intruder';
@@ -101,6 +105,7 @@ describe('ChatGateway', () => {
     const gateway = new ChatGateway(
       chatService as unknown as ChatService,
       {} as WsJwtGuard,
+      {} as PresenceService,
     );
     const socket = mockSocket();
     socket.data.userId = 'user-1';
@@ -129,6 +134,7 @@ describe('ChatGateway', () => {
     const gateway = new ChatGateway(
       chatService as unknown as ChatService,
       {} as WsJwtGuard,
+      {} as PresenceService,
     );
     const emit = jest.fn();
     const secondTo = jest.fn().mockReturnValue({ emit });
@@ -145,5 +151,64 @@ describe('ChatGateway', () => {
     expect(firstTo).toHaveBeenCalledWith('conv-1');
     expect(secondTo).toHaveBeenCalledWith('user-2');
     expect(emit).toHaveBeenCalledWith('new_message', message);
+  });
+
+  it('handleTyping relays to the conversation room only when the socket has joined it', () => {
+    const gateway = new ChatGateway(
+      {} as ChatService,
+      {} as WsJwtGuard,
+      {} as PresenceService,
+    );
+    const emit = jest.fn();
+    const to = jest.fn().mockReturnValue({ emit });
+    const joined = {
+      ...mockSocket(),
+      to,
+      rooms: new Set(['conv-1']),
+    };
+    joined.data.userId = 'user-1';
+    const notJoined = { ...joined, rooms: new Set<string>() };
+    notJoined.to = jest.fn();
+
+    gateway.handleTyping(joined as unknown as AppSocket, {
+      conversationId: 'conv-1',
+      isTyping: true,
+    });
+    gateway.handleTyping(notJoined as unknown as AppSocket, {
+      conversationId: 'conv-1',
+      isTyping: true,
+    });
+
+    expect(to).toHaveBeenCalledWith('conv-1');
+    expect(emit).toHaveBeenCalledWith('typing', {
+      conversationId: 'conv-1',
+      userId: 'user-1',
+      isTyping: true,
+    });
+    expect(notJoined.to).not.toHaveBeenCalled();
+  });
+
+  it('handleGetPresence returns only the conversation partners that are online', async () => {
+    const chatService = {
+      getConversationPartnerIds: jest.fn().mockResolvedValue(['a', 'b']),
+    };
+    const presence = { filterOnline: jest.fn().mockReturnValue(['b']) };
+    const gateway = new ChatGateway(
+      chatService as unknown as ChatService,
+      {} as WsJwtGuard,
+      presence as unknown as PresenceService,
+    );
+    const socket = mockSocket();
+    socket.data.userId = 'user-1';
+
+    const result = await gateway.handleGetPresence(
+      socket as unknown as AppSocket,
+    );
+
+    expect(chatService.getConversationPartnerIds).toHaveBeenCalledWith(
+      'user-1',
+    );
+    expect(presence.filterOnline).toHaveBeenCalledWith(['a', 'b']);
+    expect(result).toEqual(['b']);
   });
 });

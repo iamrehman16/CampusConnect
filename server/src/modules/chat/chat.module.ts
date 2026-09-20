@@ -9,6 +9,8 @@ import { Conversation, ConversationSchema } from './schema/conversation.schema';
 import { Message, MessageSchema } from './schema/message.schema';
 import { WsJwtGuard } from './guards/websocket.jwt.guard';
 import { CommonModule } from '../../common/common.module';
+import { PresenceService } from './presence.service';
+import { UserModule } from '../user/user.module';
 import jwtConfig from '../auth/config/jwt.config';
 
 @Module({
@@ -22,8 +24,9 @@ import jwtConfig from '../auth/config/jwt.config';
     ]),
 
     CommonModule,
+    UserModule,
   ],
   controllers: [ChatController],
-  providers: [ChatGateway, ChatService, WsJwtGuard],
+  providers: [ChatGateway, ChatService, PresenceService, WsJwtGuard],
 })
 export class ChatModule {}

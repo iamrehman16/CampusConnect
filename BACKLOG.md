@@ -541,6 +541,28 @@ but are never called. Presence tells a student whether a mentor is around.
 - `typing` start/stop events (throttled client side), shown in feed.
 - Dead-code helpers wired up or deleted — no orphans left.
 
+**Status: DONE (2026-09-20).** New `PresenceService` (in-memory
+user -> socket set, multi-tab safe; first socket = online, last socket =
+offline and persists `User.lastSeenAt`) replaces the dead
+`connectedUsers`/`addUserSocket`/`removeUserSocket` code, which was never
+called. Gateway broadcasts `presence` to conversation partners' personal
+rooms on transitions; the client pulls the online-partner snapshot via a
+`get_presence` ack (a server-pushed snapshot at connect would race the
+client registering its listener). `typing` events relay to the conversation
+room, authorized by room membership rather than a DB hit per keystroke.
+Client: `useChatPresenceSync` (app-wide, zustand ephemeral store),
+`useTypingIndicator` (re-emit every 2.5s while typing, stop after 3s idle
+or on send, peer indicator self-expires at 5s if a stop is lost),
+`PresenceStatus` in the conversation header ("typing…" > "Online" > "Last
+seen …"). **Found and fixed separately (own commit, dce05f3):**
+`join_conversation` never verified the caller was a participant, so any
+authenticated user could join any conversation room and receive its
+`new_message` events — typing authorization depends on that check.
+Known limits: presence is single-instance (needs a shared store/Redis
+adapter to scale out); `lastSeenAt` is visible to conversation partners —
+a privacy toggle is not in scope. Server 92/92 tests, typecheck/lint clean;
+client typecheck/lint/build clean. Not verified with two live sessions.
+
 ### E4 — In-app notifications (module + bell)
 **Effort:** 8
 **Where:** new `server/src/modules/notification/` (schema, service,

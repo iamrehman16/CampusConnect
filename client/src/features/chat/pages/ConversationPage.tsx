@@ -18,6 +18,8 @@ import { useAuth } from "@/shared/hooks/useAuth";
 import { useEffect, useMemo } from "react";
 import { useChatUIStore } from "../store/chat-ui.store";
 import { ROUTES } from "@/shared/constants/routes";
+import { useTypingIndicator } from "../hooks/useTypingIndicator";
+import { PresenceStatus } from "../components/PresenceStatus";
 import { useChatSocketContext } from "@/shared/hooks/useChatSocketContext";
 
 export default function ConversationPage() {
@@ -39,6 +41,12 @@ export default function ConversationPage() {
     if (!activeConversationId || !isConnected) return;
     joinConversation(activeConversationId);
   }, [activeConversationId, isConnected, joinConversation]);
+
+  const { isPeerTyping, notifyTyping, stopTyping } = useTypingIndicator(
+    activeConversationId,
+    user?._id,
+    isConnected,
+  );
 
   const { data: conversations } = useConversationsQuery();
   const conversation = conversations?.find(
@@ -141,9 +149,15 @@ export default function ConversationPage() {
         >
           {(otherParticipant?.name?.trim() || "U").charAt(0).toUpperCase()}
         </Avatar>
-        <Typography variant="subtitle1" fontWeight={600}>
-          {otherParticipant?.name?.trim() || "Unknown user"}
-        </Typography>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography variant="subtitle1" fontWeight={600} lineHeight={1.3}>
+            {otherParticipant?.name?.trim() || "Unknown user"}
+          </Typography>
+          <PresenceStatus
+            participant={otherParticipant}
+            isTyping={isPeerTyping}
+          />
+        </Box>
       </Box>
 
       {/* Feed */}
@@ -165,6 +179,8 @@ export default function ConversationPage() {
         <MessageInput
           conversationId={activeConversationId}
           sendMessage={sendMessage}
+          onTyping={notifyTyping}
+          onStopTyping={stopTyping}
         />
       </Box>
     </Box>

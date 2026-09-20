@@ -130,6 +130,10 @@ export class UserService {
     return updatedUser.toObject();
   }
 
+  async touchLastSeen(id: string, at: Date): Promise<void> {
+    await this.userModel.updateOne({ _id: id }, { lastSeenAt: at }).exec();
+  }
+
   async updateRole(id: string, role: Roles) {
     const updatedUser = await this.userModel
       .findByIdAndUpdate(id, { role }, { new: true })

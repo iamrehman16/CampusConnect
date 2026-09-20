@@ -6,9 +6,16 @@ import type { CreateMessageDto } from "../types/chat-dto";
 interface Props {
   conversationId: string;
   sendMessage: (dto: Omit<CreateMessageDto, "clientId">) => string;
+  onTyping?: () => void;
+  onStopTyping?: () => void;
 }
 
-export function MessageInput({ conversationId, sendMessage }: Props) {
+export function MessageInput({
+  conversationId,
+  sendMessage,
+  onTyping,
+  onStopTyping,
+}: Props) {
   const [content, setContent] = useState("");
 
   const handleSend = useCallback(() => {
@@ -16,7 +23,8 @@ export function MessageInput({ conversationId, sendMessage }: Props) {
     if (!trimmed) return;
     sendMessage({ conversationId, content: trimmed });
     setContent("");
-  }, [content, conversationId, sendMessage]);
+    onStopTyping?.();
+  }, [content, conversationId, sendMessage, onStopTyping]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -41,7 +49,10 @@ export function MessageInput({ conversationId, sendMessage }: Props) {
         maxRows={4}
         placeholder="Write a message..."
         value={content}
-        onChange={(e) => setContent(e.target.value)}
+        onChange={(e) => {
+          setContent(e.target.value);
+          if (e.target.value) onTyping?.();
+        }}
         onKeyDown={handleKeyDown}
         variant="outlined"
         size="small"

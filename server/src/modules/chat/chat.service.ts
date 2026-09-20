@@ -18,7 +18,7 @@ import { CreateMessageDto } from './dto/create-message.dto';
 import { GetMessagesDto } from './dto/get-message.dto';
 
 // Public-safe participant fields only — email deliberately excluded.
-const PARTICIPANT_PUBLIC_FIELDS = 'name avatar role';
+const PARTICIPANT_PUBLIC_FIELDS = 'name avatar role lastSeenAt';
 
 @Injectable()
 export class ChatService implements OnModuleInit {
@@ -173,6 +173,24 @@ export class ChatService implements OnModuleInit {
       .exec();
 
     return new Map(rows.map((r) => [r._id.toString(), r.count]));
+  }
+
+  /** Ids of every user this user has a conversation with. */
+  async getConversationPartnerIds(userId: string): Promise<string[]> {
+    const userObjectId = new Types.ObjectId(userId);
+    const conversations = await this.conversationModel
+      .find({ participants: userObjectId })
+      .select('participants')
+      .lean()
+      .exec();
+
+    const partnerIds = new Set(
+      conversations
+        .flatMap((c) => c.participants)
+        .map((id) => id.toString())
+        .filter((id) => id !== userId),
+    );
+    return [...partnerIds];
   }
 
   async getMessages(userId: string, dto: GetMessagesDto) {
