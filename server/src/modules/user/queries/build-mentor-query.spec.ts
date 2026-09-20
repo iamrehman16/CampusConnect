@@ -73,6 +73,17 @@ describe('MentorQueryBuilder', () => {
     ).toHaveLength(4);
   });
 
+  it('hasCapacity adds an $expr comparing active mentees to the limit (legacy docs default safely)', () => {
+    const [, cap] = clauses({ hasCapacity: true });
+    const json = JSON.stringify(cap);
+
+    expect(json).toContain('$lt');
+    expect(json).toContain('$activeMenteeCount');
+    expect(json).toContain('$maxActiveMentees');
+    expect(json).toContain('$ifNull');
+    expect(clauses({ hasCapacity: false })).toHaveLength(1);
+  });
+
   it('ignores blank text filters', () => {
     expect(clauses({ department: '  ', topic: '', search: ' ' })).toHaveLength(
       1,

@@ -4,6 +4,7 @@ import { escapeRegex } from '../../../common/utils/escape-regex';
 import { MentorQueryDto } from '../dto/mentor-query.dto';
 import { UserDocument } from '../schemas/user.schema';
 import { UserStatus } from '../enums/user-status.enum';
+import { DEFAULT_MAX_ACTIVE_MENTEES } from '../user.constants';
 
 const contains = (input: string) => new RegExp(escapeRegex(input.trim()), 'i');
 const equalsIgnoreCase = (input: string) =>
@@ -25,6 +26,17 @@ export class MentorQueryBuilder implements IQueryBuilder<MentorQueryDto> {
         _id: { $ne: new Types.ObjectId(this.requesterId) },
       },
     ];
+
+    if (dto.hasCapacity) {
+      and.push({
+        $expr: {
+          $lt: [
+            { $ifNull: ['$activeMenteeCount', 0] },
+            { $ifNull: ['$maxActiveMentees', DEFAULT_MAX_ACTIVE_MENTEES] },
+          ],
+        },
+      });
+    }
 
     if (dto.department?.trim()) {
       and.push({ department: equalsIgnoreCase(dto.department) });

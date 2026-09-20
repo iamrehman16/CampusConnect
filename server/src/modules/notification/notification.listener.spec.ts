@@ -126,4 +126,81 @@ describe('NotificationListener', () => {
       { reason: 'Not enough work' },
     );
   });
+
+  describe('mentorship', () => {
+    it('tells the mentor about a new request, naming the student and topic', async () => {
+      const { listener, notifications } = build({ senderName: 'Sara' });
+
+      await listener.onMentorshipRequested({
+        mentorshipId: 'm1',
+        mentorId: 'mentor',
+        menteeId: 'mentee',
+        topic: 'DP',
+      });
+
+      expect(notifications.record).toHaveBeenCalledWith(
+        'mentor',
+        NotificationType.MENTORSHIP_REQUESTED,
+        { menteeName: 'Sara', topic: 'DP' },
+      );
+    });
+
+    it('tells the mentee it was accepted, linking to the new conversation', async () => {
+      const { listener, notifications } = build({ senderName: 'Omar' });
+
+      await listener.onMentorshipAccepted({
+        mentorshipId: 'm1',
+        mentorId: 'mentor',
+        menteeId: 'mentee',
+        conversationId: 'c1',
+      });
+
+      expect(notifications.record).toHaveBeenCalledWith(
+        'mentee',
+        NotificationType.MENTORSHIP_ACCEPTED,
+        { mentorName: 'Omar', conversationId: 'c1' },
+      );
+    });
+
+    it('tells the mentee about a decline with the reason', async () => {
+      const { listener, notifications } = build({ senderName: 'Omar' });
+
+      await listener.onMentorshipDeclined({
+        mentorshipId: 'm1',
+        mentorId: 'mentor',
+        menteeId: 'mentee',
+        reason: 'Busy this term',
+      });
+
+      expect(notifications.record).toHaveBeenCalledWith(
+        'mentee',
+        NotificationType.MENTORSHIP_DECLINED,
+        { mentorName: 'Omar', reason: 'Busy this term' },
+      );
+    });
+
+    it.each([
+      ['mentor', 'mentee'],
+      ['mentee', 'mentor'],
+    ])(
+      'on completion by the %s, notifies the %s (not the person who ended it)',
+      async (endedBy, recipientRole) => {
+        const { listener, notifications } = build({ senderName: 'Sara' });
+        const ids = { mentor: 'mentor-id', mentee: 'mentee-id' };
+
+        await listener.onMentorshipCompleted({
+          mentorshipId: 'm1',
+          mentorId: ids.mentor,
+          menteeId: ids.mentee,
+          completedBy: ids[endedBy as 'mentor' | 'mentee'],
+        });
+
+        expect(notifications.record).toHaveBeenCalledWith(
+          ids[recipientRole as 'mentor' | 'mentee'],
+          NotificationType.MENTORSHIP_COMPLETED,
+          { otherName: 'Sara' },
+        );
+      },
+    );
+  });
 });

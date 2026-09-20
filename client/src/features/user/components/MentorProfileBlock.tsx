@@ -9,11 +9,12 @@ interface Props {
 
 /**
  * Public "open to mentor" state: status, what they help with, and capacity.
- * Capacity is the configured maximum; once mentorships exist (E10) this shows
- * remaining slots instead.
+ * Capacity is the mentor's remaining free slots (max minus active mentees).
  */
 export function MentorProfileBlock({ user, justify = "flex-start" }: Props) {
   if (!user.isOpenToMentor) return null;
+
+  const slotsLeft = Math.max(0, user.maxActiveMentees - user.activeMenteeCount);
 
   return (
     <Box sx={{ mt: 1.5 }}>
@@ -32,8 +33,11 @@ export function MentorProfileBlock({ user, justify = "flex-start" }: Props) {
           sx={{ fontWeight: 600 }}
         />
         <Typography variant="caption" color="text.secondary">
-          Takes up to {user.maxActiveMentees}{" "}
-          {user.maxActiveMentees === 1 ? "mentee" : "mentees"}
+          {slotsLeft > 0
+            ? `${slotsLeft} of ${user.maxActiveMentees} ${
+                user.maxActiveMentees === 1 ? "slot" : "slots"
+              } free`
+            : "All mentee slots are taken right now"}
         </Typography>
       </Stack>
 

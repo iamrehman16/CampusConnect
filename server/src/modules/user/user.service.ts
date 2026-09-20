@@ -30,13 +30,14 @@ import {
 import { UserQueryBuilder } from './queries/build-user-query';
 import { UserSortBuilder } from './queries/build-user-sort';
 import { MentorQueryDto } from './dto/mentor-query.dto';
+import { DEFAULT_MAX_ACTIVE_MENTEES } from './user.constants';
 import { MentorSummaryDto } from './dto/mentor-summary.dto';
 import { MentorQueryBuilder } from './queries/build-mentor-query';
 import { MentorSortBuilder } from './queries/build-mentor-sort';
 
 // Fields loaded for the public mentor directory (mirrors MentorSummaryDto).
 const MENTOR_PUBLIC_FIELDS =
-  'name avatar department semester role tier contributionScore expertise mentorBio mentorTopics maxActiveMentees';
+  'name avatar department semester role tier contributionScore expertise mentorBio mentorTopics maxActiveMentees activeMenteeCount';
 import { CompleteOnboardingDto } from './dto/complete-onboarding.dto';
 
 @Injectable()
@@ -117,20 +118,25 @@ export class UserService {
 
     return {
       ...result,
-      data: result.data.map((u) => ({
-        id: (u as User & { _id: Types.ObjectId })._id.toString(),
-        name: u.name ?? '',
-        avatar: u.avatar,
-        department: u.department,
-        semester: u.semester,
-        role: u.role,
-        tier: u.tier,
-        contributionScore: u.contributionScore,
-        expertise: u.expertise ?? [],
-        mentorBio: u.mentorBio,
-        mentorTopics: u.mentorTopics ?? [],
-        maxActiveMentees: u.maxActiveMentees ?? 3,
-      })),
+      data: result.data.map((u) => {
+        const maxActiveMentees =
+          u.maxActiveMentees ?? DEFAULT_MAX_ACTIVE_MENTEES;
+        return {
+          id: (u as User & { _id: Types.ObjectId })._id.toString(),
+          name: u.name ?? '',
+          avatar: u.avatar,
+          department: u.department,
+          semester: u.semester,
+          role: u.role,
+          tier: u.tier,
+          contributionScore: u.contributionScore,
+          expertise: u.expertise ?? [],
+          mentorBio: u.mentorBio,
+          mentorTopics: u.mentorTopics ?? [],
+          maxActiveMentees,
+          slotsLeft: Math.max(0, maxActiveMentees - (u.activeMenteeCount ?? 0)),
+        };
+      }),
     };
   }
 
@@ -224,6 +230,40 @@ export class UserService {
           ],
         },
         { contributionScore: 0, tier: ReputationTier.NEWCOMER },
+      )
+      .exec();
+  }
+
+  /**
+   * Atomically claim one mentee slot: succeeds only while activeMenteeCount is
+   * still below the mentor's maxActiveMentees, evaluated inside the write so
+   * two concurrent accepts can never both take the last slot.
+   * @returns false when the mentor is full.
+   */
+  async reserveMenteeSlot(mentorId: string): Promise<boolean> {
+    const res = await this.userModel
+      .updateOne(
+        {
+          _id: mentorId,
+          $expr: {
+            $lt: [
+              { $ifNull: ['$activeMenteeCount', 0] },
+              { $ifNull: ['$maxActiveMentees', DEFAULT_MAX_ACTIVE_MENTEES] },
+            ],
+          },
+        },
+        { $inc: { activeMenteeCount: 1 } },
+      )
+      .exec();
+    return res.modifiedCount === 1;
+  }
+
+  /** Give a reserved slot back (mentorship completed, or accept rolled back). */
+  async releaseMenteeSlot(mentorId: string): Promise<void> {
+    await this.userModel
+      .updateOne(
+        { _id: mentorId, activeMenteeCount: { $gt: 0 } },
+        { $inc: { activeMenteeCount: -1 } },
       )
       .exec();
   }

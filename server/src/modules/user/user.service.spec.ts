@@ -82,6 +82,8 @@ describe('UserService#findMentors', () => {
           expertise: ['DSA'],
           mentorBio: 'Hi',
           mentorTopics: ['OS'],
+          maxActiveMentees: 4,
+          activeMenteeCount: 1,
         },
       ],
       total: 1,
@@ -111,7 +113,8 @@ describe('UserService#findMentors', () => {
       expertise: ['DSA'],
       mentorBio: 'Hi',
       mentorTopics: ['OS'],
-      maxActiveMentees: 3,
+      maxActiveMentees: 4,
+      slotsLeft: 3,
     });
     // The projection is also restricted at the query level.
     const args = paginate.mock.calls[0] as unknown[];
@@ -145,5 +148,51 @@ describe('MentorQueryDto — through the production ValidationPipe', () => {
     ['over-long search', { search: 'x'.repeat(101) }],
   ])('rejects %s', async (_l, q) => {
     await expect(run(q)).rejects.toThrow();
+  });
+});
+
+describe('UserService mentee slots', () => {
+  function build(modified: number) {
+    const exec = jest.fn().mockResolvedValue({ modifiedCount: modified });
+    const updateOne = jest.fn().mockReturnValue({ exec });
+    const service = new UserService(
+      { updateOne } as unknown as Model<User>,
+      {} as PaginationService,
+    );
+    return { service, updateOne };
+  }
+
+  it("reserveMenteeSlot compares the counter to the mentor's max INSIDE the write", async () => {
+    const { service, updateOne } = build(1);
+
+    await expect(service.reserveMenteeSlot('m1')).resolves.toBe(true);
+
+    const [filter, update] = updateOne.mock.calls[0] as [
+      { _id: string; $expr: unknown },
+      unknown,
+    ];
+    expect(filter._id).toBe('m1');
+    // Atomic capacity check: an $expr on the same document, not a prior read.
+    expect(JSON.stringify(filter.$expr)).toContain('$lt');
+    expect(JSON.stringify(filter.$expr)).toContain('$activeMenteeCount');
+    expect(JSON.stringify(filter.$expr)).toContain('$maxActiveMentees');
+    expect(update).toEqual({ $inc: { activeMenteeCount: 1 } });
+  });
+
+  it('reserveMenteeSlot reports a full mentor (no document matched)', async () => {
+    const { service } = build(0);
+
+    await expect(service.reserveMenteeSlot('m1')).resolves.toBe(false);
+  });
+
+  it('releaseMenteeSlot never lets the counter go below zero', async () => {
+    const { service, updateOne } = build(1);
+
+    await service.releaseMenteeSlot('m1');
+
+    expect(updateOne).toHaveBeenCalledWith(
+      { _id: 'm1', activeMenteeCount: { $gt: 0 } },
+      { $inc: { activeMenteeCount: -1 } },
+    );
   });
 });

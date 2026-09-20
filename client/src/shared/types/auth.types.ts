@@ -20,6 +20,7 @@ export interface User {
   mentorBio?: string;
   mentorTopics?: string[];
   maxActiveMentees?: number;
+  activeMenteeCount?: number;
   contributionScore?: number;
   tier?: ReputationTier;
   accountStatus?: string;

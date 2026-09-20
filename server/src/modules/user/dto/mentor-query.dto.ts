@@ -1,5 +1,6 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsEnum,
   IsInt,
   IsOptional,
@@ -48,6 +49,16 @@ export class MentorQueryDto extends BaseQueryDto {
   @Min(1)
   @Max(8)
   semesterMax?: number;
+
+  /** Only mentors with at least one free mentee slot. */
+  @IsOptional()
+  @Transform(({ obj, key }: { obj: Record<string, unknown>; key: string }) =>
+    obj[key] === undefined
+      ? undefined
+      : obj[key] === 'true' || obj[key] === true,
+  )
+  @IsBoolean()
+  hasCapacity?: boolean;
 
   @IsOptional()
   @IsEnum(MentorSort)

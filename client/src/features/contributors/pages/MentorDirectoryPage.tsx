@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { Alert, Box, Button, CircularProgress, Skeleton, Typography } from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import { ROUTES } from "@/shared/constants/routes";
 import { PageContainer } from "@/shared/components/PageContainer";
 import { MentorCard } from "../components/MentorCard";
 import { MentorFilterBar } from "../components/MentorFilterBar";
@@ -13,6 +15,7 @@ const GRID_SX = {
 } as const;
 
 export default function MentorDirectoryPage() {
+  const navigate = useNavigate();
   const { filters, setFilters, reset, hasActiveFilters } = useMentorFilters();
   const {
     data,
@@ -46,14 +49,24 @@ export default function MentorDirectoryPage() {
   return (
     <PageContainer>
       <Box sx={{ p: { xs: 2, md: 3 }, display: "flex", flexDirection: "column", gap: 2.5 }}>
-        <Box>
-          <Typography variant="h5" fontWeight={700}>
-            Find a mentor
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Students and contributors who are open to helping. Filter by subject,
-            department or semester.
-          </Typography>
+        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
+          <Box sx={{ flex: 1, minWidth: 220 }}>
+            <Typography variant="h5" fontWeight={700}>
+              Find a mentor
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Students and contributors who are open to helping. Filter by
+              subject, department or semester.
+            </Typography>
+          </Box>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => navigate(ROUTES.MENTORSHIP)}
+            sx={{ textTransform: "none", fontWeight: 600 }}
+          >
+            My mentorships
+          </Button>
         </Box>
 
         <MentorFilterBar

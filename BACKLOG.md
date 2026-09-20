@@ -907,6 +907,73 @@ and capacity control.
 - UI: mentor inbox (pending requests, active mentees), mentee "My mentors"
   with status; request dialog with topic + intro (min length).
 
+**Status: DONE (2026-09-20).** New `server/src/modules/mentorship/`.
+**State machine:** `mentorship.state.ts` — one table-driven pure function
+(`resolveTransition`) says who may do what from which status:
+pending -accept/decline(mentor)-> active/declined, pending -cancel(mentee)->
+cancelled, active -complete(either)-> completed. The service derives its
+atomic update filters from the SAME table, so "allowed" and "what the DB
+enforces" can't drift. **Schema:** `Mentorship` (mentor, mentee, status,
+topic 2-80, introMessage 20-500, declineReason, conversationId, timestamps);
+a **partial unique index on (mentor, mentee) over open statuses** (`$in`
+pending/active) stops duplicate open requests at the database, while finished
+ones never block a fresh request. **Rules:** no self-requests; the mentor must
+be open and active; advisory "no free slots" check at request time (the
+authoritative one is on accept); max 5 requests waiting per student (spam
+guard). **Capacity is atomic:** `UserService.reserveMenteeSlot` is a single
+conditional `updateOne` whose filter compares `activeMenteeCount` to
+`maxActiveMentees` with `$expr` *inside the write* (legacy docs without the
+fields default safely via `$ifNull`), so two concurrent accepts can never both
+take the last slot; the slot is released on complete or on any failed accept
+step (`releaseMenteeSlot` can't go below 0). **Accept** = reserve slot ->
+atomic claim -> open the DM (`findOrCreateConversation`) and post the mentee's
+intro as its first message with a deterministic `clientId`
+(`mentorship-intro-<id>`, so a retry can't duplicate it) -> mark it seen for
+the mentor (they read it in their inbox) -> emit; if opening the chat fails it
+rolls back to pending and frees the slot (same compensation pattern as E6).
+**Transitions are single atomic filtered updates**, so races resolve in
+Mongo; a failed claim is diagnosed into 404 (missing *or* not a party —
+indistinguishable on purpose, no probing) / 403 (wrong role) / 409 (wrong
+status). Endpoints: `POST mentorships`, `GET mentorships?as=mentor|mentee&status=a,b`,
+`GET mentorships/pending-count`, `PATCH :id/accept|decline|cancel|complete`;
+responses carry public-safe parties only (no email). **Notifications** (E4
+registry): requested -> mentor, accepted (links to the new chat) / declined
+(with reason) -> mentee, completed -> the party who did *not* end it;
+`mentorship.completed` is the hook E11 listens to. **E9 follow-ups done:**
+directory cards show `slotsLeft`, the primary CTA is now *Request mentorship*
+(state-aware: "Request sent" / "Open chat" / disabled "No free slots" / hidden
+on your own card), new `hasCapacity` filter + "Only mentors with a free slot"
+switch, and the profile block (E8) shows "N of M slots free". Client
+(`features/mentorship/`): request dialog (topic + intro with live length
+validation), `RequestMentorshipButton` (used on directory cards and the public
+profile), `MentorshipCard` (accept / decline-with-reason / cancel / complete /
+open chat), `MentorshipPage` at `/mentorship` (As mentor / My mentors tabs,
+Pending / Active / Past, slot usage, URL-synced), sidebar item with a pending
+badge, "My mentorships" link in the directory, and realtime refresh of lists /
+badges / slot counts / chat list from the notification socket. Failures toast
+via the app-wide MutationCache handler (no per-hook duplicate toasts).
+**Verified live** with real HTTP + sockets + Mongo: duplicate 409, self 400,
+short intro 400, non-open mentor 400; **two concurrent accepts against one slot
+=> exactly one 200 and one 409, counter = 1, the loser still pending**;
+intro message present from the mentee, mentor's unread = 0; request while full
+409; `hasCapacity` hides the full mentor; stranger 404, mentor cancel 403,
+mentee decline 403, re-accept 409; complete frees the slot (count 0) and the
+mentor reappears under `hasCapacity`; re-requesting after completion allowed;
+decline with reason notifies the mentee; final counter 0. **Live testing also
+exposed a pre-existing chat bug, fixed in its own commit (`bef0e0c`):**
+databases created before A9 still had the unique multikey `participants_1`
+index (Mongoose never alters an existing index), so any user's second
+conversation failed with E11000 — a mentor with one chat couldn't accept a
+second mentee. `ChatService.onModuleInit` now drops it idempotently.
+Server 249 tests green, typecheck clean; client typecheck/lint/build clean;
+not verified in a browser. **Known limits:** `activeMenteeCount` is a
+denormalized counter (like `contributionScore`) — a crash between the counter
+write and the status write could drift it; there is no repair job yet (a
+recompute from active mentorships would be a small follow-up). No cooldown
+after a decline (a student can re-request immediately, bounded by the
+5-waiting cap). Lowering `maxActiveMentees` below current mentees is allowed
+(no new accepts until they finish).
+
 ### E11 — Mentorship feedback & skill endorsements
 **Effort:** 5
 **Where:** `mentorship` module, `reputation` events, profile UI

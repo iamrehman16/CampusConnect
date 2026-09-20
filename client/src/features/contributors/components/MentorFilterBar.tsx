@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import {
   Box,
   Button,
+  FormControlLabel,
   InputAdornment,
   MenuItem,
+  Switch,
   TextField,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
@@ -11,7 +13,7 @@ import { DEPARTMENTS, SEMESTERS } from "@/features/auth/components/onboarding/on
 import type { MentorFilters, MentorSort } from "../types/mentor.dto";
 
 type FilterPatch = Partial<
-  Record<"q" | "dept" | "topic" | "semMin" | "semMax" | "sort", string | undefined>
+  Record<"q" | "dept" | "topic" | "semMin" | "semMax" | "slots" | "sort", string | undefined>
 >;
 
 interface Props {
@@ -169,6 +171,17 @@ export function MentorFilterBar({ filters, hasActiveFilters, onChange, onReset }
           </Button>
         )}
       </Box>
+      <FormControlLabel
+        sx={{ gridColumn: "1 / -1", m: 0 }}
+        control={
+          <Switch
+            size="small"
+            checked={!!filters.hasCapacity}
+            onChange={(e) => onChange({ slots: e.target.checked ? "1" : undefined })}
+          />
+        }
+        label="Only mentors with a free slot"
+      />
     </Box>
   );
 }

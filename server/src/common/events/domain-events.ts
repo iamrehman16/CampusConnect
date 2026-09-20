@@ -10,6 +10,10 @@ export const DomainEvents = {
   POST_UPVOTED: 'post.upvoted',
   CONTRIBUTOR_APPLICATION_APPROVED: 'contributor_application.approved',
   CONTRIBUTOR_APPLICATION_REJECTED: 'contributor_application.rejected',
+  MENTORSHIP_REQUESTED: 'mentorship.requested',
+  MENTORSHIP_ACCEPTED: 'mentorship.accepted',
+  MENTORSHIP_DECLINED: 'mentorship.declined',
+  MENTORSHIP_COMPLETED: 'mentorship.completed',
   CHAT_MESSAGE_RECEIVED: 'chat.message.received',
   CHAT_CONVERSATION_READ: 'chat.conversation.read',
 } as const;
@@ -59,4 +63,27 @@ export interface ContributorApplicationReviewedEvent {
   applicationId: string;
   /** Present on rejection. */
   reason?: string;
+}
+
+interface MentorshipEventBase {
+  mentorshipId: string;
+  mentorId: string;
+  menteeId: string;
+}
+
+export interface MentorshipRequestedEvent extends MentorshipEventBase {
+  topic: string;
+}
+
+export interface MentorshipAcceptedEvent extends MentorshipEventBase {
+  conversationId: string;
+}
+
+export interface MentorshipDeclinedEvent extends MentorshipEventBase {
+  reason?: string;
+}
+
+export interface MentorshipCompletedEvent extends MentorshipEventBase {
+  /** Who ended it (mentor or mentee). */
+  completedBy: string;
 }

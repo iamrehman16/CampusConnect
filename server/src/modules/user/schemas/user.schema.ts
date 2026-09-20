@@ -3,6 +3,7 @@ import { Roles } from '../enums/user-role.enum';
 import { UserStatus } from '../enums/user-status.enum';
 import { HydratedDocument } from 'mongoose';
 import { ReputationTier } from '../../reputation/tiers';
+import { DEFAULT_MAX_ACTIVE_MENTEES } from '../user.constants';
 
 @Schema({
   timestamps: true,
@@ -68,8 +69,21 @@ export class User {
   mentorTopics?: string[];
 
   /** Cap on simultaneous mentees; enforced when accepting requests (E10). */
-  @Prop({ required: false, default: 3, min: 1, max: 10 })
+  @Prop({
+    required: false,
+    default: DEFAULT_MAX_ACTIVE_MENTEES,
+    min: 1,
+    max: 10,
+  })
   maxActiveMentees?: number;
+
+  /**
+   * Live count of ACTIVE mentorships where this user is the mentor. A
+   * denormalized counter (like contributionScore) so a slot can be reserved
+   * with one atomic conditional update — see UserService.reserveMenteeSlot.
+   */
+  @Prop({ default: 0, min: 0 })
+  activeMenteeCount?: number;
 
   @Prop({ required: false })
   avatar?: string;

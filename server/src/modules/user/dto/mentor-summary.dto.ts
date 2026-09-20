@@ -18,4 +18,6 @@ export interface MentorSummaryDto {
   mentorBio?: string;
   mentorTopics: string[];
   maxActiveMentees: number;
+  /** Free mentee slots right now (max minus active mentorships). */
+  slotsLeft: number;
 }

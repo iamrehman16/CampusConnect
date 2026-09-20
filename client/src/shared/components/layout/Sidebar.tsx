@@ -32,6 +32,8 @@ import { useThemeModeContext } from '@/shared/hooks/useThemeModeContext';
 import { NotificationPopover } from '@/features/notifications/components/NotificationPopover';
 import { useUnreadNotificationCount } from '@/features/notifications/hooks/notification.hooks';
 import NotificationsIcon from '@mui/icons-material/NotificationsNone';
+import HandshakeIcon from '@mui/icons-material/HandshakeOutlined';
+import { usePendingRequestCount } from '@/features/mentorship/hooks/mentorship.hooks';
 import { useState } from 'react';
 import { useTotalUnread } from '@/features/chat/hooks/chat-hooks';
 
@@ -44,6 +46,7 @@ const MAIN_NAV = [
   { label: 'AI Assistant', icon: <SmartToyIcon />, path: ROUTES.AI_CHAT },
   { label: 'Messages', icon: <ChatIcon />, path: ROUTES.CHAT },
   { label: 'Mentors', icon: <People />, path: ROUTES.CONTRIBUTORS },
+  { label: 'Mentorship', icon: <HandshakeIcon />, path: ROUTES.MENTORSHIP },
   { label: 'Community', icon: <ForumIcon />, path: ROUTES.COMMUNITY },
 ];
 
@@ -64,6 +67,7 @@ export default function Sidebar() {
   const { mode, toggle } = useThemeModeContext();
 
   const totalUnread = useTotalUnread();
+  const { data: pendingMentorRequests = 0 } = usePendingRequestCount();
   const { data: unreadNotifications = 0 } = useUnreadNotificationCount();
   const [notifAnchor, setNotifAnchor] = useState<HTMLElement | null>(null);
 
@@ -164,6 +168,10 @@ export default function Sidebar() {
               >
                 {item.path === ROUTES.CHAT ? (
                   <Badge badgeContent={totalUnread} color="error" max={99}>
+                    {item.icon}
+                  </Badge>
+                ) : item.path === ROUTES.MENTORSHIP ? (
+                  <Badge badgeContent={pendingMentorRequests} color="error" max={99}>
                     {item.icon}
                   </Badge>
                 ) : (

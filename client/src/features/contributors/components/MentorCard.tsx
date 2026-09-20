@@ -8,9 +8,8 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import { useNavigate } from "react-router-dom";
-import { useChatTrigger } from "@/features/chat/hooks/chat-hooks";
+import { RequestMentorshipButton } from "@/features/mentorship/components/RequestMentorshipButton";
 import { TierChip } from "@/features/reputation/components/TierChip";
 import { ROUTES } from "@/shared/constants/routes";
 import type { MentorSummary } from "../types/mentor.dto";
@@ -23,7 +22,6 @@ interface Props {
 
 export function MentorCard({ mentor }: Props) {
   const navigate = useNavigate();
-  const { trigger, isPending } = useChatTrigger();
 
   // Mentoring topics are what they chose to advertise; fall back to general
   // expertise for mentors who haven't filled topics in.
@@ -88,24 +86,19 @@ export function MentorCard({ mentor }: Props) {
         )}
 
         <Typography variant="caption" color="text.secondary">
-          Takes up to {mentor.maxActiveMentees}{" "}
-          {mentor.maxActiveMentees === 1 ? "mentee" : "mentees"} · {mentor.contributionScore} rep
+          {mentor.slotsLeft > 0
+            ? `${mentor.slotsLeft} of ${mentor.maxActiveMentees} slots free`
+            : "No free slots"}{" "}
+          · {mentor.contributionScore} rep
         </Typography>
 
         <Box sx={{ display: "flex", gap: 1, mt: "auto", pt: 0.5 }}>
-          {/* Until the mentorship request flow (BACKLOG E10) exists, the
-              primary action is a direct message; E10 swaps it for
-              "Request mentorship". */}
-          <Button
-            size="small"
-            variant="contained"
-            startIcon={<ChatBubbleOutlineIcon fontSize="small" />}
-            loading={isPending}
-            onClick={() => trigger(mentor.id)}
-            sx={{ textTransform: "none", fontWeight: 600 }}
-          >
-            Message
-          </Button>
+          <RequestMentorshipButton
+            mentorId={mentor.id}
+            mentorName={mentor.name || "this mentor"}
+            slotsLeft={mentor.slotsLeft}
+            defaultTopic={mentor.mentorTopics[0]}
+          />
           <Button
             size="small"
             variant="outlined"

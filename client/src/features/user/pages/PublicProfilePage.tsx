@@ -10,6 +10,7 @@ import { usePostsByUser } from "@/features/community/hooks/community.hooks";
 import { useResourcesByUser } from "@/features/resources/hooks/resource.hooks";
 
 import ProfileHero from "../components/ProfileHero";
+import { RequestMentorshipButton } from "@/features/mentorship/components/RequestMentorshipButton";
 import ProfilePostsTab from "../components/ProfilePostsTab";
 import ProfileResourcesTab from "../components/ProfileResourcesTab";
 import { toProfileUserViewModel } from "../types/profile.types";
@@ -118,7 +119,19 @@ const PublicProfilePage: React.FC = () => {
           user={profileView}
           stats={stats}
           isLoading={profileLoading}
-          // No actions on public view
+          actions={
+            profileView?.isOpenToMentor ? (
+              <RequestMentorshipButton
+                mentorId={profileView.id}
+                mentorName={profileView.name}
+                slotsLeft={Math.max(
+                  0,
+                  profileView.maxActiveMentees - profileView.activeMenteeCount,
+                )}
+                defaultTopic={profileView.mentorTopics[0]}
+              />
+            ) : undefined
+          }
         />
 
         {/* ── Tabs ─────────────────────────────────────────────────────── */}

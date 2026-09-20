@@ -20,6 +20,19 @@ export interface NotificationPayloads {
   };
   [NotificationType.CONTRIBUTOR_APPLICATION_APPROVED]: Record<string, never>;
   [NotificationType.CONTRIBUTOR_APPLICATION_REJECTED]: { reason: string };
+  [NotificationType.MENTORSHIP_REQUESTED]: {
+    menteeName: string;
+    topic: string;
+  };
+  [NotificationType.MENTORSHIP_ACCEPTED]: {
+    mentorName: string;
+    conversationId: string;
+  };
+  [NotificationType.MENTORSHIP_DECLINED]: {
+    mentorName: string;
+    reason?: string;
+  };
+  [NotificationType.MENTORSHIP_COMPLETED]: { otherName: string };
 }
 
 export interface NotificationContent {
@@ -74,5 +87,27 @@ export const notificationBuilders: Builders = {
     title: 'Contributor application declined',
     body: `Reason: ${reason}. You can apply again from your profile.`,
     link: '/profile',
+  }),
+  [NotificationType.MENTORSHIP_REQUESTED]: ({ menteeName, topic }) => ({
+    title: 'New mentorship request',
+    body: `${menteeName} would like your help with ${topic}.`,
+    link: '/mentorship?tab=mentor',
+  }),
+  [NotificationType.MENTORSHIP_ACCEPTED]: ({ mentorName, conversationId }) => ({
+    title: 'Mentorship accepted',
+    body: `${mentorName} accepted your request — say hello!`,
+    link: `/chat/${conversationId}`,
+  }),
+  [NotificationType.MENTORSHIP_DECLINED]: ({ mentorName, reason }) => ({
+    title: 'Mentorship request declined',
+    body: reason
+      ? `${mentorName} can't take this on: ${reason}`
+      : `${mentorName} can't take this on right now.`,
+    link: '/mentorship?tab=mentee',
+  }),
+  [NotificationType.MENTORSHIP_COMPLETED]: ({ otherName }) => ({
+    title: 'Mentorship completed',
+    body: `Your mentorship with ${otherName} was marked complete.`,
+    link: '/mentorship',
   }),
 };

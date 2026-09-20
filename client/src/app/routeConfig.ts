@@ -9,6 +9,7 @@ const community = ROUTES.COMMUNITY;
 const profile = ROUTES.PROFILE;
 const chats = ROUTES.CHAT;
 const contributors = ROUTES.CONTRIBUTORS;
+const mentorship = ROUTES.MENTORSHIP;
 const aichat = ROUTES.AI_CHAT;
 
 // Dynamic segment: the chat list route + a :id param appended.
@@ -65,6 +66,11 @@ const routeConfig: Record<string, RouteConfig> = {
   },
   [contributors]: {
     title: "Mentors",
+    topBarMode: "contextual",
+    showBottomNav: true,
+  },
+  [mentorship]: {
+    title: "Mentorship",
     topBarMode: "contextual",
     showBottomNav: true,
   },

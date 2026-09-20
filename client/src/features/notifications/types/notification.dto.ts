@@ -3,7 +3,11 @@ export type NotificationType =
   | "resource_rejected"
   | "new_message"
   | "contributor_application_approved"
-  | "contributor_application_rejected";
+  | "contributor_application_rejected"
+  | "mentorship_requested"
+  | "mentorship_accepted"
+  | "mentorship_declined"
+  | "mentorship_completed";
 
 export interface Notification {
   id: string;

@@ -21,13 +21,14 @@ export function useMentorFilters() {
       topic: params.get("topic") || undefined,
       semesterMin: asSemester(params.get("semMin")),
       semesterMax: asSemester(params.get("semMax")),
+      hasCapacity: params.get("slots") === "1" ? true : undefined,
       sort: (params.get("sort") === "active" ? "active" : "score") as MentorSort,
     }),
     [params],
   );
 
   const setFilters = useCallback(
-    (patch: Partial<Record<"q" | "dept" | "topic" | "semMin" | "semMax" | "sort", string | undefined>>) => {
+    (patch: Partial<Record<"q" | "dept" | "topic" | "semMin" | "semMax" | "slots" | "sort", string | undefined>>) => {
       setParams(
         (prev) => {
           const next = new URLSearchParams(prev);
@@ -50,7 +51,8 @@ export function useMentorFilters() {
     !!filters.department ||
     !!filters.topic ||
     !!filters.semesterMin ||
-    !!filters.semesterMax;
+    !!filters.semesterMax ||
+    !!filters.hasCapacity;
 
   return { filters, setFilters, reset, hasActiveFilters };
 }

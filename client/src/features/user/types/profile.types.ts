@@ -18,6 +18,7 @@ export interface ProfileUserViewModel {
   mentorBio?: string;
   mentorTopics: string[];
   maxActiveMentees: number;
+  activeMenteeCount: number;
   createdAt: string;
 }
 
@@ -67,6 +68,7 @@ export const toProfileUserViewModel = (
     mentorBio: user.mentorBio,
     mentorTopics: user.mentorTopics ?? [],
     maxActiveMentees: user.maxActiveMentees ?? DEFAULT_MAX_ACTIVE_MENTEES,
+    activeMenteeCount: user.activeMenteeCount ?? 0,
     createdAt: user.createdAt,
   };
 };

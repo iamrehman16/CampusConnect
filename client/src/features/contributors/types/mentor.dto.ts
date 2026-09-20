@@ -15,6 +15,8 @@ export interface MentorSummary {
   mentorBio?: string;
   mentorTopics: string[];
   maxActiveMentees: number;
+  /** Free mentee slots right now. */
+  slotsLeft: number;
 }
 
 export type MentorSort = "score" | "active";
@@ -25,5 +27,7 @@ export interface MentorFilters {
   topic?: string;
   semesterMin?: number;
   semesterMax?: number;
+  /** Only mentors with a free slot. */
+  hasCapacity?: boolean;
   sort: MentorSort;
 }

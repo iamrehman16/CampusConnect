@@ -3,6 +3,10 @@ import { OnEvent } from '@nestjs/event-emitter';
 import {
   ChatConversationReadEvent,
   ContributorApplicationReviewedEvent,
+  MentorshipAcceptedEvent,
+  MentorshipCompletedEvent,
+  MentorshipDeclinedEvent,
+  MentorshipRequestedEvent,
   ChatMessageReceivedEvent,
   DomainEvents,
   ResourceApprovedEvent,
@@ -84,6 +88,53 @@ export class NotificationListener {
       NotificationType.CONTRIBUTOR_APPLICATION_REJECTED,
       { reason: event.reason ?? 'No reason given' },
     );
+  }
+
+  @OnEvent(DomainEvents.MENTORSHIP_REQUESTED, { async: true })
+  async onMentorshipRequested(event: MentorshipRequestedEvent) {
+    return this.notify(event.mentorId, NotificationType.MENTORSHIP_REQUESTED, {
+      menteeName: await this.nameOf(event.menteeId),
+      topic: event.topic,
+    });
+  }
+
+  @OnEvent(DomainEvents.MENTORSHIP_ACCEPTED, { async: true })
+  async onMentorshipAccepted(event: MentorshipAcceptedEvent) {
+    return this.notify(event.menteeId, NotificationType.MENTORSHIP_ACCEPTED, {
+      mentorName: await this.nameOf(event.mentorId),
+      conversationId: event.conversationId,
+    });
+  }
+
+  @OnEvent(DomainEvents.MENTORSHIP_DECLINED, { async: true })
+  async onMentorshipDeclined(event: MentorshipDeclinedEvent) {
+    return this.notify(event.menteeId, NotificationType.MENTORSHIP_DECLINED, {
+      mentorName: await this.nameOf(event.mentorId),
+      reason: event.reason,
+    });
+  }
+
+  /** Tell the party who did NOT end it. */
+  @OnEvent(DomainEvents.MENTORSHIP_COMPLETED, { async: true })
+  async onMentorshipCompleted(event: MentorshipCompletedEvent) {
+    const endedByMentor = event.completedBy === event.mentorId;
+    const recipient = endedByMentor ? event.menteeId : event.mentorId;
+    const other = endedByMentor ? event.mentorId : event.menteeId;
+    return this.notify(recipient, NotificationType.MENTORSHIP_COMPLETED, {
+      otherName: await this.nameOf(other),
+    });
+  }
+
+  private async nameOf(userId: string): Promise<string> {
+    try {
+      const user = await this.userService.findOne(userId);
+      return user.name?.trim() || 'Someone';
+    } catch (err) {
+      this.logger.warn(
+        `User ${userId} not resolvable for notification: ${String(err)}`,
+      );
+      return 'Someone';
+    }
   }
 
   /** Reading a conversation clears its grouped message notification. */
