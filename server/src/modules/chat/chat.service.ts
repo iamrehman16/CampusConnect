@@ -17,6 +17,9 @@ import { StartConversationDto } from './dto/start-conversation.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { GetMessagesDto } from './dto/get-message.dto';
 
+// Public-safe participant fields only — email deliberately excluded.
+const PARTICIPANT_PUBLIC_FIELDS = 'name avatar role';
+
 @Injectable()
 export class ChatService implements OnModuleInit {
   private readonly logger = new Logger(ChatService.name);
@@ -82,7 +85,7 @@ export class ChatService implements OnModuleInit {
 
     const existing = await this.conversationModel
       .findOne({ participantsKey })
-      .populate('participants', 'name email')
+      .populate('participants', PARTICIPANT_PUBLIC_FIELDS)
       .populate('lastMessage')
       .lean()
       .exec();
@@ -99,7 +102,7 @@ export class ChatService implements OnModuleInit {
 
       return this.conversationModel
         .findById(newConversation._id)
-        .populate('participants', 'name email')
+        .populate('participants', PARTICIPANT_PUBLIC_FIELDS)
         .lean()
         .exec();
     } catch (err) {
@@ -108,7 +111,7 @@ export class ChatService implements OnModuleInit {
         // winner's document is what we should return.
         return this.conversationModel
           .findOne({ participantsKey })
-          .populate('participants', 'name email')
+          .populate('participants', PARTICIPANT_PUBLIC_FIELDS)
           .populate('lastMessage')
           .lean()
           .exec();
@@ -125,7 +128,7 @@ export class ChatService implements OnModuleInit {
   async getUserConversations(userId: string) {
     return this.conversationModel
       .find({ participants: new Types.ObjectId(userId) })
-      .populate('participants', 'name email')
+      .populate('participants', PARTICIPANT_PUBLIC_FIELDS)
       .populate('lastMessage')
       .sort({ lastMessageAt: -1 })
       .lean()

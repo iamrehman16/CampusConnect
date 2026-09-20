@@ -18,7 +18,8 @@ export function ConversationListItem({
   const otherParticipant = conversation?.participants.find(
     (p) => p.id !== user?._id,
   );
-  // then render otherParticipant?.name
+
+  const displayName = otherParticipant?.name?.trim() || "Unknown user";
 
   return (
     <ListItemButton
@@ -35,14 +36,18 @@ export function ConversationListItem({
         },
       }}
     >
-      <Avatar sx={{ width: 40, height: 40, flexShrink: 0, mt: 0.25, bgcolor: "primary.main" }} />
+      <Avatar
+        src={otherParticipant?.avatar || undefined}
+        sx={{ width: 40, height: 40, flexShrink: 0, mt: 0.25, bgcolor: "primary.main" }}
+      >
+        {displayName.charAt(0).toUpperCase()}
+      </Avatar>
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Box
           sx={{ display: "flex", justifyContent: "space-between", mb: 0.25 }}
         >
           <Typography variant="body2" fontWeight={600} noWrap>
-            {/* Resolve participant name from id — wire when user resolution is available */}
-            {otherParticipant?.name ?? otherParticipant?.email}
+            {displayName}
           </Typography>
           {conversation.lastMessageAt && (
             <Typography

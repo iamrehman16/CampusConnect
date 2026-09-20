@@ -6,8 +6,9 @@ export interface StartConversationDto {
 
 export interface ConversationParticipant {
   id: string;
-  name: string;
-  email: string;
+  name?: string;
+  avatar?: string;
+  role?: string;
 }
 
 export interface Conversation {

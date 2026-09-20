@@ -131,9 +131,14 @@ export default function ConversationPage() {
             <ArrowBack fontSize="small" />
           </IconButton>
         )}
-        <Avatar sx={{ width: 40, height: 40, bgcolor: "primary.main" }} />
+        <Avatar
+          src={otherParticipant?.avatar || undefined}
+          sx={{ width: 40, height: 40, bgcolor: "primary.main" }}
+        >
+          {(otherParticipant?.name?.trim() || "U").charAt(0).toUpperCase()}
+        </Avatar>
         <Typography variant="subtitle1" fontWeight={600}>
-          {otherParticipant?.name ?? "Unknown"}
+          {otherParticipant?.name?.trim() || "Unknown user"}
         </Typography>
       </Box>
 
