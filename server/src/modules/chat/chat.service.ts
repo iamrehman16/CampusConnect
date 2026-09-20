@@ -33,7 +33,46 @@ export class ChatService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
+    await this.dropLegacyUniqueParticipantsIndex();
     await this.backfillParticipantsKeys();
+  }
+
+  /**
+   * BACKLOG.md A9 replaced the unique index on `participants` — a multikey
+   * index, so uniqueness applied per array ELEMENT across the collection and
+   * a user could only ever be in one conversation — with a unique
+   * `participantsKey`. But Mongoose never alters an index that already exists
+   * with different options, so databases created before A9 still carry the
+   * old unique index and every second conversation for a user fails with
+   * E11000. Drop it (and recreate the intended non-unique one) on boot.
+   * Idempotent: a no-op once the index is already non-unique.
+   */
+  private async dropLegacyUniqueParticipantsIndex(): Promise<void> {
+    const collection = this.conversationModel.collection;
+
+    let indexes: Awaited<ReturnType<typeof collection.indexes>>;
+    try {
+      indexes = await collection.indexes();
+    } catch (err) {
+      // Collection doesn't exist yet (fresh database): nothing to migrate.
+      if ((err as { code?: number }).code === 26) return;
+      throw err;
+    }
+
+    const legacy = indexes.find(
+      (index) =>
+        index.unique === true &&
+        index.name !== undefined &&
+        Object.keys(index.key).length === 1 &&
+        index.key.participants === 1,
+    );
+    if (!legacy?.name) return;
+
+    this.logger.warn(
+      `Dropping legacy unique index "${legacy.name}" on conversations (see BACKLOG.md A9)`,
+    );
+    await collection.dropIndex(legacy.name);
+    await collection.createIndex({ participants: 1 });
   }
 
   /**

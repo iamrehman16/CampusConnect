@@ -93,6 +93,86 @@ describe('ChatService#findOrCreateConversation', () => {
   });
 });
 
+function fakeCollection(
+  indexes: { name: string; key: Record<string, number>; unique?: boolean }[],
+) {
+  return {
+    indexes: jest.fn().mockResolvedValue(indexes),
+    dropIndex: jest.fn().mockResolvedValue(undefined),
+    createIndex: jest.fn().mockResolvedValue('ok'),
+  };
+}
+
+describe('ChatService#onModuleInit — legacy unique participants index (BACKLOG A9)', () => {
+  function run(
+    collection: ReturnType<typeof fakeCollection> | { indexes: jest.Mock },
+  ) {
+    const conversationModel = {
+      find: jest.fn().mockReturnValue(chainable([])),
+      collection,
+    };
+    return buildChatService(
+      conversationModel as unknown as Partial<MockConversationModel>,
+    ).onModuleInit();
+  }
+
+  it('drops the legacy unique participants index and recreates it non-unique', async () => {
+    const collection = fakeCollection([
+      { name: '_id_', key: { _id: 1 } },
+      { name: 'participants_1', key: { participants: 1 }, unique: true },
+      { name: 'participantsKey_1', key: { participantsKey: 1 }, unique: true },
+    ]);
+
+    await run(collection);
+
+    expect(collection.dropIndex).toHaveBeenCalledTimes(1);
+    expect(collection.dropIndex).toHaveBeenCalledWith('participants_1');
+    expect(collection.createIndex).toHaveBeenCalledWith({ participants: 1 });
+  });
+
+  it('is a no-op once the participants index is already non-unique (idempotent)', async () => {
+    const collection = fakeCollection([
+      { name: 'participants_1', key: { participants: 1 } },
+      { name: 'participantsKey_1', key: { participantsKey: 1 }, unique: true },
+    ]);
+
+    await run(collection);
+
+    expect(collection.dropIndex).not.toHaveBeenCalled();
+    expect(collection.createIndex).not.toHaveBeenCalled();
+  });
+
+  it('never touches the intended unique participantsKey index', async () => {
+    const collection = fakeCollection([
+      { name: 'participantsKey_1', key: { participantsKey: 1 }, unique: true },
+    ]);
+
+    await run(collection);
+
+    expect(collection.dropIndex).not.toHaveBeenCalled();
+  });
+
+  it('tolerates a fresh database where the collection does not exist yet', async () => {
+    const collection = {
+      indexes: jest
+        .fn()
+        .mockRejectedValue(
+          Object.assign(new Error('ns does not exist'), { code: 26 }),
+        ),
+    };
+
+    await expect(run(collection)).resolves.toBeUndefined();
+  });
+
+  it('rethrows unexpected index errors instead of swallowing them', async () => {
+    const collection = {
+      indexes: jest.fn().mockRejectedValue(new Error('auth failed')),
+    };
+
+    await expect(run(collection)).rejects.toThrow('auth failed');
+  });
+});
+
 describe('ChatService#onModuleInit — participantsKey backfill', () => {
   it('backfills participantsKey on legacy conversation docs missing it', async () => {
     const a = new Types.ObjectId();
@@ -102,7 +182,8 @@ describe('ChatService#onModuleInit — participantsKey backfill', () => {
     const conversationModel: Partial<MockConversationModel> = {
       find: jest.fn().mockReturnValue(chainable([legacyDoc])),
       updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),
-    };
+      collection: fakeCollection([]),
+    } as unknown as Partial<MockConversationModel>;
 
     const chatService = buildChatService(conversationModel);
     await chatService.onModuleInit();
@@ -124,7 +205,8 @@ describe('ChatService#onModuleInit — participantsKey backfill', () => {
     const conversationModel: Partial<MockConversationModel> = {
       find: jest.fn().mockReturnValue(chainable([])),
       updateOne: jest.fn(),
-    };
+      collection: fakeCollection([]),
+    } as unknown as Partial<MockConversationModel>;
 
     const chatService = buildChatService(conversationModel);
     await chatService.onModuleInit();
