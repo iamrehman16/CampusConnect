@@ -85,7 +85,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() socket: AppSocket,
     @MessageBody() conversationId: string,
   ) {
+    const userId = requireUserId(socket);
     try {
+      // Room membership is what authorizes receiving new_message events, so
+      // it must be gated on actually being a participant.
+      await this.chatService.verifyParticipant(conversationId, userId);
       await socket.join(conversationId);
       return { event: 'joined', data: conversationId };
     } catch (err) {

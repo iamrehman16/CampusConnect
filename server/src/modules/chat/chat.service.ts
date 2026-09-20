@@ -194,7 +194,7 @@ export class ChatService implements OnModuleInit {
     );
   }
 
-  private async verifyParticipant(conversationId: string, userId: string) {
+  async verifyParticipant(conversationId: string, userId: string) {
     const conversation = await this.conversationModel
       .findOne({
         _id: new Types.ObjectId(conversationId),

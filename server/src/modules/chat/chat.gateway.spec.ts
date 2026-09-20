@@ -43,9 +43,16 @@ describe('ChatGateway', () => {
     expect(socket.disconnect).toHaveBeenCalled();
   });
 
-  it('handleJoinConversation returns the joined event once socket.join() resolves', async () => {
-    const gateway = new ChatGateway({} as ChatService, {} as WsJwtGuard);
+  it('handleJoinConversation returns the joined event once participant check passes and socket.join() resolves', async () => {
+    const chatService = {
+      verifyParticipant: jest.fn().mockResolvedValue(undefined),
+    };
+    const gateway = new ChatGateway(
+      chatService as unknown as ChatService,
+      {} as WsJwtGuard,
+    );
     const socket = mockSocket();
+    socket.data.userId = 'user-1';
     socket.join.mockResolvedValue(undefined);
 
     const result = await gateway.handleJoinConversation(
@@ -53,13 +60,50 @@ describe('ChatGateway', () => {
       'conversation-1',
     );
 
+    expect(chatService.verifyParticipant).toHaveBeenCalledWith(
+      'conversation-1',
+      'user-1',
+    );
     expect(socket.join).toHaveBeenCalledWith('conversation-1');
     expect(result).toEqual({ event: 'joined', data: 'conversation-1' });
   });
 
-  it('handleJoinConversation emits chat_error instead of throwing when socket.join() rejects', async () => {
-    const gateway = new ChatGateway({} as ChatService, {} as WsJwtGuard);
+  it('handleJoinConversation refuses to join a conversation the user is not a participant of', async () => {
+    const chatService = {
+      verifyParticipant: jest
+        .fn()
+        .mockRejectedValue(new Error('not a participant')),
+    };
+    const gateway = new ChatGateway(
+      chatService as unknown as ChatService,
+      {} as WsJwtGuard,
+    );
     const socket = mockSocket();
+    socket.data.userId = 'intruder';
+
+    await gateway.handleJoinConversation(
+      socket as unknown as AppSocket,
+      'conversation-1',
+    );
+
+    expect(socket.join).not.toHaveBeenCalled();
+    expect(socket.emit).toHaveBeenCalledWith(
+      'chat_error',
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- jest's expect.any() matcher is untyped, not a real `any` value
+      expect.objectContaining({ message: expect.any(String) }),
+    );
+  });
+
+  it('handleJoinConversation emits chat_error instead of throwing when socket.join() rejects', async () => {
+    const chatService = {
+      verifyParticipant: jest.fn().mockResolvedValue(undefined),
+    };
+    const gateway = new ChatGateway(
+      chatService as unknown as ChatService,
+      {} as WsJwtGuard,
+    );
+    const socket = mockSocket();
+    socket.data.userId = 'user-1';
     socket.join.mockRejectedValue(new Error('cluster adapter join failed'));
 
     await expect(
