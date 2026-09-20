@@ -4,7 +4,6 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import toast from "react-hot-toast";
 import notificationService from "../services/notification.service";
 import { notificationKeys } from "./notification.keys";
 import { PAGE_LIMIT } from "@/shared/types/api.types";
@@ -33,7 +32,6 @@ export const useMarkNotificationRead = () => {
     mutationFn: (id: string) => notificationService.markRead(id),
     onSettled: () =>
       queryClient.invalidateQueries({ queryKey: notificationKeys.all }),
-    onError: () => toast.error("Couldn't mark notification as read"),
   });
 };
 
@@ -43,6 +41,5 @@ export const useMarkAllNotificationsRead = () => {
     mutationFn: () => notificationService.markAllRead(),
     onSettled: () =>
       queryClient.invalidateQueries({ queryKey: notificationKeys.all }),
-    onError: () => toast.error("Couldn't mark notifications as read"),
   });
 };

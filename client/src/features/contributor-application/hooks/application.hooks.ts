@@ -5,22 +5,11 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { isAxiosError } from "axios";
 import applicationService from "../services/application.service";
 import { applicationKeys } from "./application.keys";
 import { userKeys } from "@/features/user/hooks/user-keys";
 import { PAGE_LIMIT } from "@/shared/types/api.types";
 import type { ApplicationStatus } from "../types/application.dto";
-
-/** Server message for a failed request, falling back to a generic one. */
-function errorMessage(err: unknown, fallback: string): string {
-  if (isAxiosError<{ message?: string | string[] }>(err)) {
-    const message = err.response?.data?.message;
-    if (Array.isArray(message)) return message.join(", ");
-    if (message) return message;
-  }
-  return fallback;
-}
 
 export const useMyApplication = (enabled = true) =>
   useQuery({
@@ -38,8 +27,6 @@ export const useApplyToContribute = () => {
       queryClient.invalidateQueries({ queryKey: applicationKeys.mine() });
       toast.success("Application submitted");
     },
-    onError: (err) =>
-      toast.error(errorMessage(err, "Couldn't submit your application")),
   });
 };
 
@@ -70,8 +57,6 @@ const useReviewMutation = <TVars>(
       queryClient.invalidateQueries({ queryKey: userKeys.lists() });
       toast.success(successMessage);
     },
-    onError: (err) =>
-      toast.error(errorMessage(err, "Couldn't complete that action")),
   });
 };
 
