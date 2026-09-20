@@ -40,6 +40,12 @@ export class UpdateUserProfileDto {
   @Max(8)
   semester?: number;
 
+  /** Avatar image URL chosen in the profile avatar picker. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  avatar?: string;
+
   @IsOptional()
   @IsBoolean()
   isOpenToMentor?: boolean;

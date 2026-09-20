@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
+import { ValidationPipe } from '@nestjs/common';
 import { UpdateUserProfileDto } from './update-user-profile.dto';
 
 async function check(plain: Record<string, unknown>) {
@@ -47,5 +48,34 @@ describe('UpdateUserProfileDto — mentor profile (E8)', () => {
   ])('rejects %s', async (_label, plain) => {
     const { errors } = await check(plain);
     expect(errors.length).toBeGreaterThan(0);
+  });
+});
+
+describe('UpdateUserProfileDto — through the production ValidationPipe', () => {
+  // Mirrors main.ts: forbidNonWhitelisted rejects any field the DTO doesn't
+  // declare, which is what made the avatar picker's PATCH fail with 400.
+  const pipe = new ValidationPipe({
+    whitelist: true,
+    transform: true,
+    forbidNonWhitelisted: true,
+    transformOptions: { enableImplicitConversion: true },
+  });
+  const run = (body: Record<string, unknown>) =>
+    pipe.transform(body, { type: 'body', metatype: UpdateUserProfileDto });
+
+  it('accepts the avatar the profile avatar picker sends', async () => {
+    await expect(
+      run({ avatar: '/assets/avatars/a1.png' }),
+    ).resolves.toMatchObject({
+      avatar: '/assets/avatars/a1.png',
+    });
+  });
+
+  it('still rejects undeclared fields such as role', async () => {
+    await expect(run({ role: 'Admin' })).rejects.toThrow();
+  });
+
+  it('rejects an over-long avatar value', async () => {
+    await expect(run({ avatar: 'x'.repeat(501) })).rejects.toThrow();
   });
 });
