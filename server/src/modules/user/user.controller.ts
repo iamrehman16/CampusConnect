@@ -14,6 +14,8 @@ import { RegisterUserDto } from './dto/register-user.dto';
 import { Public } from '../auth/decorators/public.decorator';
 import { CurrentUser } from '../auth/types/current-user';
 import { UserQueryDto } from './dto/user-query.dto';
+import { Role } from '../auth/decorators/role.decorator';
+import { Roles } from './enums/user-role.enum';
 import { MentorQueryDto } from './dto/mentor-query.dto';
 
 @Controller('users')
@@ -31,6 +33,8 @@ export class UserController {
     return this.userService.findOne(req.user.id);
   }
 
+  /** Full user documents (incl. email) — admin only; members use `users/mentors`. */
+  @Role(Roles.ADMIN)
   @Get()
   findAll(@Query() dto: UserQueryDto) {
     return this.userService.findAll(dto);
