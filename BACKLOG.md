@@ -62,7 +62,20 @@ Work top to bottom:
 
 ---
 
-## Epic G — Quick fixes & resilience (ACTIVE — Phase 0)
+## Epic G — Quick fixes & resilience (DONE 2026-09-24)
+
+**Status: DONE.** G1+G2 in one chore commit. G3 split into four commits:
+mobile top bar (title was absolutely centered with a max-width narrower
+than the right-side actions allowed; now a flex item), community
+placeholder panel removed, duplicate profile CTA removed, and the email-as-
+name root cause (registration seeded `name = email`, onboarding pre-filled
+and accepted it; now unset at registration and required/trimmed at
+onboarding — legacy accounts not migrated). G4 via a `RetryableInit`
+helper: Qdrant collection bootstrap no longer blocks/aborts startup,
+retries on first use, vector search surfaces a 503 with a readable
+message; verified by booting with an unroutable `QDRANT_URL`. Also fixed
+pre-existing server lint errors in `groq.service.spec.ts` found while
+verifying.
 
 ### G1 — Remove leftover debug console.log calls in the streaming client
 **Effort:** 3 (bundled with G2)
@@ -123,7 +136,7 @@ asleep. Dormancy on inactivity is a known Qdrant Cloud behavior
 
 ---
 
-## Epic H — Demo readiness
+## Epic H — Demo readiness (H1 ACTIVE — Phase 1)
 
 ### H1 — Demo database + repeatable seed script
 **Effort:** 5
