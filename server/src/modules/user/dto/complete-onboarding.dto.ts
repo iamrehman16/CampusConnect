@@ -1,4 +1,6 @@
+import { Transform } from 'class-transformer';
 import {
+  IsNotEmpty,
   IsString,
   IsNumber,
   IsArray,
@@ -23,7 +25,14 @@ export class CompleteOnboardingDto {
   @IsString()
   academicInfo: string;
 
+  // Trimmed and required: this is the user's public display name. It used
+  // to be seeded with the email at registration, so an empty value here
+  // left the email showing as the author name across the app.
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
+  @IsNotEmpty()
   name: string;
 
   @IsArray()

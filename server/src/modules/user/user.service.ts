@@ -56,7 +56,6 @@ export class UserService {
 
     const newUser = new this.userModel({
       ...dto,
-      name: dto.name || dto.email,
       password: hashedPassword,
       role: Roles.STUDENT,
       accountStatus: UserStatus.ACTIVE,
@@ -87,7 +86,6 @@ export class UserService {
 
     const newUser = new this.userModel({
       ...dto,
-      name: dto.name || dto.email,
       password: hashedPassword,
     });
 
