@@ -3,7 +3,6 @@ import {
   Box,
   Button,
   Container,
-  Stack,
   Tab,
   Tabs,
 } from "@mui/material";
@@ -129,33 +128,22 @@ const ProfilePage: React.FC = () => {
           isLoading={profileLoading}
           onAvatarClick={() => setAvatarDialogOpen(true)}
           actions={
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center" justifyContent="center">
-              <Button
-                variant="outlined"
-                color="primary"
-                startIcon={<Edit />}
-                size="small"
-                onClick={() => setActiveTab(2)}
-                sx={{
-                  textTransform: "none",
-                  fontWeight: 600,
-                }}
-              >
-                Edit Profile
-              </Button>
-              <Button
-                variant="contained"
-                color="primary"
-                size="small"
-                onClick={() => setAvatarDialogOpen(true)}
-                sx={{
-                  textTransform: "none",
-                  fontWeight: 600,
-                }}
-              >
-                Change Avatar
-              </Button>
-            </Stack>
+            // Single action: the avatar's own camera badge already opens
+            // ProfileAvatarDialog, so a second "Change Avatar" CTA was a
+            // duplicate that outranked Edit Profile.
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<Edit />}
+              size="small"
+              onClick={() => setActiveTab(2)}
+              sx={{
+                textTransform: "none",
+                fontWeight: 600,
+              }}
+            >
+              Edit Profile
+            </Button>
           }
         />
 
