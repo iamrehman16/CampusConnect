@@ -154,25 +154,14 @@ describe('GroqService', () => {
     );
 
     expect(result).toBe('What is the recommended textbook for CS101?');
-    expect(create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        messages: expect.arrayContaining([
-          expect.objectContaining({
-            role: 'system',
-            content: expect.stringContaining('Previous conversation summary:'),
-          }),
-          expect.objectContaining({
-            role: 'system',
-            content: expect.stringContaining('Recent conversation history:'),
-          }),
-          expect.objectContaining({
-            role: 'user',
-            content: expect.stringContaining('what about that?'),
-          }),
-        ]),
-      }),
-      expect.anything(),
-    );
+    const [body] = create.mock.calls[0] as [
+      { messages: { role: string; content: string }[] },
+    ];
+    const has = (role: string, text: string) =>
+      body.messages.some((m) => m.role === role && m.content.includes(text));
+    expect(has('system', 'Previous conversation summary:')).toBe(true);
+    expect(has('system', 'Recent conversation history:')).toBe(true);
+    expect(has('user', 'what about that?')).toBe(true);
   });
 
   it('contextualizeQuery returns original query if no history', async () => {
