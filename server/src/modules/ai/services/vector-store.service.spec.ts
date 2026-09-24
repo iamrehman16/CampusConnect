@@ -23,6 +23,7 @@ jest.mock('@qdrant/js-client-rest', () => ({
 const cfg = {
   qdrantUrl: 'http://qdrant.test',
   qdrantApiKey: 'k',
+  qdrantCollectionSuffix: '',
 } as unknown as ConfigType<typeof aiConfig>;
 
 const flush = () => new Promise((r) => setImmediate(r));

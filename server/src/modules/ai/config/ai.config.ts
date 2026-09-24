@@ -17,6 +17,11 @@ export default registerAs('ai', () => ({
   maxPromptTokens: Number(process.env.GROQ_MAX_PROMPT_TOKENS) || 6000,
   qdrantApiKey: process.env.QDRANT_API_KEY,
   qdrantUrl: process.env.QDRANT_URL,
+  // Appended to every Qdrant collection name so environments sharing one
+  // cluster (local dev, the deployed app, the H1 demo DB) don't read each
+  // other's vectors — a resource ID from one Mongo DB means nothing in
+  // another. Empty keeps the original names for the deployed app.
+  qdrantCollectionSuffix: process.env.QDRANT_COLLECTION_SUFFIX ?? '',
   geminiApiKey: process.env.GEMINI_API_KEY,
   llamaCloudApiKey: process.env.LLAMA_CLOUD_API_KEY,
 }));

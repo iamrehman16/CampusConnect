@@ -21,7 +21,7 @@ import {
 @Injectable()
 export class MemoryStoreService implements OnModuleInit {
   private readonly logger = new Logger(MemoryStoreService.name);
-  private readonly COLLECTION_NAME = 'campus_memory';
+  private readonly COLLECTION_NAME: string;
   private readonly VECTOR_SIZE = 3072;
 
   private readonly client: QdrantClient;
@@ -32,6 +32,7 @@ export class MemoryStoreService implements OnModuleInit {
   constructor(
     @Inject(aiConfig.KEY) private aiCfg: ConfigType<typeof aiConfig>,
   ) {
+    this.COLLECTION_NAME = `campus_memory${this.aiCfg.qdrantCollectionSuffix}`;
     this.client = new QdrantClient({
       url: this.aiCfg.qdrantUrl,
       apiKey: this.aiCfg.qdrantApiKey,
