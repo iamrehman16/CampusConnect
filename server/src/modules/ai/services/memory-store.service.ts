@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { QdrantClient } from '@qdrant/js-client-rest';
 import { ConfigType } from '@nestjs/config';
 import aiConfig from '../config/ai.config';
+import { RetryableInit } from '../../../common/utils/retryable-init';
 import {
   MemoryPayload,
   MemorySearchResultDto,
@@ -24,6 +25,9 @@ export class MemoryStoreService implements OnModuleInit {
   private readonly VECTOR_SIZE = 3072;
 
   private readonly client: QdrantClient;
+  private readonly collectionInit = new RetryableInit(() =>
+    this.ensureCollection(),
+  );
 
   constructor(
     @Inject(aiConfig.KEY) private aiCfg: ConfigType<typeof aiConfig>,
@@ -34,8 +38,18 @@ export class MemoryStoreService implements OnModuleInit {
     });
   }
 
-  async onModuleInit() {
-    await this.ensureCollection();
+  /**
+   * Not awaited, same reason as VectorStoreService.onModuleInit (BACKLOG.md
+   * G4): a dormant Qdrant must not abort app bootstrap. Operations retry
+   * via `collectionInit.ensure()`; MemoryService already degrades memory
+   * recall/storage to a logged no-op when these throw.
+   */
+  onModuleInit(): void {
+    this.collectionInit.ensure().catch(() => {
+      this.logger.warn(
+        'Qdrant unavailable at startup — memory collection will retry on first use',
+      );
+    });
   }
 
   private async ensureCollection(): Promise<void> {
@@ -69,6 +83,7 @@ export class MemoryStoreService implements OnModuleInit {
     vector: number[],
     payload: MemoryPayload,
   ): Promise<void> {
+    await this.collectionInit.ensure();
     await this.client.upsert(this.COLLECTION_NAME, {
       wait: true,
       points: [
@@ -86,6 +101,7 @@ export class MemoryStoreService implements OnModuleInit {
     userId: string,
     limit: number,
   ): Promise<MemorySearchResultDto[]> {
+    await this.collectionInit.ensure();
     const results = await this.client.search(this.COLLECTION_NAME, {
       vector,
       filter: { must: [{ key: 'userId', match: { value: userId } }] },

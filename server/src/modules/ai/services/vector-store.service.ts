@@ -1,11 +1,22 @@
-import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  OnModuleInit,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { QdrantClient } from '@qdrant/js-client-rest';
 import { ConfigType } from '@nestjs/config';
 import aiConfig from '../config/ai.config';
+import { RetryableInit } from '../../../common/utils/retryable-init';
 import {
   ResourceChunkPayload,
   VectorSearchResultDto,
 } from '../dto/vector-search-result.dto';
+
+/** User-facing message when the vector store can't be reached (G4). */
+export const VECTOR_STORE_UNAVAILABLE_MESSAGE =
+  'The AI assistant is temporarily unavailable. Please try again in a minute.';
 
 @Injectable()
 export class VectorStoreService implements OnModuleInit {
@@ -14,6 +25,9 @@ export class VectorStoreService implements OnModuleInit {
   private readonly VECTOR_SIZE = 3072;
 
   private readonly client: QdrantClient;
+  private readonly collectionInit = new RetryableInit(() =>
+    this.ensureCollection(),
+  );
 
   constructor(
     @Inject(aiConfig.KEY) private aiCfg: ConfigType<typeof aiConfig>,
@@ -24,8 +38,23 @@ export class VectorStoreService implements OnModuleInit {
     });
   }
 
-  async onModuleInit() {
-    await this.ensureCollection();
+  /**
+   * Deliberately not awaited: Qdrant Cloud goes dormant on inactivity, and
+   * a failed collection check used to abort Nest bootstrap and take the
+   * whole API down with it (BACKLOG.md G4). Failure is logged in
+   * ensureCollection(); every operation below retries via `ready()`.
+   */
+  onModuleInit(): void {
+    this.collectionInit.ensure().catch(() => {
+      this.logger.warn(
+        'Qdrant unavailable at startup — AI retrieval/ingestion will retry on first use',
+      );
+    });
+  }
+
+  /** Throws the underlying Qdrant error if the collection still can't be ensured. */
+  private ready(): Promise<void> {
+    return this.collectionInit.ensure();
   }
 
   private async ensureCollection(): Promise<void> {
@@ -60,6 +89,7 @@ export class VectorStoreService implements OnModuleInit {
     payload: Record<string, any>,
   ): Promise<void> {
     try {
+      await this.ready();
       await this.client.upsert(this.COLLECTION_NAME, {
         wait: true,
         points: [{ id: resourceId, vector, payload }],
@@ -78,6 +108,7 @@ export class VectorStoreService implements OnModuleInit {
     points: { id: string; vector: number[]; payload: Record<string, any> }[],
   ): Promise<void> {
     try {
+      await this.ready();
       await this.client.upsert(this.COLLECTION_NAME, {
         wait: true,
         points,
@@ -94,12 +125,24 @@ export class VectorStoreService implements OnModuleInit {
     filter: Record<string, any>,
     limit = 5,
   ): Promise<VectorSearchResultDto[]> {
-    const results = await this.client.search(this.COLLECTION_NAME, {
-      vector,
-      filter,
-      limit,
-      with_payload: true,
-    });
+    // Search is on the user-facing chat path, so a Qdrant outage surfaces
+    // as a typed 503 with a readable message (the SSE handler forwards
+    // `err.message`) rather than a raw "fetch failed".
+    let results: Awaited<ReturnType<QdrantClient['search']>>;
+    try {
+      await this.ready();
+      results = await this.client.search(this.COLLECTION_NAME, {
+        vector,
+        filter,
+        limit,
+        with_payload: true,
+      });
+    } catch (err) {
+      this.logger.error('Vector search failed', err);
+      throw new ServiceUnavailableException(VECTOR_STORE_UNAVAILABLE_MESSAGE, {
+        cause: err,
+      });
+    }
 
     return results.map((r) => ({
       resourceId: r.id as string,
