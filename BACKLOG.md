@@ -27,8 +27,8 @@ Work top to bottom:
 
 | # | Phase | PBIs | Why this order |
 |---|-------|------|----------------|
-| 0 | Quick fixes & resilience | G1–G4 | Cheap, unblocks a stable dev/demo env |
-| 1 | Demo data | H1 | Redesigning against 4 resources and 1 mentor gives misleading screens |
+| 0 | Quick fixes & resilience | G1–G4 ✅ | Cheap, unblocks a stable dev/demo env |
+| 1 | Demo data | H1 ✅ | Redesigning against 4 resources and 1 mentor gives misleading screens |
 | 2 | Design foundation | D4, D5 (+D3 folded in) | Tokens + app shell every page redesign builds on |
 | 3 | Page redesigns | D6–D10 | In demo-walkthrough order |
 | 4 | Integration features | E13, E14, E16 | The "resource → AI → human" story; safety before any public use |
@@ -136,7 +136,7 @@ asleep. Dormancy on inactivity is a known Qdrant Cloud behavior
 
 ---
 
-## Epic H — Demo readiness (H1 ACTIVE — Phase 1)
+## Epic H — Demo readiness (H1 DONE; H2/H3 in Phase 7)
 
 ### H1 — Demo database + repeatable seed script
 **Effort:** 5
@@ -164,6 +164,23 @@ database on the same Atlas cluster; never write to the existing DB.
 - Documented demo logins (student, contributor/mentor, admin) in a
   `server/scripts/README.md` — demo-only passwords, no real secrets.
 
+**H1 status: DONE (2026-09-24).** `npm run seed:demo` (see
+`server/scripts/seed-demo/README.md`) — seeded and fully ingested into
+Atlas `campusconnect_demo` (20/20 resources in Qdrant `campus_resources_demo`).
+Decision: real PDFs (generated from `data/resources.ts`) uploaded to
+Cloudinary tagged `campusconnect_demo`, not metadata-only, so the AI
+answers from real content. Prerequisite commits: `QDRANT_COLLECTION_SUFFIX`
+and `BULL_PREFIX` env isolation. Found along the way:
+- Local `mongo` container is standalone, so `PostService.createComment`
+  (transactional) fails in local dev — use Atlas or run the container as a
+  single-node replica set (`--replSet rs0` + `rs.initiate()`). Not changed:
+  it's the developer's container.
+- This machine's IPv6 route is flaky; Node `fetch` intermittently times out
+  (was also the likely cause of the Qdrant boot failure G4 fixed).
+  Workaround: `NODE_OPTIONS=--dns-result-order=ipv4first`.
+- **Still to verify next session:** boot the app against the demo DB and
+  eyeball every page (restart killed the shell before the check ran).
+
 ### H2 — Empty, loading and error states pass
 **Effort:** 5
 **Where:** every page redesigned in D6–D10
@@ -189,7 +206,7 @@ and errors that say what happened and offer a retry.
 
 ---
 
-## Epic D — Design system & UI overhaul (Phases 2–3)
+## Epic D — Design system & UI overhaul (Phases 2–3) — NEXT: D4
 
 ### Audit (2026-09-24, screenshots of every page, desktop + mobile, light)
 
