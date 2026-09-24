@@ -3,7 +3,6 @@ import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
 import Stack from '@mui/material/Stack';
 
@@ -108,15 +107,6 @@ export default function CommunityPage() {
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   4. Keep discussions relevant to learning.
-                </Typography>
-              </CardContent>
-              <Divider />
-              <CardContent>
-                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-                  Stats
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  A place to showcase popular topics or top contributors in the future.
                 </Typography>
               </CardContent>
             </Card>
