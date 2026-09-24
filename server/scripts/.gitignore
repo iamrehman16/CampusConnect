@@ -1,0 +1,2 @@
+# compiled output never belongs next to the TS sources
+*.js
