@@ -6,7 +6,7 @@ import Typography from "@mui/material/Typography";
 import Avatar from "@mui/material/Avatar";
 import Badge from "@mui/material/Badge";
 import Stack from "@mui/material/Stack";
-import Button from "@mui/material/Button";
+import Tooltip from "@mui/material/Tooltip";
 import { useNavigate } from "react-router-dom";
 import { InstallMobileRounded } from "@mui/icons-material";
 import SmsIcon from "@mui/icons-material/Sms";
@@ -29,7 +29,7 @@ interface StandardBarProps {
 /**
  * StandardBar — rendered on Home, Resources, Community, Profile.
  *
- * Layout: avatar | centered title | [install button] | theme toggle + messenger
+ * Layout: avatar | title (flex, ellipsized) | [install] theme toggle, bell, messenger
  *
  * Nothing in here knows about routing modes or routeConfig.
  * It receives exactly what it needs via props and renders it.
@@ -62,7 +62,6 @@ export default function StandardBar({ title, onAvatarClick }: StandardBarProps) 
           minHeight: 56,
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
         }}
       >
         {/* Left — avatar opens profile drawer */}
@@ -81,19 +80,17 @@ export default function StandardBar({ title, onAvatarClick }: StandardBarProps) 
           </Avatar>
         </IconButton>
 
-        {/* Center — dynamic title, absolutely centered so right-side content
-            width never pushes it off. This matches your existing approach. */}
+        {/* Center — dynamic title. A flex item (not absolutely positioned)
+            so it shrinks and ellipsizes instead of sliding under the
+            right-side actions when they're wider than expected. */}
         <Typography
           variant="subtitle1"
           fontWeight={700}
           color="primary.main"
           sx={{
-            position: "absolute",
-            left: "50%",
-            transform: "translateX(-50%)",
-            // Prevent the title from overflowing into the icon buttons on
-            // pages with longer names like "Resources" or "Community".
-            maxWidth: "calc(100% - 180px)",
+            flex: 1,
+            minWidth: 0,
+            mx: 1.5,
             textAlign: "center",
             whiteSpace: "nowrap",
             overflow: "hidden",
@@ -106,15 +103,16 @@ export default function StandardBar({ title, onAvatarClick }: StandardBarProps) 
         {/* Right — install prompt (only when installable), theme toggle, messenger */}
         <Stack direction="row" alignItems="center" spacing={0.5}>
           {isInstallable && (
-            <Button
-              size="small"
-              variant="outlined"
-              color="secondary"
-              startIcon={<InstallMobileRounded />}
-              onClick={triggerInstall}
-            >
-              Install
-            </Button>
+            <Tooltip title="Install app">
+              <IconButton
+                onClick={triggerInstall}
+                size="small"
+                aria-label="Install app"
+                sx={{ color: "secondary.main" }}
+              >
+                <InstallMobileRounded fontSize="small" />
+              </IconButton>
+            </Tooltip>
           )}
 
           <IconButton
