@@ -194,19 +194,12 @@ export class AiChatService {
           const raw = line.slice(5).trim();
           try {
             yield JSON.parse(raw) as SseEvent;
-            console.log("[GENERATOR RESUMED]", signal.aborted);
           } catch {
             // malformed chunk — skip
           }
         }
       }
     } catch (err) {
-      console.log(
-        "[SERVICE CATCH]",
-        err,
-        err instanceof DOMException,
-        err instanceof DOMException || err instanceof Error ? err.name : undefined,
-      );
       reader.cancel().catch(() => {});
       throw err; // re-throw so for await catch in the hook sees it
     } finally {
