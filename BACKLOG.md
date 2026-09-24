@@ -1,9 +1,9 @@
 # CampusConnect Backlog
 
 PBIs, not tasks. Each is sized to be handed to Claude Code as a self-contained
-prompt — enough context to start cold, not a design doc. Work one at a time,
-one committed fix/feature per PBI (see `CLAUDE.md` §3.2). Pick the top unstarted
-item in whichever epic you're focused on; don't jump epics mid-PBI.
+prompt — enough context to start cold, not a design doc. One committed
+fix/feature per concern (see `CLAUDE.md` §3.2) — but related PBIs inside a
+phase may be worked as one batch/branch, committed separately.
 
 **Effort scale** (rough, solo-dev-with-Claude-Code calibrated):
 - `3` — half a day to a day. One focused area, one commit, low ambiguity.
@@ -11,345 +11,227 @@ item in whichever epic you're focused on; don't jump epics mid-PBI.
 - `8` — three-plus days / a small design pass first. Foundational or cross-cutting.
 
 Nothing below `3` belongs here — smaller chores go straight into a commit,
-not the backlog.
-
-Epics below are ordered by current priority — work top to bottom unless you
-have a specific reason to jump ahead. **Current focus: Epic E.** Epic D
-(design/theme) is postponed by product decision (2026-09-20); its D1/D2 work
-stays as shipped and D3 is untouched.
+not the backlog (or get bundled into a `3` sweep, e.g. G3).
 
 ---
 
-## Epic A — Code health & CI gate cleanup (DONE)
+## Roadmap (re-planned 2026-09-24)
+
+**Goal:** a consumer-usable app for the FYP demo/defense (2–6 weeks out as of
+2026-09-24), not just a feature-complete one. A UI review of every page
+(desktop + mobile, logged-in) found the problems are mostly hierarchy and
+consistency, not features — see Epic D's audit. Scope decision: **keep
+everything** (E11–E16 and Epic F stay in).
+
+Work top to bottom:
+
+| # | Phase | PBIs | Why this order |
+|---|-------|------|----------------|
+| 0 | Quick fixes & resilience | G1–G4 | Cheap, unblocks a stable dev/demo env |
+| 1 | Demo data | H1 | Redesigning against 4 resources and 1 mentor gives misleading screens |
+| 2 | Design foundation | D4, D5 (+D3 folded in) | Tokens + app shell every page redesign builds on |
+| 3 | Page redesigns | D6–D10 | In demo-walkthrough order |
+| 4 | Integration features | E13, E14, E16 | The "resource → AI → human" story; safety before any public use |
+| 5 | Mentorship depth | E11, E12, E15 | Builds on E10 + reputation |
+| 6 | Google sign-in | F1–F3 | Independent; can slot in anywhere if needed |
+| 7 | Demo polish | H2, H3 | States, walkthrough, final pass |
 
 ---
 
-## Epic B — Long-term memory chat, RAG-integrated (DONE)
+## Completed work (summaries — see git log for detail)
 
-Replaced the single lifelong per-user session with a real Claude/ChatGPT-style
-chat: multiple named threads with ownership checks (B1), thread CRUD API
-(B2), full raw message history persisted per thread independent of the
-context-window summary (B3), auto-generated thread titles (B4), query
-contextualization so follow-up questions retrieve correctly (B5),
-vector-backed cross-session memory recall in its own Qdrant collection (B6),
-a frontend thread sidebar with per-conversation cache keys (B7), server-as-
-source-of-truth history sync on thread open (B8), and a token budget on the
-assembled Groq prompt with a documented drop order (B9). All nine shipped
-2026-09-18/19 — see git log (`feat(ai):`/`feat(ai-chat):` commits) for
-implementation detail; this summary replaces the earlier PBI-by-PBI
-resolution notes now that the epic is closed.
+- **Epic A — Code health & CI gate** (DONE). Typecheck+build gate, lint
+  clean both apps, error-handling/`any` sweep.
+- **Epic B — Long-term memory chat, RAG-integrated** (DONE, 2026-09-18/19).
+  Named threads with ownership (B1), thread CRUD (B2), persisted raw history
+  (B3), auto titles (B4), query contextualization (B5), vector-backed
+  cross-session memory (B6), thread sidebar (B7), server-as-source-of-truth
+  sync (B8), Groq prompt token budget (B9).
+- **Epic C — AI chat UX polish** (DONE). Copy + like/dislike toolbar (C1),
+  composer refinement (C2), resource-card citations (C3), code-block copy (C4).
+- **Epic D, D1/D2 — first theme pass** (DONE 2026-09-20, **superseded by
+  D4**). Palette-driven component overrides, no hardcoded brand hex outside
+  `theme/`, `getStatusMeta(theme)` for status colors. The "paper & ink" cream
+  mood itself is being replaced — see D4.
+- **Epic E, E1–E10 — messenger, reputation, mentorship foundations** (DONE
+  2026-09-20). Messenger identity/avatars (E1), server-backed unread + badge
+  (E2), presence + typing (E3), notifications module + bell (E4),
+  contribution score ledger (E5), contributor applications (E6), tiers &
+  badges (E7), mentor profile fields (E8), mentor directory (E9), mentorship
+  request lifecycle (E10).
 
 ---
 
-## Epic C — AI Chat UX polish
+## Epic G — Quick fixes & resilience (ACTIVE — Phase 0)
 
-**Decided 2026-09-19:** the dashboard and nav placement stay as they are —
-AI Chat remains a nav item with a dashboard CTA widget, not the landing
-surface. (This supersedes an earlier proposal, drafted the same day and
-never started, to make chat the landing experience — reverted per direct
-product direction before any code was touched.) Epic B made the chat
-feature architecturally complete (threads, memory, RAG, streaming); what's
-left is the surface-level UX work that makes it feel finished rather than
-functional-but-rough.
-
-### C1 — Message action toolbar: copy + like/dislike feedback
-**Effort:** 5
-**Where:** `client/src/features/ai-chat/components/MessageBubble.tsx` (new
-toolbar), server `AiMessage` schema + `ConversationController` (new
-feedback field/endpoint)
-**Why:** Confirmed gap — `MessageBubble.tsx` has no action row at all
-today (no copy-to-clipboard, no like/dislike), and there's no feedback or
-rating concept anywhere in the server (`grep -rli feedback|rating`
-across `server/src/modules` turns up nothing). Every mainstream AI chat UI
-exposes this on assistant messages.
+### G1 — Remove leftover debug console.log calls in the streaming client
+**Effort:** 3 (bundled with G2)
+**Where:** `client/src/features/ai-chat/services/ai-chat.service.ts`
+**Why:** `streamMessage` still has `console.log("[GENERATOR RESUMED]", ...)` /
+`console.log("[SERVICE CATCH]", ...)` from earlier abort-handling debugging.
 **Acceptance criteria:**
-- A toolbar under each assistant message (hover-to-reveal on desktop,
-  always-visible on mobile) with: copy button, thumbs-up, thumbs-down.
-- `AiMessage` gains an optional `feedback: 'up' | 'down'` field; a small
-  ownership-checked endpoint sets/clears it, following the existing
-  `ConversationController` pattern.
-- Selecting a thumb toggles it; clicking the same one again clears it. At
-  most one active state per message.
-- Copy button copies the message's raw text/markdown, with a brief visual
-  confirmation (icon swap, not a toast that covers the message).
-- No regenerate button in this PBI — scope is deliberately limited to
-  copy + like/dislike. Regenerate touches streaming/resend logic and is
-  a separate, larger PBI if wanted later.
+- Both calls removed (or converted to a guarded debug log if genuinely useful).
+- Streaming/abort behavior unaffected — log-only cleanup.
 
-**Status: DONE.** `AiMessage.feedback?: 'up' | 'down'` added; ownership-
-checked `PATCH ai/conversations/:id/messages/:messageId/feedback` (`null`
-clears via `$unset`, not a stored 'none'). `appendMessages` now returns
-`{ userMessageId, assistantMessageId }` — a real gap this PBI surfaced:
-the client previously had no way to know an assistant reply's persisted
-id at all, since `appendMessages` runs *after* the SSE `done` event is
-already flushed (deliberately, for perceived latency — see B8). Fixed by
-adding a `message-saved` SSE event emitted once persistence completes;
-`useStreamMessage` no longer returns early on `done` and now swaps the
-bubble's client-generated id for the real one in place
-(`ai-chat.cache.ts`'s `updateMessageId`), covering either arrival order
-against `useDrainQueue`'s commit. `MessageBubble.tsx` gained
-`MessageActionToolbar` (copy via Clipboard API with icon-swap
-confirmation; thumbs toggle via `useSetMessageFeedback`, optimistic with
-rollback on error), hover-reveal on desktop / always-visible on mobile.
-Non-streaming `getChatResponse`/`ChatResponseDto` also carry the new
-`messageId` for consistency. Server: 84/84 tests green, lint clean,
-typecheck clean. Client: typecheck/build/lint clean.
+### G2 — Remove unused `theme/theme.ts`
+**Effort:** 3 (bundled with G1)
+**Where:** `client/src/theme/theme.ts`
+**Why:** Live theme comes from `createAppTheme` in `theme/index.ts`;
+`theme/theme.ts` hardcodes `getPalette('dark')` and appears unimported.
+**Acceptance criteria:**
+- Zero import sites confirmed by grep before deleting.
+- File removed; `tsc -b`/`vite build` clean.
 
-### C2 — Composer (input bar) refinement
+### G3 — UI sloppiness sweep
 **Effort:** 3
-**Where:** `client/src/features/ai-chat/components/ChatInput.tsx`
-**Why:** Confirmed gaps in the current composer — no persistent
-Enter-to-send/Shift+Enter-for-newline hint (the keyboard behavior exists
-in `handleKeyDown` but is never surfaced to the user), and focus isn't
-restored to the textarea after sending a message (only after a prefill,
-via `ChatInput.tsx`'s existing `prefillValue` effect) — user has to
-reclick to keep typing.
+**Where:** `client/src/shared/components/layout/topbar/StandardBar.tsx`,
+`client/src/features/community/pages/CommunityPage.tsx`,
+`PostCard.tsx`/`CommentCard.tsx`, `ProfilePage` hero
+**Why:** Found in the 2026-09-24 screenshot review — each is small, together
+they make the app read as unfinished.
 **Acceptance criteria:**
-- Textarea regains focus automatically right after a message is sent.
-- A subtle, low-emphasis hint communicates Enter-to-send /
-  Shift+Enter-for-newline, matching the keyboard behavior that already
-  exists.
-- The disabled-during-streaming state reads clearly as "can't type right
-  now," not just a color change — visual clarity only, no new behavior.
+- Mobile (390px) top bar: PWA "Install" button no longer overlaps the
+  centered "CampusConnect" title.
+- Community right rail: remove the "A place to showcase popular topics or
+  top contributors in the future." placeholder panel (or replace with real
+  data — D9 will redesign the page anyway, so removal is fine).
+- Community post author renders as `rahman@example.com` — determine whether
+  the stored `name` is literally an email (data) or a display fallback
+  (code); fix the code path so an email is never shown as a display name.
+- Profile hero: "Change Avatar" is the primary CTA while "Edit Profile" is
+  secondary — the avatar already has its own camera affordance; demote or
+  remove the duplicate.
 
-**Status: DONE.** Root cause of the disabled-state gap: `ChatInput`
-already declared a `disabled` prop and used it to gate `handleSend`/
-`canSend`, but never actually passed it to the `TextField` — so streaming
-silently blocked sending without ever visibly locking the field. Wired
-`disabled` onto the `TextField` (MUI's native disabled treatment) plus an
-explicit opacity/background dip on `.Mui-disabled` so it doesn't read as
-"muted but still a normal field." Added a low-emphasis "Enter to send ·
-Shift+Enter for new line" caption (hidden on mobile, where the shortcut
-doesn't apply) alongside the existing char counter. Focus restoration:
-since a disabled input is force-blurred by the browser, refocusing right
-at send would just get undone the moment streaming disables the field —
-instead an effect watches `disabled` going true→false and refocuses once
-the composer is usable again, plus an immediate `.focus()` call in
-`handleSend` for the (non-streaming) case where the field never actually
-disables. Client typecheck/build/lint clean. Not manually verified in a
-running browser this session — worth a quick pass before considering the
-composer visually final.
-
-### C3 — Inline resource cards on citations
+### G4 — Server must boot when Qdrant is unreachable
 **Effort:** 3
-**Where:** `client/src/features/ai-chat/components/CitationChip.tsx`,
-`client/src/features/resources/components/ResourceCard.tsx`
-**Why:** Confirmed gap, smaller than it first looks — citations already
-deep-link to `/resources/:id` (`CitationChip.tsx`'s `CitationItem`,
-`handleClick` → `navigate`). What's missing is that the citation list is
-a bespoke, text-only row, not the richer `ResourceCard` used everywhere
-else in the app (thumbnail, type/subject chips, contributor) —
-inconsistent presentation of the same underlying resource. "Related
-resources" beyond direct citations would need a new retrieval query with
-no backend support today; that's separate net-new scope, deliberately
-left out here.
+**Where:** `server/src/modules/ai/services/vector-store.service.ts`,
+`memory-store.service.ts` (`onModuleInit` → `ensureCollection`)
+**Why:** Verified 2026-09-24: with the Qdrant Cloud cluster dormant, the
+`getCollections()` call in `onModuleInit` times out
+(`UND_ERR_CONNECT_TIMEOUT`) and Nest aborts bootstrap — **the whole API
+goes down** (auth, resources, messenger) because one AI dependency is
+asleep. Dormancy on inactivity is a known Qdrant Cloud behavior
+(`CLAUDE.md` history), so this will happen during demos/after breaks.
 **Acceptance criteria:**
-- `CitationsChip`'s expanded list renders `ResourceCard` (or a compact
-  variant, if the full card doesn't fit the chat column width) instead of
-  the bespoke `CitationItem`.
-- Existing click-through-to-`/resources/:id` behavior is preserved.
-- No backend changes — client-only presentational PBI.
-
-**Status: DONE.** Confirmed during implementation that reusing
-`ResourceCard` verbatim isn't actually possible without a backend change:
-`Citation` only carries `{title, pageNumber, semester, course,
-resourceId}` from the retrieval response, not the `fileType`/
-`uploadedBy`/`fileSize`/approval-status fields `ResourceCard` renders —
-and fetching each cited resource's full record just for its card would
-mean N extra requests per assistant message. Built a compact card in
-`CitationChip.tsx` instead, borrowing `ResourceCard`'s visual language
-(hover-lift `Card`/`CardActionArea`, icon badge, chip row) but built only
-from what `Citation` actually has. Click-through to `/resources/:id`
-preserved. No backend changes. Client typecheck/build/lint clean.
-
-### C4 — Copy button on code blocks
-**Effort:** 3
-**Where:** `client/src/features/ai-chat/components/MarkdownMessage.tsx`
-(`pre`/`code` renderers)
-**Why:** Confirmed gap — the `pre`/`code` components in
-`MarkdownMessage.tsx` render plain, no copy affordance. Every mainstream
-AI chat UI has a copy button on code blocks specifically, distinct from
-copying the whole message (C1).
-**Acceptance criteria:**
-- Each fenced code block gets a small copy button (hover-to-reveal on
-  desktop, always-visible on mobile) that copies just that block's raw
-  text.
-- Visual confirmation on copy, consistent with C1's copy-button behavior.
-
-**Status: DONE.** `pre`'s renderer in `MarkdownMessage.tsx` now wraps the
-code block in a positioned container with a hover-reveal (always-visible
-on mobile) copy button, matching C1's icon-swap confirmation pattern. The
-raw text comes from a small `extractText` helper that flattens
-react-markdown's `code` children (which can be split across several text
-nodes) back into a plain string, rather than assuming a single string
-child. Client typecheck/build/lint clean.
+- Collection bootstrap failure is logged with context and does not abort
+  app startup; it's retried lazily (on first vector op) or with backoff.
+- AI endpoints return a typed, user-facing "AI temporarily unavailable"
+  error while Qdrant is down; non-AI features are unaffected.
+- Keeps the `getCollections()` workaround intact (`CLAUDE.md` §4).
+- Unit test covering "init fails → service still constructs → later call
+  retries".
 
 ---
 
-## Epic D — Design system & theme overhaul (POSTPONED 2026-09-20 — resume after Epic E)
+## Epic H — Demo readiness
 
-Goal: replace the current look with two genuinely distinct, intentional
-themes — not the same palette auto-inverted — that read as a considered
-brand rather than a default MUI reskin. Confirmed via
-`client/src/theme/palette.ts`: light and dark today share the same primary
-(`#6C63FF`) and near-identical secondary (`#00D9A6`/`#00B894`) hues, varying
-only background/text lightness. This is a design pass — sign off on
-direction with real screens before rolling out broadly, and pick colors
-deliberately different between light and dark rather than one hue at two
-lightness values.
-
-### D1 — Define the new palette & design tokens
+### H1 — Demo database + repeatable seed script
 **Effort:** 5
-**Where:** `client/src/theme/palette.ts`, `typography.ts`, `components.ts`
-**Why:** See epic goal — confirmed both modes share the same primary/
-secondary hues today.
+**Where:** new `server/scripts/seed-demo.ts` (+ `npm run seed:demo`),
+`server/.env.example`
+**Why:** Current data: 4 resources, 1 mentor, community posts titled
+"Test"/"Test Post" from ~5 months ago. Every redesigned screen will look
+dead on this data, and design decisions made against empty states are
+wrong for populated ones. **Decision (2026-09-24):** seed a *separate*
+database on the same Atlas cluster; never write to the existing DB.
 **Acceptance criteria:**
-- New primary/accent colors per mode — light and dark are encouraged to
-  use different hues, not just different lightness of the same hue.
-- Typography scale/weights reviewed alongside the new colors for overall
-  cohesion (`typography.ts` is separate from `palette.ts` today — confirm
-  it still fits the new palette's mood, adjust if not).
-- Rationale for the choice documented in this PBI's resolution (a short
-  note, not a design doc) so the "why" survives past this session.
-- Tokens only in this PBI — no component-level rollout yet (that's D2).
+- Script refuses to run unless the target DB name is explicitly a demo DB
+  (e.g. ends in `_demo`) — guard against seeding the real DB by accident.
+- Idempotent: drop-and-recreate the demo DB's collections, deterministic
+  content (fixed seed).
+- Realistic QAU-flavored content: ~25 students across 3–4 departments and
+  semesters, ~6 contributors/mentors with bios/expertise/capacity, ~30
+  approved resources across courses/types, community posts with comments
+  and upvotes, a few conversations, mentorships in each lifecycle state,
+  reputation ledger entries consistent with scores/tiers, notifications.
+- Resources: either real public-domain PDFs uploaded to a demo Cloudinary
+  folder, or clearly-documented metadata-only entries (decide and document).
+  RAG ingestion for seeded resources goes through the normal BullMQ path,
+  not a bypass.
+- Documented demo logins (student, contributor/mentor, admin) in a
+  `server/scripts/README.md` — demo-only passwords, no real secrets.
 
-**Status: DONE.** Two distinct moods instead of one hue at two lightnesses:
-light is "paper & ink" (warm clay/terracotta `#B5541F` primary on a warm
-cream `#F6F1E9` background, cooled by a forest-teal `#2F6F62` secondary —
-reads academic, like ink on a page) and dark is "midnight desk" (cool
-indigo `#5266D6` primary on near-black blue-slate `#12141C`, warmed by an
-amber `#F0A857` "desk lamp" secondary). The primary hue itself changes
-between modes, not just its lightness. Semantic colors (error/warning/
-success/info) were re-tuned to harmonize with each mood but deliberately
-kept distinct from primary/secondary — an earlier draft reused the brand
-hues for warning/success and made a "pending" chip indistinguishable from
-a primary button, so that was reverted. Typography: added `Lora` (serif)
-as a display face for `h1`-`h3` only, layered on top of `Inter`, which
-stays the sole typeface for `h4`-`h6`/body/buttons/chips — gives page-level
-headings a distinct voice without hurting density in the small, frequent
-UI text (chat bubbles, chips, forms). Loaded via the existing Google Fonts
-`<link>` in `index.html`; also fixed the stale `theme-color` meta tag
-(was still `#6C63FF`). All new primary/secondary pairings checked against
-WCAG contrast math (see D2) before finalizing — one shade (`dark` primary)
-was darkened from `#5B6EE8` to `#5266D6` to clear 4.5:1 against white
-button text.
-
-**Follow-up (user feedback, live-checked in browser):** light mode's
-first pass (`#F6F1E9` default / `#FFFCF7` paper) had a near-pure-white
-paper surface that read as glare/eyestrain on screen despite being
-"warm cream" on paper. Darkened both to matte tones — `#EFE8DA` default,
-`#F7F2E7` paper — and stepped the primary down accordingly (`#B5541F` ->
-`#A44C1B`) to hold >4.5:1 contrast for primary-colored text against the
-now-darker paper. Dark mode was left untouched (no complaint there, and
-its background was already near-black, not near-white). Not a full fix
-for the accessibility gap discovered in the process: warning/success/info
-text sitting on their own 12%-alpha chip backgrounds (e.g. status filter
-chips in `ProfileResourcesTab`) computes to 2.4-4.4:1, below AA-normal-text
-4.5:1 for several of them — pre-existing (same issue existed against the
-old near-white paper), not introduced by this change, and out of scope for
-a background-tone fix. Left as a known gap for D2's still-open manual
-accessibility pass rather than silently patching each chip's alpha/weight
-without the user in the loop on look.
-
-**Follow-up #2 (user feedback):** dark mode still read as generic
-navy-blue everywhere after D1/D2 — user's words: "the theme new theme we
-implemented is just applied on light mode... the dark mode has navy color
-all over it." Root-caused via a targeted read-only audit (see the general
-inline audit note above D2): confirmed every shell/layout/feature
-component (`AppLayout`, `Sidebar`, `BottomNav`, dashboard, resources,
-messenger, contributors) already reads `background.default`/
-`background.paper` from the theme correctly — no component bypasses the
-theme. The bug was in the token itself: D1's dark-mode rewrite changed
-`primary`/`secondary` (purple -> indigo, teal -> amber) but left
-`background.default`/`background.paper`/`text.secondary`/`divider`
-essentially untouched from the old palette — measured at ~226-228° hue,
-~20% saturation before and after, i.e. still the same navy-blue-slate,
-just 1-2% lighter. Since those four tokens are what every single surface,
-caption, and border reads from app-wide, the primary/secondary changes
-alone were invisible against the unchanged (and most visually dominant)
-neutrals. Fixed by re-deriving the dark neutrals as warm-charcoal instead
-of blue-slate: `background.default` `#12141C` -> `#181614`,
-`background.paper` `#1B1E29` -> `#211E1C`, `text.secondary` `#A6ADBB` ->
-`#ABA9A3`, `text.disabled` `#5B6272` -> `#726F67`, `divider`
-`rgba(166,173,187,...)` -> `rgba(171,169,163,...)` — all now ~24-45° hue,
-<10% saturation (matte charcoal, not navy). Contrast re-verified: text
-pairs 7:1-16:1 (comfortably above AA), disabled-text contrast improved
-from the old theme's 2.49:1 to ~3.6:1 (disabled text has no AA
-requirement, but higher is still better). One pre-existing, not-newly-
-introduced gap noted in passing: `primary.main` (indigo) used as text
-color directly on `background.paper` computes to ~3.3:1 in dark mode
-(was ~3.9:1 in the old theme, e.g. `MarkdownMessage`'s link color) — below
-AA-normal-text 4.5:1, though it clears the 3:1 large-text/UI-component
-threshold. Not fixed here (would mean auditing every dark-mode use of
-primary-as-text-color individually, a bigger and more surgical job than a
-token-level palette fix) — added to the same accessibility-audit gap list
-above. Also fixed, same class of bug, found by the same audit: two
-profile-tab skeleton cards (`ProfilePostsTab.tsx`, `ProfileResourcesTab.tsx`)
-hardcoded a `rgba(255,255,255,...)` overlay that assumed a dark
-background — nearly invisible in light mode, and not derived from the
-theme in dark mode either. Removed in favor of the theme's own `MuiCard`
-override, which both already correctly styles.
-
-**Follow-up #3 (user steer):** the indigo dark-mode primary above was
-itself replaced — user asked to keep one consistent signature brand color
-(clay/terracotta) across both modes rather than switching hue for dark
-mode, explicitly citing Claude's own UI as the reference point for that
-choice. This reverses D1's original "light and dark are encouraged to use
-different hues" framing for *primary* specifically (secondary still
-differs in role — amber "desk lamp" accent stays as-is). Dark-mode
-primary is now `#D98A5C` (main) / `#E8B08C` (light) / `#A44C1B` (dark,
-== light mode's own primary) / dark contrastText `#1A1206` — brightened
-and switched to dark-on-light button text instead of white-on-dark,
-because at this lightness (~61% L) white text fails AA (2.7:1); dark text
-clears 6.8:1. `action.hover/selected/focus` rgba updated to the new
-primary's RGB to match.
-
-### D2 — Apply the new theme across core surfaces + verify accessibility
+### H2 — Empty, loading and error states pass
 **Effort:** 5
-**Where:** `client/src/theme/components.ts`, spot-checked across
-Dashboard/AI Chat/Resources/Messenger/Contributors, depends on D1
-**Why:** A new palette is only as good as its application — MUI component
-overrides (buttons, chips, cards) need re-checking against the new
-tokens, and swapping the primary color can break contrast ratios that
-happened to work with the old one. Some old hex values may be hardcoded
-inline outside `palette.ts` (e.g. rgba variants of `#6C63FF` for
-action states) rather than referencing the palette — find and fix those
-too, not just the palette file itself.
+**Where:** every page redesigned in D6–D10
+**Why:** A usable app is mostly defined by the unhappy paths: first-run
+empty states that tell you what to do, skeletons instead of spinners/blank,
+and errors that say what happened and offer a retry.
 **Acceptance criteria:**
-- `componentOverrides` and any inline hardcoded old-palette colors
-  updated to the new tokens (grep for the old hex/rgba values first).
-- Manually verified in both light and dark mode across at least:
-  Dashboard, AI Chat, Resources list, Messenger, Contributors.
-- Text/background contrast checked (WCAG AA minimum) for both modes with
-  the new colors.
+- Every list/page has a designed empty state with a next action.
+- Skeleton loaders matching final layout for all primary lists.
+- Network/API errors show an inline retry, not a blank page or only a toast.
+- Verified by running the app against an empty user in the demo DB and
+  with the API stopped.
 
-**Status: DONE**, with one gap flagged below. `componentOverrides`
-(`MuiButton` `containedPrimary`/`outlinedPrimary`) no longer hardcode
-`#6C63FF`/`#938BFF`/`rgba(108,99,255,...)` — they now read
-`theme.palette.primary.main/light` via `alpha()`, so a future palette
-change won't require touching this file again. Grepped the whole client
-`src/` for the old hex and its rgb-equivalent rgba (`rgba(108, 99, 255`,
-`rgba(0, 217, 166`, `rgba(0, 184, 148`) — found and fixed two more
-offenders outside the theme folder: `ProfileSettingsTab.tsx` (focus-ring
-color + a save-button gradient that duplicated, and had drifted from,
-`componentOverrides`' own `containedPrimary` — deleted the duplicate
-rather than re-hardcoding it) and `ProfileResourcesTab.tsx` (status-filter
-chips used bare hex that only *approximated* success/warning/error rather
-than reading from the palette — now sourced from
-`theme.palette.{success,warning,error}.main` via a `getStatusMeta(theme)`
-helper). `useChartTheme.ts` was already palette-driven (its `#6C63FF`
-occurrences were stale comments, not literals) — left as-is.
-Contrast was verified numerically (WCAG relative-luminance formula, all
-new primary/secondary/semantic-on-background and text-on-background pairs
-computed directly) rather than with a browser contrast checker — all pairs
-clear 4.3:1+, most 5:1+; see D1 note for the one adjustment that math
-forced. **Not yet manually eyeballed in a running browser** across
-Dashboard/AI Chat/Resources/Messenger/Contributors in both modes — only
-confirmed the dev server boots and serves both fonts. That visual pass
-(plus the still-open C2 composer check) is worth doing together before
-calling the theme visually final.
+### H3 — Demo walkthrough + final visual QA
+**Effort:** 3
+**Where:** docs outside the repo (FYP docs) + fixes found
+**Why:** The defense is a scripted story; the product should be tuned to it.
+**Acceptance criteria:**
+- Written walkthrough: sign in → home → find resource → ask AI → citation
+  shows contributor → ask a human → mentorship → messenger → admin moderation.
+- Every screen in the walkthrough screenshotted in both modes at desktop
+  and 390px mobile; issues fixed or logged.
 
-### D3 — Icon set overhaul (MUI icons -> Lucide)
+---
+
+## Epic D — Design system & UI overhaul (Phases 2–3)
+
+### Audit (2026-09-24, screenshots of every page, desktop + mobile, light)
+
+The palette isn't the core problem — hierarchy and consistency are:
+- **Beige-on-beige.** Canvas `#EFE8DA`, sidebar and cards `#F7F2E7` are
+  near-identical; nothing separates layers, so every page reads flat.
+- **Three visual languages at once.** Drop shadows *and* borders on cards,
+  border radii from ~8px to ~24px (profile hero, rules card), pill buttons,
+  gradient `contained` buttons, tinted stat "bubbles".
+- **Navigation sprawl.** 7 primary + 4 secondary sidebar destinations
+  (Profile, Notifications, Dark mode, Logout sit in nav); "Mentors" and
+  "Mentorship" are separate top-level items for one feature.
+- **Brand inconsistency.** App logo is the robot (`SmartToy`) icon; landing
+  uses a graduation cap. Auth illustration is a stock unDraw figure in
+  purple that clashes with the palette.
+- **Dashboard shows platform vanity metrics** ("6 Students", "0 Posts this
+  month") instead of what *this* student should do next.
+- **Pages don't use their width.** Resources/Mentors are a left-aligned
+  grid with a large empty canvas; Mentors has 6 filter controls for 1 result.
+- **Dense metadata chips** on resource cards (type chip, semester chip,
+  tier chip, download count, file size) compete with the title.
+
+### Direction (decided 2026-09-24): "Warm neutral"
+
+Terracotta stays the single brand accent, used sparingly (primary actions,
+active nav, focus). Surfaces move off cream to neutral: light-grey canvas,
+near-white cards/sidebar, clear 3-level surface stack. Flat: 1px borders,
+shadows only for floating layers (menus, dialogs). No gradients. One radius
+scale. Lucide icons. Dark mode = neutral charcoal with the same accent.
+Serif display face (Lora) kept only for marketing/landing headings — in-app
+headings go sans for density.
+
+### D4 — Design tokens v2 ("warm neutral") + icon swap
+**Effort:** 8
+**Where:** `client/src/theme/*`, all `@mui/icons-material` import sites
+**Why:** Foundation for every page redesign. Replaces the D1 cream palette.
+**Acceptance criteria:**
+- Tokens for: surface levels (canvas / surface / raised / overlay), text
+  (primary/secondary/tertiary), border (subtle/default/strong), accent
+  (brand + hover/pressed/subtle bg), semantic (success/warning/error/info
+  + subtle bg), radius scale (e.g. 6/10/14 + full), spacing, elevation
+  (overlay-only), in both modes, exported via the MUI theme (augment
+  `Palette` types — no `any`).
+- `componentOverrides` rewritten to the flat language: no gradients, no
+  card shadows, consistent radius, button sizes/variants (primary, secondary,
+  ghost, danger), inputs, chips (one neutral + one accent style), tabs,
+  dialogs, menus, tooltips.
+- WCAG AA verified numerically for text and accent pairs in both modes.
+- **Folds in D3** (below): Lucide replaces `@mui/icons-material` everywhere;
+  dependency removed.
+- No page layouts changed yet beyond what the tokens imply.
+
+(D3's original spec, kept for its acceptance criteria:)
+
+#### D3 — Icon set overhaul (MUI icons -> Lucide) — folded into D4
 **Effort:** 5
 **Where:** all 53 files under `client/src` importing from
 `@mui/icons-material` (136 individual icon imports, grepped and counted
@@ -381,598 +263,90 @@ flavored) after a direct question in this session.
 - `@mui/icons-material` removed from `package.json` once zero usages
   remain (don't leave a dead dependency installed "just in case").
 
----
-
-## Epic E — Contributors, mentorship & the messenger (ACTIVE — current focus)
-
-**Audited 2026-09-20 against current code.** This epic supersedes the earlier
-"complete the messenger & contributors" stub. Contributors and chat are the
-two weakest areas of the app: both exist as *plumbing*, neither delivers
-*value*, and neither is connected to the rest of the product.
-
-### Why these two features exist
-
-CampusConnect's core loop is resources -> understanding. Files and an AI
-assistant get a student most of the way; the last mile is a *person* — the
-senior who wrote the notes, the peer who aced the course. Contributors are
-the supply side (they create the trusted resources the RAG assistant also
-answers from); the messenger is the delivery channel for human help. Done
-right they form a loop: **find a resource -> trust its author -> ask them ->
-get helped -> author earns reputation -> more people contribute.** Mentorship
-is what turns a document library into a community.
-
-### Audit: current state (verified against code)
-
-- **Contributor is just a role string.** Only an admin can set it
-  (`PATCH users/:id/role`); there is no path for a student to *become* one —
-  yet only Contributor/Admin can upload (`resource.controller.ts`). Students
-  cannot contribute at all.
-- **`contributionScore` is dead.** Schema field, default 0, admin-editable;
-  nothing ever increments it (`grep` across `server/src`). No badges, tiers,
-  or leaderboard beyond an admin-only `TopContributorsTable`.
-- **`isOpenToMentor`, `expertise`, `interests` are collected in onboarding
-  and consumed by nothing** except displaying tags on the profile hero.
-  `ContributorsPage` is `useUsers({ role: 'Contributor' })` — a role filter,
-  not a mentor directory: no search, no expertise/department filter, no
-  open-to-mentor filter, avatar is the email's first letter, and the card
-  shows the raw email + role chip.
-- **The only contributor -> chat bridge is a cold "Message" button.** No
-  context (which resource? which question?), no request/accept step, no
-  mentor capacity control, spam-prone.
-- **Messenger is a bare 1:1 DM.** Works (idempotent sends, seen receipts,
-  optimistic UI) but: no unread counts or nav badge, no presence/typing
-  (`ChatGateway.connectedUsers` + `addUserSocket`/`removeUserSocket` are
-  dead code — never called), no notifications of any kind anywhere in the
-  app (`grep -i notification` = nothing), conversations populate only
-  `name email` (no avatar; list avatar has no `src`), `Message.seen` boolean
-  is unused beside `seenAt`, no block/report.
-- **Integration is zero.** Resources don't link to mentoring; the AI
-  assistant's citations (`Citation`) don't carry the contributor; C1's
-  thumbs-down feedback goes nowhere; the dashboard's "available mentors" is
-  just `count(role=Contributor)` (`dashboard.service.ts:72`), not actual
-  open mentors.
-- **Possible bug to verify:** `user.controller.ts` declares
-  `@Get('profile:id')` (no slash) while the client calls
-  `/users/profile/${id}`. Confirm the public profile route actually resolves
-  before building on it (folded into E1).
-
-### Product vision — how it fits together
-
-1. **Reputation** — contributors earn a real, explainable score (approved
-   resources, downloads, AI citations, upvotes, mentee ratings) -> tiers and
-   badges. Students can *become* contributors through a clear path.
-2. **Mentor discovery** — a searchable directory of people open to mentor,
-   filterable by department/subject/semester, with recommended matches for
-   the current student based on their interests.
-3. **Mentorship as a lifecycle, not a DM** — request (with intro message) ->
-   accept/decline -> active -> complete + feedback. Mentors control capacity.
-4. **Contextual chat** — "Ask the contributor" from any resource or post
-   opens a conversation with that item attached as a card.
-5. **AI -> human handoff** — when the assistant can't answer well (thumbs-
-   down, low retrieval score), it suggests the contributors behind the
-   relevant subject/resources. Citations show who wrote the source.
-6. **A messenger people can trust and live in** — unread, presence, typing,
-   notifications, block/report.
-
-### Sequencing
-
-Foundations first (E1-E4) — mentorship on top of a messenger with no unread
-badge or notifications would be unusable. Then reputation (E5-E7), mentorship
-(E8-E12), then cross-feature integration (E13-E15), safety last but before
-any public launch (E16). Within a phase, top to bottom.
-
----
-### Phase 1 — Messenger foundations
-
-### E1 — Messenger identity: avatars, verified names, profile-route check
-**Effort:** 3
-**Where:** `server/src/modules/chat/chat.service.ts` (`populate('participants', 'name email')` x3),
-`client/src/features/chat/components/ConversationListItem.tsx` (+ `ConversationPage` header),
-`chat-dto.ts`, `server/src/modules/user/user.controller.ts`
-**Why:** The old E1 premise is partly stale — names *are* populated
-server-side and `chat-service.ts` normalizes `_id` -> `id`, so the name
-renders. What is really missing: `avatar` is never populated (list avatar has
-no `src`), the fallback shows a raw email, and the stale "wire when user
-resolution is available" comment remains. Also verify the
-`profile:id` vs `profile/:id` route mismatch (see audit).
-**Acceptance criteria:**
-- Conversation payloads include `avatar` (and `role`) for participants;
-  `ConversationParticipant` type updated; list + open-conversation header
-  render avatar with initial fallback, name with "Unknown user" fallback
-  (never a raw email).
-- Public-profile fetch route confirmed working end to end; fixed if not
-  (own commit if it's a separate root cause).
-- Stale comment removed.
-
-**Status: DONE (2026-09-20).** Server now populates `name avatar role` on
-all four conversation queries (shared `PARTICIPANT_PUBLIC_FIELDS`); email is
-no longer sent to the counterpart at all. List item and conversation header
-render the avatar (initial fallback) and "Unknown user" instead of an email.
-Route check: **real bug confirmed** — `@Get('profile:id')` compiles to a
-pattern matching `/users/profile<id>` only (verified with `path-to-regexp`),
-so the client's `/users/profile/:id` 404'd and public profiles never loaded.
-Fixed to `profile/:id` (separate concern; separate commit). Server chat +
-user specs green, typecheck clean; client typecheck/lint clean. Not verified
-in a running browser.
-
-### E2 — Unread counts, nav badge, read state
-**Effort:** 5
-**Where:** `chat.service.ts` / `chat.gateway.ts`, `message.schema.ts`,
-`client/src/features/chat/store/chat-ui.store.ts`, `Sidebar`/`BottomNav`
-**Why:** No way to know a message arrived unless the chat is open. Core
-messenger expectation and prerequisite for mentorship UX.
-**Acceptance criteria:**
-- Server returns `unreadCount` per conversation (count of others' messages
-  with `seenAt: null`, indexed query — no N+1) in `GET conversations`.
-- New-message socket event increments unread for non-active conversations;
-  `mark_seen` clears; total unread shown as a badge on the Messages nav item
-  (sidebar + bottom nav).
-- Conversation list bolds unread rows and shows the count chip.
-- Resolve the unused `Message.seen` boolean (remove or document) — one
-  source of truth (`seenAt`).
-
-**Status: DONE (2026-09-20).** Root cause: an unread badge already existed
-on the topbar but could never fire — `useChatSocket()` (the `new_message`
-listener) is mounted only in `ConversationPage`, and the gateway emitted
-`new_message` only to the conversation room, which only that page joins. The
-count also lived in a client-only zustand map, so a reload zeroed it. Fix:
-`GET conversations` now returns `unreadCount` per conversation (one grouped
-aggregate, no N+1); the gateway also emits `new_message` to the receiver's
-personal room (`socket.to(convId).to(receiverId)`, deduped by Socket.IO); a
-new app-wide `useChatUnreadSync` (mounted in `AppLayout`) refetches the list
-on incoming messages and clears on `messages_seen`; `useTotalUnread` derives
-the total from the query cache and feeds the topbar and the desktop sidebar
-Messages badge; list rows bold with a count chip. Zustand unread state
-removed (server = source of truth); unused `Message.seen` field removed.
-`ConversationPage` now also marks seen when older unseen messages exist even
-if the latest message is the user's own. Server: 86/86 tests, lint,
-typecheck clean; client typecheck/lint/build clean. Not verified with two
-live browser sessions. No new index added — the aggregate rides the
-existing `{conversationId, createdAt}` index; revisit if it shows up slow.
-
-### E3 — Presence & typing indicators
-**Effort:** 3
-**Where:** `chat.gateway.ts`, `chat-socket.service.ts`, `ConversationPage`
-**Why:** `connectedUsers` map and `addUserSocket`/`removeUserSocket` exist
-but are never called. Presence tells a student whether a mentor is around.
-**Acceptance criteria:**
-- Gateway tracks connect/disconnect per user (multi-socket safe), emits
-  `presence` to conversation counterparts; "online / last seen" in header.
-- `typing` start/stop events (throttled client side), shown in feed.
-- Dead-code helpers wired up or deleted — no orphans left.
-
-**Status: DONE (2026-09-20).** New `PresenceService` (in-memory
-user -> socket set, multi-tab safe; first socket = online, last socket =
-offline and persists `User.lastSeenAt`) replaces the dead
-`connectedUsers`/`addUserSocket`/`removeUserSocket` code, which was never
-called. Gateway broadcasts `presence` to conversation partners' personal
-rooms on transitions; the client pulls the online-partner snapshot via a
-`get_presence` ack (a server-pushed snapshot at connect would race the
-client registering its listener). `typing` events relay to the conversation
-room, authorized by room membership rather than a DB hit per keystroke.
-Client: `useChatPresenceSync` (app-wide, zustand ephemeral store),
-`useTypingIndicator` (re-emit every 2.5s while typing, stop after 3s idle
-or on send, peer indicator self-expires at 5s if a stop is lost),
-`PresenceStatus` in the conversation header ("typing…" > "Online" > "Last
-seen …"). **Found and fixed separately (own commit, dce05f3):**
-`join_conversation` never verified the caller was a participant, so any
-authenticated user could join any conversation room and receive its
-`new_message` events — typing authorization depends on that check.
-Known limits: presence is single-instance (needs a shared store/Redis
-adapter to scale out); `lastSeenAt` is visible to conversation partners —
-a privacy toggle is not in scope. Server 92/92 tests, typecheck/lint clean;
-client typecheck/lint/build clean. Not verified with two live sessions.
-
-### E4 — In-app notifications (module + bell)
+### D5 — App shell & information architecture
 **Effort:** 8
-**Where:** new `server/src/modules/notification/` (schema, service,
-controller, gateway push), `@nestjs/event-emitter` (already a dependency),
-client `features/notifications/`, topbar bell
-**Why:** Nothing in the app tells a user anything happened. Mentorship
-requests, replies while away, approvals, and reputation milestones all need
-one shared channel — build once, reuse across E5-E16.
+**Where:** `client/src/shared/components/layout/*`, `app/router.tsx`,
+`app/routeConfig.ts`, `shared/constants/routes.ts`
+**Why:** 11 nav destinations → 5. The shell is on every screen; it sets
+the first impression more than any single page.
 **Acceptance criteria:**
-- `Notification` schema (`user`, `type`, `payload`, `readAt`), indexed by
-  `user` + `createdAt`; list/mark-read/mark-all endpoints, ownership-checked.
-- Emitted via domain events (no notification logic inside chat/resource
-  services): resource approved/rejected, new message while recipient is not
-  in that conversation, plus a typed registry so E10/E5 add types cleanly.
-- Real-time push over the existing Socket.IO auth; topbar bell with unread
-  count and dropdown; click deep-links to the target.
-- Retention/cleanup policy documented (TTL index or scheduled prune).
+- Primary nav (sidebar desktop / bottom nav mobile): **Home, Library, Ask AI,
+  Messages, Mentors**. Community reachable from Home + nav (decide: 6th item
+  or tab inside Home — document the choice). Admin appears only for admins.
+- Top bar (desktop and mobile): global search entry point, notifications
+  bell with count, avatar menu → Profile, Settings, Theme toggle, Log out.
+- Mentors + Mentorship merge into one section with tabs (Discover / My
+  mentorships / Requests); old routes redirect.
+- One brand mark used everywhere (logo + favicon + PWA icon + landing).
+- Collapsible sidebar kept; mobile bottom nav badges (messages, requests).
+- Page container component with consistent max-width, padding and header
+  pattern (title, subtitle, actions) used by all pages.
+
+### D6 — Home (personal dashboard)
+**Effort:** 5
+**Where:** `features/dashboard/*`, `dashboard` server module (`my-stats`)
+**Acceptance criteria:**
+- Replaces platform vanity stats with: Ask-AI entry, "Continue" (recent AI
+  threads / recently viewed resources), resources for your department &
+  semester, your active mentorships / pending requests, recent community
+  activity. Platform-wide stats move to admin only.
+- Greeting fixed (no italic accent-colored name fragment; first name only).
+
+### D7 — Library + resource detail
+**Effort:** 5
+**Where:** `features/resources/*`
+**Acceptance criteria:**
+- Cards prioritize title → course → author; metadata demoted to one quiet
+  line; type shown by icon/label, not a colored chip per type.
+- Filters in a compact bar (search, course, type, semester) with active-
+  filter chips + clear; list/grid toggle; sensible empty/no-results.
+- Resource detail: preview, author card (links to profile; hooks for E13
+  "Ask the author"), related resources, "Ask AI about this" entry.
+
+### D8 — Ask AI + Messages
+**Effort:** 5
+**Where:** `features/ai-chat/*`, `features/chat/*`
+**Acceptance criteria:**
+- AI: thread list and conversation reflow to the new shell (no redundant
+  back chevron on desktop), centered readable column (~720px), starter
+  prompts personalized to the user's courses, citations styled per D4.
+- Messages: same two-pane pattern as AI for consistency; bubbles, presence,
+  typing, unread styled per D4; mobile single-pane navigation.
+- Respects `CLAUDE.md` §4 streaming decisions (hooks split, rAF batching,
+  raw fetch) — visual changes only.
+
+### D9 — Mentors, Profile, Community
+**Effort:** 5
+**Where:** `features/contributors/*`, `features/mentorship/*`,
+`features/user/*`, `features/community/*`
+**Acceptance criteria:**
+- Mentors: filters collapse into search + a filter popover; cards show
+  avatar, name, tier, top expertise, capacity, one primary action.
+- Profile: clean header (avatar, name, role/tier, department·semester,
+  one Edit action), stats as a quiet inline row; tabs for Posts /
+  Resources / Mentoring; settings move to the Settings page from D5.
+- Community: feed column + useful right rail (trending tags / top
+  contributors from real data), composer per D4.
+
+### D10 — Landing + auth + onboarding
+**Effort:** 5
+**Where:** `features/auth/*`
+**Acceptance criteria:**
+- Landing page that explains the product in one screen (value prop,
+  3 feature highlights with real product screenshots, CTA) — replaces the
+  stock illustration.
+- Sign in / sign up as focused forms (room for F3's Google button).
+- Onboarding as a short stepper with progress; skippable optional steps.
 
 ---
-### Phase 2 — Reputation & the contributor pathway
 
-**Status: DONE (2026-09-20).** New `server/src/modules/notification/`:
-`Notification` schema (`user`, `type`, `title`, `body`, `link`, `count`,
-`isRead`, `readAt`, `dedupeKey`), ownership-scoped endpoints
-(`GET notifications`, `GET notifications/unread-count`,
-`PATCH notifications/:id/read`, `PATCH notifications/read-all`; a foreign id
-404s because the update filter includes the caller), realtime push, and a
-**typed registry** (`notification.registry.ts`): each `NotificationType`
-declares a payload interface and a builder; the mapped `Builders` type is
-exhaustive, so adding a type (E6/E10) without a builder won't compile.
-Producers emit domain events (`common/events/domain-events.ts`) and know
-nothing about notifications: `resource.approved` / `resource.rejected`
-(`ResourceService`, which already injected `EventEmitter2` but never used
-it) and `chat.message.received` (`ChatGateway`, emitted only when the
-receiver has no socket in the conversation room). `NotificationListener` is
-the only consumer; a failure there is logged with context and never breaks
-the originating request. Message notifications are **grouped**: a unique
-partial index on `(user, dedupeKey)` where unread backs an upsert that bumps
-`count`, with a retry path for the E11000 race. Reading a conversation
-emits `chat.conversation.read`, which clears that grouped notification and
-pushes the new total (`notification_unread_count`). Push rides the existing
-`/chat` socket via a second gateway in the same namespace (relies on
-ChatGateway's "room == user id" convention — documented in the class).
-Retention: TTL index on `updatedAt`, 60 days. Client:
-`features/notifications/` (service, hooks, `useNotificationSync`, bell +
-popover with mark-read / mark-all / load more, deep-link on click, toast for
-non-message types); bell in the mobile top bar, a Notifications item with
-badge in the desktop sidebar. **Verified live** against local Mongo/Redis
-with two socket.io clients: grouping (count 1 -> 2, same id), recipient in
-the room gets none, sender none, intruder cannot join the room, cross-user
-mark-read 404s, mark_seen clears + pushes count 0. Server 107/107 tests,
-typecheck clean; client typecheck/lint/build clean. Not verified: the
-resource approve/reject path live (unit-tested only — needs Cloudinary +
-ingestion queue), and the browser UI itself.
-Known limits: a client retry of an already-persisted message re-emits the
-event and can over-count a grouped notification by one; the chat push path
-is single-instance like presence. Pre-existing, unrelated: 4 lint errors in
-`server/src/modules/ai/services/groq.service.spec.ts`
-(`no-unsafe-assignment`) — CLAUDE.md §5 says server lint is clean, so this
-regressed at some point; not touched here.
+## Epic E — Contributors, mentorship & the messenger (remaining: E11–E16)
 
-### E5 — Contribution score engine
-**Effort:** 5
-**Where:** new `server/src/modules/reputation/` (ledger schema + service),
-listeners on resource/post/mentorship events, `user.service.ts`
-**Why:** `contributionScore` never changes — the single field that could
-make contributors feel valued is inert.
-**Acceptance criteria:**
-- Append-only `ReputationEvent` ledger (`user`, `type`, `points`, `sourceId`,
-  unique on `type`+`sourceId` for idempotency); `contributionScore` is a
-  denormalized sum kept in sync atomically (`$inc`).
-- Point table in one typed config: resource approved, download milestones,
-  post upvote received, resource cited by AI (E14), mentorship completed /
-  rated (E11). Reversals (resource later deleted/rejected) write negative
-  events.
-- Idempotent backfill for existing approved resources/upvotes.
-- Score history queryable per user (feeds E15). Tests cover idempotency.
-
-**Status: DONE (2026-09-20).** New `server/src/modules/reputation/`:
-append-only `ReputationEvent` ledger (unique `(type, sourceId)` = the
-idempotency key; corrections are negative rows, never edits) with
-`User.contributionScore` as a denormalized sum kept via `$inc`. One typed
-price list (`reputation.points.ts`, exhaustive over `AwardableEventType`):
-resource approved **+10**, post upvote received **+2**. Producers emit domain
-events (new: `resource.removed`, `post.upvoted`; `resource.approved` is
-shared with E4) and `ReputationListener` is the only consumer (failures are
-logged, never break the request). Rules: upvotes are keyed
-`postId:voterId` so each voter counts **once ever** — un-upvote doesn't
-claw back, re-upvote doesn't re-award, so toggling can't be farmed;
-self-upvotes ignored; removing an *approved* resource writes one negative
-row equal to what that resource earned (sum of its ledger rows), and only
-`remove()` emits it — a regression test pins that `update()` doesn't (the
-first draft put the emit in `update()`, which the new test caught: editing
-an approved resource would have wiped its points).
-`GET reputation/me/history` (paginated, newest first, feeds E15) and
-`POST admin/reputation/backfill` (idempotent: awards pre-ledger approved
-resources/upvotes, then rebuilds every score from the ledger). `contributionScore`
-is now **derived**: removed from the admin create/update DTOs (a write now
-400s under the whitelist pipe); the admin table only displays it, so no
-client change. Shared `populatedId()` util replaces E4's local helper.
-**Deliberate scope decisions:** (1) download milestones are NOT scored —
-`GET resources/:id/download` is `@Public()`/anonymous, so the count is
-trivially inflatable; a follow-up would need authenticated
-unique-downloader tracking (raw downloads still feed E15's dashboard).
-(2) Deleting a post does not reverse its upvote points (small; would need a
-per-post sum like resources). (3) Ledger write + `$inc` is not
-transactional (would need a replica set everywhere) — on failure the row is
-written, the error is logged with full context, and `backfill` /
-`recomputeAllScores` repairs the drift. AI-citation (E14) and mentorship
-(E11) events plug in by adding an enum value + a price. **Verified live**
-(local Mongo, real HTTP): upvote +2, toggle off/on stays 2, self-upvote
-stays 2, non-admin backfill 403, backfill awards then re-runs with 0
-awarded, deleting an approved resource returns the score to the pre-resource
-value, history lists the rows, admin score write 400s. The dev DB now holds
-6 real backfilled ledger rows and legacy hand-set scores were recomputed.
-Server 122/122 tests, typecheck clean. Not verified: the approve ->
-+10 path live (needs the ingestion queue; unit-tested).
-
-### E6 — Become a contributor: application + promotion path
-**Effort:** 5
-**Where:** `user` module (application schema/endpoints), admin UI queue,
-`ProfileSettingsTab`
-**Why:** Upload is gated to Contributor/Admin but students can't get there
-except by an admin editing a role by hand. Supply of contributors is
-currently zero-by-default.
-**Decided 2026-09-20:** admin-reviewed application, with score shown to the
-student as an eligibility hint (not an automatic promotion). Student submits,
-admin approves/rejects, student is notified (depends on E4).
-**Acceptance criteria:**
-- Student can submit an application (reason + optional sample); one open
-  application at a time; status visible on their profile.
-- Admin queue to approve/reject with reason; approval flips role through the
-  existing `updateRole` path and emits a notification (E4).
-- Application status and eligibility hint (score vs threshold) shown to the
-  student.
-
-**Status: DONE (2026-09-20).** Decision implemented as agreed:
-admin-reviewed, score shown as a non-gating eligibility hint, applicant
-notified. New `server/src/modules/contributor-application/`:
-`ContributorApplication` schema (reason 30-1000 chars, optional http(s)
-`sampleUrl`, `status` Pending/Approved/Rejected, `scoreAtApplication`
-snapshot, reviewer + timestamps, `rejectionReason`). **One open application
-per user is enforced by a partial unique index** (`applicant` where Pending)
-mapped to 409 — no check-then-insert race; reviewed history is unconstrained
-so a rejected student can re-apply. Endpoints: `POST contributor-applications`
-(students only — contributors/admins get 400), `GET contributor-applications/me`
-(latest application + `score`/`threshold`/`eligible`/`canApply`), admin
-`GET admin/contributor-applications?status=` (oldest-first queue, populated
-applicant, per-row `eligible`), `PATCH .../:id/approve`, `PATCH .../:id/reject`
-(reason required). Approve **claims the application with an atomic
-`status: Pending` transition** (so a double click or second admin gets 404,
-not a second promotion), then promotes through the existing
-`UserService.updateRole`; if the role update fails the application is
-reverted to Pending and the error logged/rethrown (compensation, not a
-transaction). Threshold `CONTRIBUTOR_ELIGIBILITY_SCORE = 10` (= five unique
-post upvotes under E5) lives in one constant. Approve/reject emit domain
-events; E4 gained two notification types via the registry (approved ->
-`/resources`, rejected -> `/profile` with the reason). Client:
-`features/contributor-application/` — `ContributorApplicationCard` on the
-student's own profile (status chip, reputation progress toward the
-threshold, rejection reason + "Apply again", hidden for contributors/admins),
-`ApplyDialog` (react-hook-form: min-length, URL validation), admin
-**Applications** tab with a pending badge, status filter, approve and
-reject-with-reason. `AuthContext` gained `refreshUser()`, called when a
-`contributor_application_*` notification arrives, so contributor UI appears
-without re-login (server already reads the role from the DB per request).
-**Verified live** (local Mongo, real HTTP + socket): short reason / bad URL
-400, duplicate 409, students 403 on admin routes, empty reject reason 400,
-reject then approve, second approve 404, role flips to Contributor with no
-re-login, socket delivers the approval notification, contributor re-apply
-400, rejected student sees the reason and can re-apply, approved history
-listed. Server 136/136 tests, typecheck clean; client typecheck/lint/build
-clean. Not verified in a browser. Not built (out of scope): withdrawing a
-pending application; a re-apply cooldown after rejection; notifying admins
-when a new application arrives (they see the tab badge).
-
-### E7 — Tiers & badges
-**Effort:** 3
-**Where:** shared tier config (server enum + client mapping),
-`ProfileHero`, `ContributorCard`, resource cards
-**Why:** Score is meaningless as a raw number; tiers (e.g. Newcomer ->
-Contributor -> Trusted -> Mentor Star) and a few milestone badges make it
-legible and aspirational.
-**Acceptance criteria:**
-- Tier derived from score by one pure, unit-tested function (single source
-  of truth, exposed in the user payload — not recomputed differently on the
-  client).
-- Tier chip on profile, directory card, and resource author byline; badge
-  strip on profile (first upload, 100 downloads, first mentee, etc.).
-
----
-### Phase 3 — Mentorship
-
-**Status: DONE (2026-09-20).** Tiers: **Newcomer (0), Regular (10),
-Trusted (50), Star (150)** — one `TIER_THRESHOLDS` table in
-`server/src/modules/reputation/tiers.ts` generates BOTH the pure
-`tierForScore()` and the Mongo `$switch` used to store the tier, and a test
-evaluates the generated expression for every score 0-400 against the
-function, so the stored tier cannot disagree with it. `User.tier` is a real
-stored field (so it survives `.lean()`/populate — a Mongoose virtual would
-not), written **together with the score in one atomic aggregation-pipeline
-update** (`adjustContributionScore` now clamps at 0 and sets the tier from the
-same write; `setContributionScore`/`zeroContributionScoresExcept` keep it
-consistent; the E5 backfill re-stamps everyone). Uploader populates now also
-select `tier`, so resource cards/detail carry it. Badges are **computed at
-read time, never stored** (`badges.ts`, pure, unit-tested; delete your only
-resource and "First resource" goes away): First resource, Resource library
-(5 approved), Conversation starter (first post), Well received (10 unique
-upvotes, from the E5 ledger). `GET reputation/users/:id/badges`. No
-download-based badge (anonymous endpoint, farmable — see E5); "First mentee"
-etc. arrive with E10/E11 by adding a stat + a definition. Client:
-`features/reputation/` (`TierChip` — display map is exhaustive over the tier
-type, `BadgeStrip`, hooks); tier chip on the profile hero (own + public), the
-contributor card, and the resource card/detail byline (Newcomer hidden on
-bylines as noise); badge strip on the profile hero. **A live run caught a real
-bug the mocked tests could not:** Mongoose rejects an array (pipeline) update
-unless `{ updatePipeline: true }` is passed, so the first version failed every
-score write (E5's designed drift-logging path fired correctly, and the
-backfill 500'd); fixed and pinned with a test asserting the option.
-Verified live: new user newcomer/0; 6 approved resources -> 60/Trusted;
-deleting resources moved 50 Trusted -> 40 Regular -> ... -> 0 Newcomer;
-uploader tier in the resource list payload; badges endpoint; bad id 400.
-Server 156/156 tests, typecheck clean; client typecheck/lint/build clean;
-not verified in a browser. Note: the dev DB's users were re-stamped with
-tiers by the backfill run. Thresholds are display-tuning constants — adjust
-in `tiers.ts` and re-run `POST admin/reputation/backfill`.
-
-### E8 — Mentor profile: availability & capacity
-**Effort:** 3
-**Where:** `user.schema.ts`, `update-user-profile.dto.ts`,
-`ProfileSettingsTab`, `ProfileHero`
-**Why:** `isOpenToMentor` is a bare boolean set once in onboarding and
-never editable meaningfully or shown. Mentors need to say what they help
-with and how much load they'll take.
-**Acceptance criteria:**
-- Add `mentorBio`, `mentorTopics` (subjects/courses), `maxActiveMentees`
-  (default 3) with validation; editable in settings; `isOpenToMentor`
-  toggle editable post-onboarding.
-- Profile hero shows an "Open to mentor" state with topics and remaining
-  capacity (capacity itself enforced in E10).
-- Text index / index on `isOpenToMentor` for E9 queries.
-
-**Status: DONE (2026-09-20).** User schema gains `mentorBio` (<=500),
-`mentorTopics` (string[]) and `maxActiveMentees` (default 3, 1-10), plus a
-`{ isOpenToMentor: 1, contributionScore: -1 }` index for E9's "open mentors,
-best first" query. `UpdateUserProfileDto` accepts `isOpenToMentor`,
-`mentorBio`, `mentorTopics` (max 10, each <=40 chars; normalized by a shared
-`normalizeTags` — trim, drop empties, case-insensitive de-dupe — through the
-global `transform: true` pipe) and `maxActiveMentees`; DTO tests cover the
-bounds and normalization. Client: a **Mentoring** section in Profile ->
-Settings (post-onboarding toggle for `isOpenToMentor`; bio, freeSolo topic
-chips, capacity select shown only while open) and a public
-`MentorProfileBlock` in the profile hero (own + public profiles): "Open to
-mentor" chip, bio, topic chips, "Takes up to N mentees". Verified live
-through the real ValidationPipe: defaults (closed / 3 / no topics), a valid
-patch with topic normalization (`['  DSA ','dsa','','OS']` -> `['DSA','OS']`),
-400 for capacity 11, 11 topics, a 501-char bio and an unknown field
-(`role` — and the stored profile stayed unchanged), public profile shows the
-mentor fields, toggling off works. Server 167 tests total green, typecheck
-clean; client typecheck/lint/build clean; not verified in a browser.
-**Deferred by design:** "remaining capacity" needs active mentorships, which
-don't exist until E10 — the hero shows the configured maximum now and E10
-switches it to remaining slots; capacity is not enforced here (E10, on
-accept). Turning mentoring on does not require topics (a mentor with none
-still appears, just without topics) — E9's directory can rank/label that.
-Separately discovered: the profile avatar picker's `PATCH users/profile
-{avatar}` returns 400 (avatar isn't in the DTO whitelist) — fixed in its own
-commit, not part of E8.
-
-### E9 — Mentor directory & discovery (replaces ContributorsPage)
-**Effort:** 5
-**Where:** `user` module (`GET users/mentors` with a query builder, following
-`build-user-query.ts`), `client/src/features/contributors/`
-**Why:** Today's page is a role list with a cold Message button and no way
-to find the *right* person.
-**Acceptance criteria:**
-- Endpoint returns only safe public fields (no email), filters:
-  search text, department, semester range, expertise/topic, open-to-mentor,
-  has-capacity; sort by score / recently active; paginated.
-- Page with filter bar, cards showing avatar, name, tier (E7), expertise
-  tags, department/semester, capacity, and primary CTA **Request mentorship**
-  (secondary: View profile). Email no longer displayed.
-- Empty/loading/error states; URL-synced filters.
-
-**Status: DONE (2026-09-20)** — with two deliberate deviations, below.
-Server: `GET users/mentors` (`UserService.findMentors`) — active accounts
-with `isOpenToMentor`, excluding the requester, filtered by `search`
-(name / mentoring topics / expertise — **never email**), `department`
-(exact, case-insensitive), `topic` (substring over topics + expertise),
-`semesterMin`/`semesterMax`, `sort` = `score` (default) | `active` (by
-`lastSeenAt`, which is used only to order and is not exposed), paginated
-with a stable `_id` tiebreaker. Response is an explicit `MentorSummaryDto`
-whitelist mapped from a field-projected query (`PaginationService.paginate`
-gained an optional `select`), so a future schema field can't leak by
-accident. All free text goes through `escapeRegex`. Client
-(`features/contributors/`, route unchanged): filter bar (debounced search
-and topic, department, semester range, sort) **synced to the URL** so it is
-shareable and survives refresh/back; responsive grid of `MentorCard`
-(avatar, name, tier, department/semester, bio, topic chips with "+n",
-"takes up to N mentees", reputation); infinite scroll; skeleton, empty
-(with "clear filters") and error+retry states. Nav label "Contributors" ->
-"Mentors", page "Find a mentor"; old `ContributorCard`/`ContributorGrid`
-(which showed the email) removed. **Verified live** (real HTTP, real Mongo):
-default open-only score-desc, closed mentors and the requester hidden,
-suspended accounts hidden, department/topic/semester-range/search filters,
-`sort=active` ordering, pagination, unauth 401, bad sort / semester 400,
-**search by an email fragment returns nothing, `search=.*` is matched
-literally (empty), and no `@` appears anywhere in the payload.** Server 190
-tests green, typecheck clean; client typecheck/lint/build clean; not
-verified in a browser.
-**Deviations from the AC:** (1) the primary CTA is **Message**, not
-"Request mentorship" — the request flow is E10; the card carries a comment
-and E10 swaps the button. (2) **No `has-capacity` filter** — capacity is
-"remaining slots", which needs active mentorships (E10); shipping it now
-would be a dead no-op. E10 adds it (and turns the card's "up to N" into
-"N slots left").
-**Found in passing (separate commits):** `?unreadOnly=true` on
-`GET notifications` always parsed as `false` (E4 latent bug — the global
-pipe's implicit conversion runs before the `@Transform`), fixed with a test
-through the production pipe; and `GET /users` (the endpoint the old page
-used) returned full user documents, emails included, to every authenticated
-user — locked to Admin in its own commit, since after this PBI only the
-admin table needs it.
-
-### E10 — Mentorship request lifecycle
-**Effort:** 8
-**Where:** new `server/src/modules/mentorship/` (schema, service,
-controller, events), client `features/mentorship/`; uses E4 notifications
-and chat's `findOrCreateConversation`
-**Why:** Turns "DM a stranger" into a structured relationship with consent
-and capacity control.
-**Acceptance criteria:**
-- `Mentorship` schema: `mentor`, `mentee`, `status`
-  (`pending|active|declined|cancelled|completed`), `topic`, `introMessage`,
-  timestamps; unique partial index prevents duplicate open requests per pair.
-- Endpoints: request, accept, decline, cancel, complete; state transitions
-  validated in one place (pure function, unit-tested); capacity
-  (`maxActiveMentees`) enforced atomically on accept; cannot request
-  yourself or a non-open mentor.
-- Accept auto-opens the conversation (with the intro message as first
-  message) and notifies the mentee; request/decline notify the counterpart.
-- UI: mentor inbox (pending requests, active mentees), mentee "My mentors"
-  with status; request dialog with topic + intro (min length).
-
-**Status: DONE (2026-09-20).** New `server/src/modules/mentorship/`.
-**State machine:** `mentorship.state.ts` — one table-driven pure function
-(`resolveTransition`) says who may do what from which status:
-pending -accept/decline(mentor)-> active/declined, pending -cancel(mentee)->
-cancelled, active -complete(either)-> completed. The service derives its
-atomic update filters from the SAME table, so "allowed" and "what the DB
-enforces" can't drift. **Schema:** `Mentorship` (mentor, mentee, status,
-topic 2-80, introMessage 20-500, declineReason, conversationId, timestamps);
-a **partial unique index on (mentor, mentee) over open statuses** (`$in`
-pending/active) stops duplicate open requests at the database, while finished
-ones never block a fresh request. **Rules:** no self-requests; the mentor must
-be open and active; advisory "no free slots" check at request time (the
-authoritative one is on accept); max 5 requests waiting per student (spam
-guard). **Capacity is atomic:** `UserService.reserveMenteeSlot` is a single
-conditional `updateOne` whose filter compares `activeMenteeCount` to
-`maxActiveMentees` with `$expr` *inside the write* (legacy docs without the
-fields default safely via `$ifNull`), so two concurrent accepts can never both
-take the last slot; the slot is released on complete or on any failed accept
-step (`releaseMenteeSlot` can't go below 0). **Accept** = reserve slot ->
-atomic claim -> open the DM (`findOrCreateConversation`) and post the mentee's
-intro as its first message with a deterministic `clientId`
-(`mentorship-intro-<id>`, so a retry can't duplicate it) -> mark it seen for
-the mentor (they read it in their inbox) -> emit; if opening the chat fails it
-rolls back to pending and frees the slot (same compensation pattern as E6).
-**Transitions are single atomic filtered updates**, so races resolve in
-Mongo; a failed claim is diagnosed into 404 (missing *or* not a party —
-indistinguishable on purpose, no probing) / 403 (wrong role) / 409 (wrong
-status). Endpoints: `POST mentorships`, `GET mentorships?as=mentor|mentee&status=a,b`,
-`GET mentorships/pending-count`, `PATCH :id/accept|decline|cancel|complete`;
-responses carry public-safe parties only (no email). **Notifications** (E4
-registry): requested -> mentor, accepted (links to the new chat) / declined
-(with reason) -> mentee, completed -> the party who did *not* end it;
-`mentorship.completed` is the hook E11 listens to. **E9 follow-ups done:**
-directory cards show `slotsLeft`, the primary CTA is now *Request mentorship*
-(state-aware: "Request sent" / "Open chat" / disabled "No free slots" / hidden
-on your own card), new `hasCapacity` filter + "Only mentors with a free slot"
-switch, and the profile block (E8) shows "N of M slots free". Client
-(`features/mentorship/`): request dialog (topic + intro with live length
-validation), `RequestMentorshipButton` (used on directory cards and the public
-profile), `MentorshipCard` (accept / decline-with-reason / cancel / complete /
-open chat), `MentorshipPage` at `/mentorship` (As mentor / My mentors tabs,
-Pending / Active / Past, slot usage, URL-synced), sidebar item with a pending
-badge, "My mentorships" link in the directory, and realtime refresh of lists /
-badges / slot counts / chat list from the notification socket. Failures toast
-via the app-wide MutationCache handler (no per-hook duplicate toasts).
-**Verified live** with real HTTP + sockets + Mongo: duplicate 409, self 400,
-short intro 400, non-open mentor 400; **two concurrent accepts against one slot
-=> exactly one 200 and one 409, counter = 1, the loser still pending**;
-intro message present from the mentee, mentor's unread = 0; request while full
-409; `hasCapacity` hides the full mentor; stranger 404, mentor cancel 403,
-mentee decline 403, re-accept 409; complete frees the slot (count 0) and the
-mentor reappears under `hasCapacity`; re-requesting after completion allowed;
-decline with reason notifies the mentee; final counter 0. **Live testing also
-exposed a pre-existing chat bug, fixed in its own commit (`bef0e0c`):**
-databases created before A9 still had the unique multikey `participants_1`
-index (Mongoose never alters an existing index), so any user's second
-conversation failed with E11000 — a mentor with one chat couldn't accept a
-second mentee. `ChatService.onModuleInit` now drops it idempotently.
-Server 249 tests green, typecheck clean; client typecheck/lint/build clean;
-not verified in a browser. **Known limits:** `activeMenteeCount` is a
-denormalized counter (like `contributionScore`) — a crash between the counter
-write and the status write could drift it; there is no repair job yet (a
-recompute from active mentorships would be a small follow-up). No cooldown
-after a decline (a student can re-request immediately, bounded by the
-5-waiting cap). Lowering `maxActiveMentees` below current mentees is allowed
-(no new accepts until they finish).
+Product vision (from the 2026-09-20 audit, still current): **find a
+resource -> trust its author -> ask them -> get helped -> author earns
+reputation -> more people contribute.** E1–E10 shipped the foundations
+(see Completed work). Remaining PBIs, in roadmap order: **E13, E14, E16**
+(Phase 4), then **E11, E12, E15** (Phase 5).
 
 ### E11 — Mentorship feedback & skill endorsements
 **Effort:** 5
@@ -1004,7 +378,7 @@ onboarding and never used — free signal for matching.
 - Graceful cold start when a student has no interests set.
 
 ---
-### Phase 4 — Integrating the features
+### Integration (roadmap Phase 4)
 
 ### E13 — Contextual chat: "Ask the contributor"
 **Effort:** 5
@@ -1055,7 +429,7 @@ retention lever for the supply side.
 - Follows the dataviz conventions already used in admin charts (Recharts).
 
 ---
-### Phase 5 — Safety
+### Safety (roadmap Phase 4)
 
 ### E16 — Block, report & chat moderation
 **Effort:** 5
@@ -1150,40 +524,3 @@ the user actually lands authenticated in the app.
   target.
 
 ---
-
-## Epic G — Remaining features hardening
-
-Goal: a repo-wide cleanup pass, same spirit as Epic A, once Epics C-F have
-landed and accumulated their own rough edges. The two items below are
-concrete things spotted in passing while scoping other epics this
-session — not a full audit. Re-run an Epic-A-style pass (types, lint, dead
-code, error-handling gaps) once C-F are further along, since more will
-turn up.
-
-### G1 — Remove leftover debug console.log calls in the streaming client
-**Effort:** 3
-**Where:** `client/src/features/ai-chat/services/ai-chat.service.ts`
-**Why:** Confirmed — `streamMessage`'s per-chunk yield and its catch
-block still have `console.log("[GENERATOR RESUMED]", ...)` /
-`console.log("[SERVICE CATCH]", ...)` left over from earlier
-abort-handling debugging (the race-condition fixes documented in
-`CLAUDE.md` §4's streaming-hooks note) — never removed once the fix
-landed.
-**Acceptance criteria:**
-- Both `console.log` calls removed (or converted to a real, guarded debug
-  log if genuinely still useful — your call, but don't leave ad hoc
-  prints in production code).
-- Streaming/abort behavior unaffected — this is a log-only cleanup.
-
-### G2 — Remove unused `theme/theme.ts`
-**Effort:** 3
-**Where:** `client/src/theme/theme.ts`
-**Why:** Confirmed — `useThemeMode.ts` builds the live theme via
-`createAppTheme` from `theme/index.ts`; `theme/theme.ts` exports a
-separate theme hardcoded to `getPalette('dark')` regardless of the
-active mode, and nothing appears to import it. Verify zero import sites
-before deleting (`grep -rn "from '@/theme/theme'"` or equivalent) —
-don't delete on the strength of this note alone.
-**Acceptance criteria:**
-- Confirmed zero imports of `theme/theme.ts`'s export.
-- File removed; `tsc -b`/`vite build` still clean.
