@@ -34,6 +34,11 @@ import { QueuesModule } from './modules/queues/queues.module';
               ? configService.get<string>('REDIS_UPSTASH_URL')
               : configService.get<string>('REDIS_LOCAL_URL'),
           },
+          // Namespaces queue keys so two environments on one Redis (local
+          // dev and the H1 demo seed) don't consume each other's jobs — a
+          // dev worker ingesting a demo resource would write it into the
+          // dev Qdrant collection. Default matches BullMQ's own ('bull').
+          prefix: configService.get<string>('BULL_PREFIX') || 'bull',
         };
       },
     }),
