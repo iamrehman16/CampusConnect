@@ -165,17 +165,25 @@ export class NotificationListener {
     type: T,
     payload: NotificationPayloads[T],
   ): Promise<void> {
+    let notification: Awaited<ReturnType<NotificationService['record']>>;
     try {
-      const notification = await this.notifications.record(
-        userId,
-        type,
-        payload,
-      );
-      this.gateway.push(userId, notification);
+      notification = await this.notifications.record(userId, type, payload);
     } catch (err) {
       this.logger.error(
         `Failed to create ${type} notification for user ${userId}`,
         err instanceof Error ? err.stack : String(err),
+      );
+      return;
+    }
+
+    // Separate from the write above: the notification is already stored and
+    // will show on the next fetch, so a failed realtime push must not be
+    // reported as a failed notification.
+    try {
+      this.gateway.push(userId, notification);
+    } catch (err) {
+      this.logger.warn(
+        `Stored ${type} notification for user ${userId} but realtime push failed: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   }

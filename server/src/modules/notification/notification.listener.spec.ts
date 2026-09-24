@@ -74,6 +74,34 @@ describe('NotificationListener', () => {
     expect(gateway.push).not.toHaveBeenCalled();
   });
 
+  it('reports a failed realtime push as a push failure, not a failed notification', async () => {
+    const { listener, notifications, gateway } = build();
+    gateway.push.mockImplementation(() => {
+      throw new TypeError("Cannot read properties of undefined (reading 'to')");
+    });
+    const logger = (
+      listener as unknown as { logger: { error: jest.Mock; warn: jest.Mock } }
+    ).logger;
+    const error = jest
+      .spyOn(logger, 'error')
+      .mockImplementation(() => undefined);
+    const warn = jest.spyOn(logger, 'warn').mockImplementation(() => undefined);
+
+    await expect(
+      listener.onResourceApproved({
+        resourceId: 'r1',
+        title: 'Notes',
+        uploaderId: 'u1',
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(notifications.record).toHaveBeenCalled();
+    expect(error).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('realtime push failed'),
+    );
+  });
+
   it('clears the grouped message notification and pushes the new unread total when a conversation is read', async () => {
     const { listener, notifications, gateway } = build();
 
