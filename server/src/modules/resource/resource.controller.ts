@@ -70,8 +70,15 @@ export class ResourceController {
   getResourcesByUser(
     @Query() query: ResourceQueryDto,
     @Param('id') id: string,
+    @Req() req: { user: CurrentUser },
   ) {
     query.uploadedBy = id;
+    // Pending/rejected uploads (and rejection reasons) are visible only to
+    // their uploader and admins; everyone else sees approved ones, same as
+    // the public list. `status` used to pass straight through.
+    const canSeeUnapproved =
+      req.user.id === id || req.user.role === Roles.ADMIN;
+    if (!canSeeUnapproved) query.status = ApprovalStatus.APPROVED;
     return this.resourceService.findAll(query);
   }
 
