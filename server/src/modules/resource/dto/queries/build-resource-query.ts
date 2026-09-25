@@ -7,10 +7,15 @@ import { escapeRegex } from '../../../../common/utils/escape-regex';
 
 export class ResourceQueryBuilder implements IQueryBuilder<ResourceQueryDto> {
   build(dto: ResourceQueryDto): QueryFilter<ResourceDocument> {
-    const query: QueryFilter<ResourceDocument> = {
-      isDeleted: false,
-      approvalStatus: dto.status || ApprovalStatus.APPROVED,
-    };
+    const query: QueryFilter<ResourceDocument> = { isDeleted: false };
+
+    // Default to approved for general listings. A per-uploader listing
+    // with no explicit status means "all of this uploader's resources" —
+    // otherwise "My uploads" could never show pending/rejected items.
+    // Controllers that serve other users' lists force status=APPROVED.
+    const status =
+      dto.status ?? (dto.uploadedBy ? undefined : ApprovalStatus.APPROVED);
+    if (status) query.approvalStatus = status;
 
     if (dto.uploadedBy) {
       query.uploadedBy = dto.uploadedBy;
