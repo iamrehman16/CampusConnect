@@ -29,7 +29,7 @@ Work top to bottom:
 |---|-------|------|----------------|
 | 0 | Quick fixes & resilience | G1–G4 ✅ | Cheap, unblocks a stable dev/demo env |
 | 1 | Demo data | H1 ✅ | Redesigning against 4 resources and 1 mentor gives misleading screens |
-| 2 | Design foundation | D4, D5 (+D3 folded in) | Tokens + app shell every page redesign builds on |
+| 2 | Design foundation | D4, D5 (+D3 folded in) ✅ | Tokens + app shell every page redesign builds on |
 | 3 | Page redesigns | D6–D10 | In demo-walkthrough order |
 | 4 | Integration features | E13, E14, E16 | The "resource → AI → human" story; safety before any public use |
 | 5 | Mentorship depth | E11, E12, E15 | Builds on E10 + reputation |
@@ -206,7 +206,7 @@ and errors that say what happened and offer a retry.
 
 ---
 
-## Epic D — Design system & UI overhaul (Phases 2–3) — NEXT: D4
+## Epic D — Design system & UI overhaul (Phases 2–3) — D4/D5 DONE, NEXT: D6
 
 ### Audit (2026-09-24, screenshots of every page, desktop + mobile, light)
 
@@ -293,6 +293,13 @@ flavored) after a direct question in this session.
 - `@mui/icons-material` removed from `package.json` once zero usages
   remain (don't leave a dead dependency installed "just in case").
 
+**D4 status: DONE (2026-09-25).** Tokens in `theme/palette.ts` + typed
+augmentation `theme/theme.d.ts` (`palette.surface/border`, `text.tertiary`,
+`<color>.subtle`, `theme.radius`); flat overrides in `theme/components.ts`;
+`shape.borderRadius` 12→6. Icons: `shared/icons` adapter keeps MUI names and
+props over Lucide; `@mui/icons-material` removed. Deferred to the page PBIs:
+the per-resource-type rainbow colour map (D7), admin chart palette.
+
 ### D5 — App shell & information architecture
 **Effort:** 8
 **Where:** `client/src/shared/components/layout/*`, `app/router.tsx`,
@@ -311,6 +318,17 @@ the first impression more than any single page.
 - Collapsible sidebar kept; mobile bottom nav badges (messages, requests).
 - Page container component with consistent max-width, padding and header
   pattern (title, subtitle, actions) used by all pages.
+
+**D5 status: DONE (2026-09-25).** Community decision: 6th sidebar item on
+desktop; on mobile via Home and the account drawer (bottom bar stays at 5).
+Settings = `/profile?tab=settings` (no separate page yet). Global search
+routes into the Library (`?q=`); it is not yet a cross-entity search.
+Also fixed on the way: avatar keys never resolved outside onboarding
+(shared `UserAvatar`); post/comment/resource payloads leaked author emails
+(now `_id,name,avatar`; ownership by id); student 403 toasts from
+`/resources/my`.
+Known leftovers for later PBIs: Messages list sits on the right of an
+empty pane (D8); Home still shows platform stats (D6).
 
 ### D6 — Home (personal dashboard)
 **Effort:** 5
