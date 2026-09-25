@@ -16,7 +16,6 @@ import type {
 } from "../types/resource.dto";
 import { PAGE_LIMIT } from "@/shared/types/api.types";
 import toast from "react-hot-toast";
-import { ApprovalStatus, ResourceSort } from "@/shared/types/enums";
 
 // ─── Queries ──────────────────────────────────────────────────────────────────
 
@@ -37,23 +36,6 @@ export const useResources = (
     initialPageParam: 1 as number,
     getNextPageParam: (lastPage) =>
       lastPage.page < lastPage.totalPage ? lastPage.page + 1 : undefined,
-  });
-
-export const useTrendingResources = () =>
-  useQuery({
-    queryKey: resourceKeys.list({
-      sort: ResourceSort.POPULAR,
-      limit: 6,
-      status: ApprovalStatus.APPROVED,
-    }),
-    queryFn: () =>
-      resourceService.getResources({
-        sort: ResourceSort.POPULAR,
-        limit: 6,
-        page: 1,
-        status: ApprovalStatus.APPROVED,
-      }),
-    staleTime: 1000 * 60 * 5,
   });
 
 /**

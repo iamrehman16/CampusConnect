@@ -1,98 +1,92 @@
-import { useState, type KeyboardEvent } from "react";
-import {
-  Box,
-  Card,
-  Typography,
-  InputBase,
-  Stack,
-  IconButton,
-} from "@mui/material";
-import { AutoAwesome as AutoAwesomeIcon, ArrowForward as ArrowForwardIcon } from "@/shared/icons";
+import { useState, type FormEvent } from "react";
+import { Box, Card, Chip, IconButton, InputBase, Stack, Typography } from "@mui/material";
+import { AutoAwesome, ArrowForward } from "@/shared/icons";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/shared/constants/routes";
 
+// Grounded in the library's actual content, so a first-time user's first
+// question gets a cited answer rather than "I couldn't find that".
+const SUGGESTIONS = [
+  "Explain normalization up to BCNF",
+  "How does TCP slow start work?",
+  "Walk me through the Banker's algorithm",
+];
+
+/** Home's primary action: ask the AI assistant, or pick a suggestion. */
 export function AiAssistantCTA() {
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState("");
 
-  const handleSend = () => {
-    const trimmed = prompt.trim();
-    navigate(ROUTES.AI_CHAT, {
-      state: trimmed ? { initialPrompt: trimmed } : undefined,
-    });
+  const ask = (text: string) => {
+    const trimmed = text.trim();
+    navigate(ROUTES.AI_CHAT, { state: trimmed ? { initialPrompt: trimmed } : undefined });
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    ask(prompt);
   };
 
   return (
-    <Card variant="outlined" sx={{ p: { xs: 2, sm: 2.5 } }}>
-      {/* ── Header ── */}
-      <Stack direction="row" alignItems="center" gap={1} mb={1.5}>
-        <AutoAwesomeIcon sx={{ fontSize: 18, color: "primary.light" }} />
-        <Typography variant="subtitle2" fontWeight={700} color="primary.light">
-          CampusConnect AI
+    <Card sx={{ p: { xs: 2, sm: 2.5 } }}>
+      <Stack direction="row" alignItems="center" gap={1} mb={0.5}>
+        <AutoAwesome sx={{ fontSize: 18, color: "primary.main" }} />
+        <Typography variant="subtitle1" fontWeight={600}>
+          Ask the study assistant
         </Typography>
       </Stack>
-
-      <Typography
-        variant="body2"
-        color="text.secondary"
-        mb={2}
-        sx={{ maxWidth: 480 }}
-      >
-        Ask anything about your coursework, get study help, or search across all
-        campus resources — powered by AI.
+      <Typography variant="body2" color="text.secondary" mb={2}>
+        Answers come from notes and past papers shared on CampusConnect, with
+        links to the source.
       </Typography>
 
-      {/* ── Real input bar ── */}
       <Box
+        component="form"
+        onSubmit={submit}
         sx={{
           display: "flex",
           alignItems: "center",
           gap: 1,
-          px: 1.5,
-          py: 0.75,
-          borderRadius: 2,
+          pl: 1.75,
+          pr: 0.75,
+          height: 48,
+          borderRadius: 1,
           border: "1px solid",
-          borderColor: "divider",
-          bgcolor: "action.hover",
-          transition: "border-color 0.15s ease",
+          borderColor: "border.default",
+          bgcolor: "surface.card",
+          transition: (t) => t.transitions.create(["border-color", "box-shadow"]),
           "&:focus-within": {
             borderColor: "primary.main",
+            boxShadow: (t) => `0 0 0 3px ${t.palette.primary.subtle}`,
           },
         }}
       >
         <InputBase
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Ask AI anything about your coursework..."
+          placeholder="Ask about any course topic…"
           fullWidth
-          sx={{
-            fontSize: "0.875rem",
-            color: "text.primary",
-            "& input::placeholder": { color: "text.disabled" },
-          }}
+          inputProps={{ "aria-label": "Ask the study assistant" }}
+          sx={{ fontSize: "0.9375rem" }}
         />
         <IconButton
-          size="small"
-          onClick={handleSend}
+          type="submit"
+          aria-label="Ask"
           sx={{
-            color: "primary.main",
-            flexShrink: 0,
-            p: 0.5,
-            "&:hover": { bgcolor: "primary.dark", color: "primary.light" },
+            bgcolor: "primary.main",
+            color: "primary.contrastText",
+            "&:hover": { bgcolor: "primary.dark", color: "primary.contrastText" },
           }}
-          aria-label="Send prompt to AI"
         >
-          <ArrowForwardIcon fontSize="small" />
+          <ArrowForward fontSize="small" />
         </IconButton>
       </Box>
+
+      <Stack direction="row" gap={1} flexWrap="wrap" mt={1.5}>
+        {SUGGESTIONS.map((s) => (
+          <Chip key={s} label={s} variant="outlined" onClick={() => ask(s)} />
+        ))}
+      </Stack>
     </Card>
   );
 }
