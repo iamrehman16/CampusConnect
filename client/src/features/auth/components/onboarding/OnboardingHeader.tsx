@@ -1,4 +1,4 @@
-import { Box, Typography, useTheme } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import { STEPS } from "./onboarding.constants";
 
 interface OnboardingHeaderProps {
@@ -6,19 +6,14 @@ interface OnboardingHeaderProps {
 }
 
 export function OnboardingHeader({ activeStep }: OnboardingHeaderProps) {
-  const theme = useTheme();
 
   return (
     <Box sx={{ mb: 4, textAlign: "center" }}>
       <Typography
         variant="h6"
         fontWeight={800}
-        sx={{
-          background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          mb: 0.5,
-        }}
+        color="primary.main"
+        sx={{ mb: 0.5 }}
       >
         CampusConnect
       </Typography>

@@ -11,9 +11,13 @@ export const createAppTheme = (mode: PaletteMode) => {
       ...getPalette(mode),
     },
     typography: getTypography(),
+    // BACKLOG.md D4 — `sx={{ borderRadius: n }}` multiplies this base. It
+    // was 12, which turned the common `borderRadius: 3` into 36px pills;
+    // at 6 the existing 1/2/3 values land on the sm/md/lg scale below.
     shape: {
-      borderRadius: 12,
+      borderRadius: 6,
     },
+    radius: { sm: 6, md: 10, lg: 14, full: 9999 },
     components: componentOverrides,
   });
 

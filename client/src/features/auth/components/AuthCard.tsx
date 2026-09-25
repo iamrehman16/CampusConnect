@@ -4,7 +4,6 @@ import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
-import { useTheme } from '@mui/material/styles';
 import LoginForm from '../components/LoginForm';
 import RegisterForm from '../components/RegisterForm';
 
@@ -13,7 +12,6 @@ interface AuthCardProps {
 }
 
 export default function AuthCard({ defaultTab = 0 }: AuthCardProps) {
-  const theme = useTheme();
   const [activeTab, setActiveTab] = useState(defaultTab);
 
   const handleRegisterSuccess = () => setActiveTab(0);
@@ -26,7 +24,7 @@ export default function AuthCard({ defaultTab = 0 }: AuthCardProps) {
         border: '1px solid',
         borderColor: 'divider',
         borderRadius: 3,
-        boxShadow: theme.shadows[8],
+        boxShadow: 'none',
       }}
     >
       <CardContent sx={{ p: { xs: 3, sm: 4 } }}>

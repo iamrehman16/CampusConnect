@@ -1,131 +1,167 @@
-import type { PaletteMode } from "@mui/material";
+import type { PaletteMode, PaletteOptions } from "@mui/material";
 
-// BACKLOG.md D1 — light and dark used to be the same primary (#6C63FF) at
-// two lightness values, which reads as an auto-inverted default rather than
-// a considered brand. Two distinct moods instead, each with its own hue
-// pairing (not just the other's colors darkened/lightened):
+// BACKLOG.md D4 — "warm neutral". Replaces the D1 cream "paper & ink" mood,
+// whose canvas, sidebar and cards were near-identical beiges, so nothing
+// separated layers. Now: terracotta is the one brand accent, used sparingly
+// (primary actions, active nav, focus); everything else is warm-grey
+// neutrals with a clear surface stack:
 //
-// Light ("paper & ink") — warm clay/terracotta primary on a warm cream
-// paper, cooled by a deep forest-teal secondary. Reads academic: ink on a
-// page, a highlighter accent, not a SaaS-purple template. Backgrounds are
-// deliberately matte (`#EFE8DA`/`#F7F2E7`), not near-white — an earlier
-// pass at `#F6F1E9`/`#FFFCF7` had a near-pure-white paper that read as
-// glare on screen. Primary darkened one step alongside (`#B5541F` ->
-// `#A44C1B`) to keep text-colored-primary contrast above 4.5:1 on the
-// now-darker paper.
+//   canvas (background.default) < card (background.paper) ; subtle = hover/
+//   inset fill ; overlay = menus/dialogs (the only layer with a shadow).
 //
-// Dark ("midnight desk") — matte warm-charcoal (not blue-slate — a first
-// pass left `background`/`text.secondary`/`divider` at their old near-navy
-// hue (~226°, ~20% saturation) even though primary/secondary changed, so
-// the app still read as generically "navy" everywhere; those three are now
-// warm-neutral (~25-45° hue, <10% saturation)). Primary is deliberately
-// the *same* clay/terracotta hue family as light mode, just brightened and
-// switched to a dark contrastText, rather than swapping to a colder hue
-// for dark mode — a direct steer to keep one consistent signature brand
-// color across modes (the way Claude's own UI does), which we'd
-// originally read the opposite way in the first D1 pass (hence `#5266D6`
-// indigo below in git history). Secondary keeps its own amber "desk lamp"
-// hue as a second, harmonizing warm accent (same warm family, ~10°
-// hue-shift from primary — twin accents, not a clash).
-export const getPalette = (mode: PaletteMode) =>
+// Borders carry the structure (flat UI), in three strengths. Error is a
+// crimson, deliberately far from the terracotta brand hue so a destructive
+// state never reads as "brand".
+//
+// Contrast (WCAG relative luminance, computed, not eyeballed) — light:
+// text 17.5:1, secondary 7.6:1, tertiary 5.3:1 on card / 4.8:1 on canvas,
+// accent 5.0:1 on card and white-on-accent 5.0:1, semantic colours >= 4.9:1.
+// Dark: text 14.6:1, secondary 7.8:1, tertiary 4.8:1, accent 6.8:1,
+// dark-on-accent 7.4:1, semantic colours >= 6.4:1.
+
+export const getPalette = (mode: PaletteMode): PaletteOptions =>
   mode === "dark"
     ? {
         primary: {
-          main: "#D98A5C",
-          light: "#E8B08C",
-          dark: "#A44C1B",
-          contrastText: "#1A1206",
+          main: "#E38D5D",
+          light: "#EDA67D",
+          dark: "#C9713F",
+          contrastText: "#1A0F08",
+          subtle: "rgba(227, 141, 93, 0.14)",
         },
         secondary: {
-          main: "#F0A857",
-          light: "#F5C388",
-          dark: "#C2823D",
-          contrastText: "#1A1206",
+          main: "#B3AEA7",
+          light: "#CFCBC5",
+          dark: "#8C8781",
+          contrastText: "#141312",
+          subtle: "rgba(179, 174, 167, 0.12)",
         },
         error: {
-          main: "#FF6B6B",
-          light: "#FF9B9B",
-          dark: "#CC5555",
+          main: "#F07A85",
+          light: "#F5A0A8",
+          dark: "#D9505E",
+          contrastText: "#1A0A0C",
+          subtle: "rgba(240, 122, 133, 0.14)",
         },
         warning: {
-          main: "#D6A62A",
-          light: "#E8C468",
-          dark: "#A87F1E",
+          main: "#E0A948",
+          light: "#EAC27A",
+          dark: "#C38B2A",
           contrastText: "#1A1206",
+          subtle: "rgba(224, 169, 72, 0.14)",
         },
         success: {
-          main: "#4ECB8E",
-          light: "#7DD9AC",
-          dark: "#3EA271",
+          main: "#5BBF8A",
+          light: "#86D2A9",
+          dark: "#3F9E6C",
+          contrastText: "#07170E",
+          subtle: "rgba(91, 191, 138, 0.14)",
         },
         info: {
-          main: "#54A0FF",
-          light: "#82BAFF",
-          dark: "#4380CC",
+          main: "#79A8E8",
+          light: "#A1C1EF",
+          dark: "#5285CC",
+          contrastText: "#07111F",
+          subtle: "rgba(121, 168, 232, 0.14)",
         },
         background: {
-          default: "#181614",
-          paper: "#211E1C",
+          default: "#141312",
+          paper: "#1C1B19",
+        },
+        surface: {
+          canvas: "#141312",
+          card: "#1C1B19",
+          subtle: "#242220",
+          overlay: "#232120",
         },
         text: {
-          primary: "#F2F0EA",
-          secondary: "#ABA9A3",
-          disabled: "#726F67",
+          primary: "#EEECE8",
+          secondary: "#B3AEA7",
+          tertiary: "#8C8781",
+          disabled: "#5E5A55",
         },
-        divider: "rgba(171, 169, 163, 0.14)",
+        border: {
+          subtle: "#262422",
+          default: "#34312E",
+          strong: "#48443F",
+        },
+        divider: "#2C2A27",
         action: {
-          hover: "rgba(217, 138, 92, 0.08)",
-          selected: "rgba(217, 138, 92, 0.16)",
-          focus: "rgba(217, 138, 92, 0.12)",
+          hover: "rgba(238, 236, 232, 0.06)",
+          selected: "rgba(227, 141, 93, 0.14)",
+          focus: "rgba(227, 141, 93, 0.24)",
         },
       }
     : {
         primary: {
-          main: "#A44C1B",
-          light: "#D98A5C",
-          dark: "#7A3712",
+          main: "#B4531F",
+          light: "#CC7447",
+          dark: "#9A4418",
           contrastText: "#FFFFFF",
+          subtle: "#FBEFE7",
         },
+        // Secondary is a neutral, not a second brand colour: the old
+        // forest-teal competed with the accent on every screen.
         secondary: {
-          main: "#2F6F62",
-          light: "#5C9C8D",
-          dark: "#1D4A40",
+          main: "#57534E",
+          light: "#78716C",
+          dark: "#3F3B37",
           contrastText: "#FFFFFF",
+          subtle: "#F0EEEA",
         },
         error: {
-          main: "#B33951",
-          light: "#CC6B82",
-          dark: "#832639",
+          main: "#C0303F",
+          light: "#D65A67",
+          dark: "#9C2331",
+          contrastText: "#FFFFFF",
+          subtle: "#FCECEE",
         },
         warning: {
-          main: "#C98A1F",
-          light: "#DFAE5C",
-          dark: "#8F6314",
-          contrastText: "#2A2420",
+          main: "#9A6512",
+          light: "#C28A2E",
+          dark: "#7A4F0C",
+          contrastText: "#FFFFFF",
+          subtle: "#FBF3E4",
         },
         success: {
-          main: "#3F7D5C",
-          light: "#6FA688",
-          dark: "#2B5940",
+          main: "#2F7D57",
+          light: "#4E9A74",
+          dark: "#236243",
+          contrastText: "#FFFFFF",
+          subtle: "#E9F5EE",
         },
         info: {
-          main: "#3B7A9E",
-          light: "#69A2C2",
-          dark: "#295A78",
+          main: "#2F63A8",
+          light: "#5584C2",
+          dark: "#234C83",
+          contrastText: "#FFFFFF",
+          subtle: "#EAF1FA",
         },
         background: {
-          default: "#EFE8DA",
-          paper: "#F7F2E7",
+          default: "#F5F4F1",
+          paper: "#FFFFFF",
+        },
+        surface: {
+          canvas: "#F5F4F1",
+          card: "#FFFFFF",
+          subtle: "#F0EEEA",
+          overlay: "#FFFFFF",
         },
         text: {
-          primary: "#2A2420",
-          secondary: "#6B6259",
-          disabled: "#9C9284",
+          primary: "#1C1917",
+          secondary: "#57534E",
+          tertiary: "#716A64",
+          disabled: "#A8A29E",
         },
-        divider: "rgba(42, 36, 32, 0.13)",
+        border: {
+          subtle: "#EEECE8",
+          default: "#E2DFDA",
+          strong: "#CFCAC3",
+        },
+        divider: "#E8E5E0",
         action: {
-          hover: "rgba(164, 76, 27, 0.06)",
-          selected: "rgba(164, 76, 27, 0.12)",
-          focus: "rgba(164, 76, 27, 0.10)",
+          hover: "rgba(28, 25, 23, 0.04)",
+          selected: "rgba(180, 83, 31, 0.08)",
+          focus: "rgba(180, 83, 31, 0.16)",
         },
       };

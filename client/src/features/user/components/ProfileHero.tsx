@@ -148,7 +148,6 @@ const ProfileHero: React.FC<ProfileHeroProps> = ({
                     bgcolor: 'background.paper',
                     border: '1px solid',
                     borderColor: 'divider',
-                    boxShadow: 1,
                     '&:hover': {
                       bgcolor: 'background.paper',
                     },

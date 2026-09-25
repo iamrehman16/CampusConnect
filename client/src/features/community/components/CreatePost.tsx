@@ -36,8 +36,8 @@ export function CreatePost() {
         position: 'sticky',
         top: 0,
         zIndex: 10,
-        boxShadow: (theme) => theme.shadows[expanded ? 4 : 1],
-        transition: 'all 0.3s ease',
+        borderColor: expanded ? 'border.strong' : 'border.default',
+        transition: 'border-color 0.2s ease',
       }}
     >
       <form onSubmit={handleSubmit}>
