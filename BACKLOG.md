@@ -30,7 +30,7 @@ Work top to bottom:
 | 0 | Quick fixes & resilience | G1–G4 ✅ | Cheap, unblocks a stable dev/demo env |
 | 1 | Demo data | H1 ✅ | Redesigning against 4 resources and 1 mentor gives misleading screens |
 | 2 | Design foundation | D4, D5 (+D3 folded in) ✅ | Tokens + app shell every page redesign builds on |
-| 3 | Page redesigns | D6–D10 | In demo-walkthrough order |
+| 3 | Page redesigns | D6–D10 (D6, D7 ✅) | In demo-walkthrough order |
 | 4 | Integration features | E13, E14, E16 | The "resource → AI → human" story; safety before any public use |
 | 5 | Mentorship depth | E11, E12, E15 | Builds on E10 + reputation |
 | 6 | Google sign-in | F1–F3 | Independent; can slot in anywhere if needed |
@@ -206,7 +206,7 @@ and errors that say what happened and offer a retry.
 
 ---
 
-## Epic D — Design system & UI overhaul (Phases 2–3) — D4/D5 DONE, NEXT: D6
+## Epic D — Design system & UI overhaul (Phases 2–3) — D4–D7 DONE, NEXT: D8
 
 ### Audit (2026-09-24, screenshots of every page, desktop + mobile, light)
 
@@ -350,6 +350,20 @@ empty pane (D8); Home still shows platform stats (D6).
   filter chips + clear; list/grid toggle; sensible empty/no-results.
 - Resource detail: preview, author card (links to profile; hooks for E13
   "Ask the author"), related resources, "Ask AI about this" entry.
+
+**D6 status: DONE (2026-09-25).** Home = greeting (dept · semester), Ask
+card with grounded suggestions, recent AI threads, popular-for-your-semester
+list, mentors / messages / community widgets. Platform stats removed from
+the client (server endpoints kept).
+
+**D7 status: DONE (2026-09-25).** New server: `course` filter + `GET
+/resources/courses` facets. Library: filter bar with course autocomplete,
+active chips, grid/list toggle, empty/no-results/error states. Detail:
+page-1 preview (Cloudinary `pg_1`), Download + Ask-AI actions, author card,
+related-by-course. Security/bug fixes found on the way:
+`/resources/user/:id?status=Pending` leaked other users' unapproved
+uploads (fixed, tested); uploaders could never list their own
+pending/rejected items (builder defaulted to APPROVED).
 
 ### D8 — Ask AI + Messages
 **Effort:** 5
