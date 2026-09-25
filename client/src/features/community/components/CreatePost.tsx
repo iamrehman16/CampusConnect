@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Box, Card, TextField, Button, Avatar, Stack } from '@mui/material';
+import { Box, Card, TextField, Button, Stack } from '@mui/material';
 import { useCreatePost } from '../hooks/community.hooks';
 import { useAuth } from '@/shared/hooks/useAuth';
+import UserAvatar from "@/shared/components/UserAvatar";
 
 export function CreatePost() {
   const { user } = useAuth();
@@ -42,9 +43,7 @@ export function CreatePost() {
     >
       <form onSubmit={handleSubmit}>
         <Stack direction="row" spacing={2} alignItems="flex-start">
-          <Avatar sx={{ bgcolor: 'primary.main' }}>
-            {user.name?.[0]?.toUpperCase() || 'U'}
-          </Avatar>
+          <UserAvatar name={user.name} avatar={user.avatar} size={40} />
           <Box sx={{ flexGrow: 1 }}>
             {expanded && (
               <TextField

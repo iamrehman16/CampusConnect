@@ -4,7 +4,6 @@ import {
   CardHeader,
   CardContent,
   CardActions,
-  Avatar,
   Typography,
   IconButton,
   Menu,
@@ -12,7 +11,7 @@ import {
   TextField,
   Button,
   Stack,
-  Collapse
+  Collapse,
 } from '@mui/material';
 import { MoreVert as MoreVertIcon, ThumbUp as ThumbUpIcon, ThumbUpOutlined as ThumbUpOutlinedIcon, ChatBubbleOutline as ChatBubbleOutlineIcon } from "@/shared/icons";
 import type { Post } from '../types/community.dto';
@@ -20,6 +19,7 @@ import { useAuth } from '@/shared/hooks/useAuth';
 import { formatRelativeTime } from '@/shared/utils/format';
 import { canEditPost } from '../utils/permissions';
 import { useUpdatePost, useDeletePost, useToggleUpvote } from '../hooks/community.hooks';
+import UserAvatar from "@/shared/components/UserAvatar";
 import { CommentSection } from './CommentSection';
 
 interface PostCardProps {
@@ -68,9 +68,7 @@ export function PostCard({ post }: PostCardProps) {
     <Card sx={{ mb: 1.5, elevation: 0, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper', '&:hover': { borderColor: 'primary.light' } }}>
       <CardHeader
         avatar={
-          <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36 }}>
-            {post.author.name?.[0]?.toUpperCase() || 'U'}
-          </Avatar>
+          <UserAvatar name={post.author.name} avatar={post.author.avatar} size={36} />
         }
         action={
           hasEditPermission ? (

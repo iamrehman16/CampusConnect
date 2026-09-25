@@ -1,7 +1,8 @@
-import { Avatar, Badge, Box, ListItemButton, Typography } from "@mui/material";
+import { Badge, Box, ListItemButton, Typography } from "@mui/material";
 import type { Conversation } from "../types/chat-dto";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/shared/hooks/useAuth";
+import UserAvatar from "@/shared/components/UserAvatar";
 
 interface Props {
   conversation: Conversation;
@@ -37,12 +38,12 @@ export function ConversationListItem({
         },
       }}
     >
-      <Avatar
-        src={otherParticipant?.avatar || undefined}
-        sx={{ width: 40, height: 40, flexShrink: 0, mt: 0.25, bgcolor: "primary.main" }}
-      >
-        {displayName.charAt(0).toUpperCase()}
-      </Avatar>
+      <UserAvatar
+        name={displayName}
+        avatar={otherParticipant?.avatar}
+        size={40}
+        sx={{ flexShrink: 0, mt: 0.25 }}
+      />
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Box
           sx={{ display: "flex", justifyContent: "space-between", mb: 0.25 }}

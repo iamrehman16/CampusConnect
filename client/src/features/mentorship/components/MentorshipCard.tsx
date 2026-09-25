@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Avatar,
   Box,
   Button,
   Card,
@@ -29,6 +28,7 @@ import {
   type MentorshipStatus,
   type MentorshipView,
 } from "../types/mentorship.dto";
+import UserAvatar from "@/shared/components/UserAvatar";
 
 const STATUS_CHIP: Record<
   MentorshipStatus,
@@ -91,15 +91,16 @@ export function MentorshipCard({ mentorship, view }: Props) {
     <Card variant="outlined" sx={{ p: 2 }}>
       <Stack spacing={1.5}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Avatar
-            src={other.avatar || undefined}
-            sx={{ cursor: "pointer" }}
+          <Box
+            component="button"
             onClick={() =>
               navigate(ROUTES.PUBLIC_PROFILE.replace(":userId", other.id))
             }
+            sx={{ p: 0, border: 0, bgcolor: "transparent", cursor: "pointer", borderRadius: "50%" }}
+            aria-label={`View ${other.name}'s profile`}
           >
-            {other.name.charAt(0).toUpperCase()}
-          </Avatar>
+            <UserAvatar name={other.name} avatar={other.avatar} size={40} />
+          </Box>
           <Box sx={{ minWidth: 0, flex: 1 }}>
             <Stack direction="row" alignItems="center" gap={0.75} flexWrap="wrap">
               <Typography variant="subtitle2" fontWeight={700} noWrap>

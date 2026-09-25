@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Box, TextField, Button, Avatar, Stack } from '@mui/material';
+import { Box, TextField, Button, Stack } from '@mui/material';
 import { useCreateComment, useComments } from '../hooks/community.hooks';
 import { useAuth } from '@/shared/hooks/useAuth';
+import UserAvatar from "@/shared/components/UserAvatar";
 import { CommentCard } from './CommentCard';
 
 interface CommentSectionProps {
@@ -40,9 +41,7 @@ export function CommentSection({ postId }: CommentSectionProps) {
       {user && (
         <form onSubmit={handleSubmit}>
           <Stack direction="row" spacing={2} sx={{ mb: 2, mt: 2 }} alignItems="flex-start">
-            <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
-              {user.name?.[0]?.toUpperCase() || 'U'}
-            </Avatar>
+            <UserAvatar name={user.name} avatar={user.avatar} size={32} />
             <Box sx={{ flexGrow: 1 }}>
               <TextField
                 fullWidth

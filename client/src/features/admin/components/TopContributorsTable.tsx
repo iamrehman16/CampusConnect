@@ -1,8 +1,8 @@
 // features/admin/components/TopContributorsTable.tsx
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import Avatar from '@mui/material/Avatar';
 import type { TopContributor } from '../types/admin.dto';
+import UserAvatar from "@/shared/components/UserAvatar";
 
 interface Props { data: TopContributor[] }
 
@@ -27,9 +27,7 @@ export default function TopContributorsTable({ data }: Props) {
           <Typography sx={{ width: 24, textAlign: 'center', fontSize: 16 }}>
             {MEDAL[i] ?? `#${i + 1}`}
           </Typography>
-          <Avatar sx={{ width: 32, height: 32, fontSize: 13, bgcolor: 'primary.main' }}>
-            {c.name.charAt(0).toUpperCase()}
-          </Avatar>
+          <UserAvatar name={c.name} avatar={c.avatar} size={32} />
           <Typography variant="body2" sx={{ flex: 1, fontWeight: i === 0 ? 600 : 400 }}>
             {c.name}
           </Typography>

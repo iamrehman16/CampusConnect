@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  Avatar,
   Box,
   Card,
   CardContent,
@@ -21,6 +20,7 @@ import type {
   ProfileStats,
   ProfileUserViewModel,
 } from "../types/profile.types";
+import UserAvatar from "@/shared/components/UserAvatar";
 
 interface ProfileHeroProps {
   user: ProfileUserViewModel | null;
@@ -112,21 +112,12 @@ const ProfileHero: React.FC<ProfileHeroProps> = ({
             <Skeleton variant="circular" width={64} height={64} />
           ) : (
             <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-              <Avatar
-                src={user?.avatar ?? undefined}
-                alt={user?.name}
-                sx={{
-                  width: { xs: 72, sm: 72 },
-                  height: { xs: 72, sm: 72 },
-                  fontSize: { xs: '1.75rem', sm: '1.75rem' },
-                  fontWeight: 700,
-                  bgcolor: 'primary.main',
-                  color: 'primary.contrastText',
-                  flexShrink: 0,
-                }}
-              >
-                {user?.name?.charAt(0).toUpperCase()}
-              </Avatar>
+              <UserAvatar
+                name={user?.name}
+                avatar={user?.avatar}
+                size={72}
+                sx={{ flexShrink: 0 }}
+              />
               {onAvatarClick && (
                 <IconButton
                   size="small"

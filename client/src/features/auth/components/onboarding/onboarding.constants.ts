@@ -1,12 +1,5 @@
-import alpha1 from "@/assets/avatars/alpha1.svg";
-import alpha2 from "@/assets/avatars/alpha2.svg";
-import alpha3 from "@/assets/avatars/alpha3.svg";
-import alpha4 from "@/assets/avatars/alpha4.svg";
-import beta1 from "@/assets/avatars/beta1.svg";
-import beta2 from "@/assets/avatars/beta2.svg";
-import beta3 from "@/assets/avatars/beta3.svg";
-import beta4 from "@/assets/avatars/beta4.svg";
-
+// Avatar keys/images live in shared/constants/avatars (used app-wide).
+export { AVATARS, AVATAR_IMAGES } from "@/shared/constants/avatars";
 export const DEPARTMENTS = [
   "Computer Science",
   "Software Engineering",
@@ -51,26 +44,6 @@ export const EXPERTISE_OPTIONS = [
   "Linux / Shell",
 ];
 
-export const AVATARS = [
-  "alpha1",
-  "alpha2",
-  "alpha3",
-  "alpha4",
-  "beta1",
-  "beta2",
-  "beta3",
-  "beta4",
-];
 
-export const AVATAR_IMAGES: Record<string, string> = {
-  alpha1,
-  alpha2,
-  alpha3,
-  alpha4,
-  beta1,
-  beta2,
-  beta3,
-  beta4,
-};
 
 export const STEPS = ["Profile", "Academic", "Interests", "Avatar"];

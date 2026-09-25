@@ -1,6 +1,5 @@
 import Drawer from '@mui/material/Drawer';
 import Box from '@mui/material/Box';
-import Avatar from '@mui/material/Avatar';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
 import List from '@mui/material/List';
@@ -12,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { ROUTES } from '@/shared/constants/routes';
 import { UserRole } from '@/shared/types/enums';
+import UserAvatar from "@/shared/components/UserAvatar";
 import { alpha } from '@mui/material/styles';
 
 interface ProfileDrawerProps {
@@ -63,18 +63,7 @@ export default function ProfileDrawer({ open, onClose }: ProfileDrawerProps) {
           },
         }}
       >
-        <Avatar
-          sx={{
-            width: 48,
-            height: 48,
-            fontSize: '1.25rem',
-            fontWeight: 700,
-            bgcolor: 'primary.main',
-            color: 'primary.contrastText',
-          }}
-        >
-          {user?.name?.charAt(0).toUpperCase()}
-        </Avatar>
+        <UserAvatar name={user?.name} avatar={user?.avatar} size={48} />
         <Box sx={{ minWidth: 0 }}>
           <Typography variant="subtitle1" fontWeight={700} noWrap>
             {user?.name}

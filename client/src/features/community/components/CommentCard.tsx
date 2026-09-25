@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   Box,
-  Avatar,
   Typography,
   IconButton,
   Menu,
@@ -16,6 +15,7 @@ import { useAuth } from '@/shared/hooks/useAuth';
 import { formatRelativeTime } from '@/shared/utils/format';
 import { canEditComment } from '../utils/permissions';
 import { useUpdateComment, useDeleteComment } from '../hooks/community.hooks';
+import UserAvatar from "@/shared/components/UserAvatar";
 
 interface CommentCardProps {
   comment: Comment;
@@ -58,9 +58,7 @@ export function CommentCard({ comment, postId }: CommentCardProps) {
 
   return (
     <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', mb: 1.5 }}>
-      <Avatar sx={{ width: 28, height: 28, bgcolor: 'secondary.light', fontSize: '0.875rem' }}>
-        {comment.author.name?.[0]?.toUpperCase() || 'U'}
-      </Avatar>
+      <UserAvatar name={comment.author.name} avatar={comment.author.avatar} size={28} />
 
       <Box sx={{ flexGrow: 1, bgcolor: 'action.hover', p: 1.5, borderRadius: 1 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" mb={0.5}>

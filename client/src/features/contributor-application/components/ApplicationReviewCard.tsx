@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Avatar,
   Box,
   Button,
   Card,
@@ -19,6 +18,7 @@ import {
   useApproveApplication,
   useRejectApplication,
 } from "../hooks/application.hooks";
+import UserAvatar from "@/shared/components/UserAvatar";
 import type { AdminApplication } from "../types/application.dto";
 
 interface Props {
@@ -52,9 +52,7 @@ export function ApplicationReviewCard({ application }: Props) {
     <Card variant="outlined" sx={{ p: 2 }}>
       <Stack spacing={1.5}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Avatar src={applicant.avatar || undefined}>
-            {applicant.name?.charAt(0).toUpperCase()}
-          </Avatar>
+          <UserAvatar name={applicant.name} avatar={applicant.avatar} size={40} />
           <Box sx={{ minWidth: 0, flex: 1 }}>
             <Typography variant="subtitle2" fontWeight={700} noWrap>
               {applicant.name}

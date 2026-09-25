@@ -1,5 +1,4 @@
 import {
-  Avatar,
   Box,
   Button,
   Card,
@@ -12,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { RequestMentorshipButton } from "@/features/mentorship/components/RequestMentorshipButton";
 import { TierChip } from "@/features/reputation/components/TierChip";
 import { ROUTES } from "@/shared/constants/routes";
+import UserAvatar from "@/shared/components/UserAvatar";
 import type { MentorSummary } from "../types/mentor.dto";
 
 const MAX_TOPIC_CHIPS = 4;
@@ -42,9 +42,7 @@ export function MentorCard({ mentor }: Props) {
         sx={{ display: "flex", flexDirection: "column", gap: 1.25, height: "100%" }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Avatar src={mentor.avatar || undefined} sx={{ width: 48, height: 48 }}>
-            {mentor.name.charAt(0).toUpperCase()}
-          </Avatar>
+          <UserAvatar name={mentor.name} avatar={mentor.avatar} size={48} />
           <Box sx={{ minWidth: 0, flex: 1 }}>
             <Stack direction="row" alignItems="center" gap={0.75} flexWrap="wrap">
               <Typography variant="subtitle2" fontWeight={700} noWrap>

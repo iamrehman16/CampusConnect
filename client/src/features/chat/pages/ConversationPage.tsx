@@ -2,7 +2,6 @@ import {
   Box,
   IconButton,
   Typography,
-  Avatar,
   Divider,
   CircularProgress,
 } from "@mui/material";
@@ -20,6 +19,7 @@ import { useChatUIStore } from "../store/chat-ui.store";
 import { ROUTES } from "@/shared/constants/routes";
 import { useTypingIndicator } from "../hooks/useTypingIndicator";
 import { PresenceStatus } from "../components/PresenceStatus";
+import UserAvatar from "@/shared/components/UserAvatar";
 import { useChatSocketContext } from "@/shared/hooks/useChatSocketContext";
 
 export default function ConversationPage() {
@@ -143,12 +143,11 @@ export default function ConversationPage() {
             <ArrowBack fontSize="small" />
           </IconButton>
         )}
-        <Avatar
-          src={otherParticipant?.avatar || undefined}
-          sx={{ width: 40, height: 40, bgcolor: "primary.main" }}
-        >
-          {(otherParticipant?.name?.trim() || "U").charAt(0).toUpperCase()}
-        </Avatar>
+        <UserAvatar
+          name={otherParticipant?.name}
+          avatar={otherParticipant?.avatar}
+          size={40}
+        />
         <Box sx={{ minWidth: 0 }}>
           <Typography variant="subtitle1" fontWeight={600} lineHeight={1.3}>
             {otherParticipant?.name?.trim() || "Unknown user"}

@@ -6,7 +6,6 @@ import {
   Typography,
   Button,
   Chip,
-  Avatar,
   Divider,
   Skeleton,
   IconButton,
@@ -22,6 +21,7 @@ import { ROUTES } from '@/shared/constants/routes';
 import resourceService from '../services/resource.service';
 import { formatRelativeTime } from '@/shared/utils/format';
 import { PageContainer } from '@/shared/components/PageContainer';
+import UserAvatar from "@/shared/components/UserAvatar";
 import { TierChip } from '@/features/reputation/components/TierChip';
 
 // ─── File type config (mirrors ResourceCard) ──────────────────────────────────
@@ -275,9 +275,7 @@ export default function ResourceDetailPage() {
           <Stack direction="row" alignItems="center" justifyContent="space-between">
             <Typography variant="body2" color="text.secondary">Uploaded by</Typography>
             <Stack direction="row" alignItems="center" gap={1}>
-              <Avatar sx={{ width: 22, height: 22, fontSize: '0.65rem', bgcolor: 'secondary.light' }}>
-                {resource.uploadedBy.name?.[0]?.toUpperCase() ?? 'U'}
-              </Avatar>
+              <UserAvatar name={resource.uploadedBy.name} avatar={resource.uploadedBy.avatar} size={22} />
               <Typography variant="body2" fontWeight={500}>
                 {resource.uploadedBy.name}
               </Typography>

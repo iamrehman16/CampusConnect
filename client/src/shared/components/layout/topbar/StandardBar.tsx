@@ -3,7 +3,6 @@ import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import IconButton from "@mui/material/IconButton";
 import Typography from "@mui/material/Typography";
-import Avatar from "@mui/material/Avatar";
 import Badge from "@mui/material/Badge";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
@@ -15,6 +14,7 @@ import { NotificationBell } from "@/features/notifications/components/Notificati
 import { useTotalUnread } from "@/features/chat/hooks/chat-hooks";
 import { useThemeModeContext } from "@/shared/hooks/useThemeModeContext";
 import { usePwaInstall } from "@/shared/hooks/usePwaInstall";
+import UserAvatar from "@/shared/components/UserAvatar";
 
 interface StandardBarProps {
   /** Page title shown in the center. "CampusConnect" on Home, page name elsewhere. */
@@ -63,18 +63,7 @@ export default function StandardBar({ title, onAvatarClick }: StandardBarProps) 
       >
         {/* Left — avatar opens profile drawer */}
         <IconButton onClick={onAvatarClick} size="small" sx={{ p: 0 }}>
-          <Avatar
-            sx={{
-              width: 32,
-              height: 32,
-              fontSize: "0.875rem",
-              fontWeight: 700,
-              bgcolor: "primary.main",
-              color: "primary.contrastText",
-            }}
-          >
-            {user?.name?.charAt(0).toUpperCase()}
-          </Avatar>
+          <UserAvatar name={user?.name} avatar={user?.avatar} size={32} />
         </IconButton>
 
         {/* Center — dynamic title. A flex item (not absolutely positioned)
