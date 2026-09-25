@@ -5,6 +5,9 @@ export const resourceKeys = {
   lists: () => [...resourceKeys.all, "list"] as const,
   list: (params: object) => [...resourceKeys.lists(), params] as const,
 
+  // Course facets for the Library filter (GET /resources/courses)
+  courses: () => [...resourceKeys.all, "courses"] as const,
+
   // Single resource
   details: () => [...resourceKeys.all, "detail"] as const,
   detail: (id: string) => [...resourceKeys.details(), id] as const,

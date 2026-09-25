@@ -7,6 +7,7 @@ import type {
   UploadSignatureResponse,
   CloudinaryUploadResult,
   CreateResourcePayload,
+  CourseFacet,
 } from "../types/resource.dto";
 import type { PaginatedResult } from "@/shared/types/api.types";
 import api from "@/shared/api/axios.instance";
@@ -60,6 +61,11 @@ export class ResourceService {
     const { data } = await api.get<PaginatedResult<Resource>>("/resources/my", {
       params,
     });
+    return data;
+  }
+
+  async getCourses(): Promise<CourseFacet[]> {
+    const { data } = await api.get<CourseFacet[]>("/resources/courses");
     return data;
   }
 

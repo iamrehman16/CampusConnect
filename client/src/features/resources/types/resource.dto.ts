@@ -115,8 +115,17 @@ export interface RejectResourceDto {
 
 // ─── Filter params ────────────────────────────────────────────────────────────
 
+/** A course with approved resources (GET /resources/courses). */
+export interface CourseFacet {
+  course: string;
+  subject: string;
+  count: number;
+}
+
 interface ResourceBaseFilterParams extends PaginationParams {
   search?: string;
+  /** Course code, matched exactly (case-insensitive) by the server. */
+  course?: string;
   type?: ResourceType;
   semester?: number;
   sort?: ResourceSort;

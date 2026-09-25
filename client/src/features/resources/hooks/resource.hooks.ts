@@ -38,6 +38,14 @@ export const useResources = (
       lastPage.page < lastPage.totalPage ? lastPage.page + 1 : undefined,
   });
 
+/** Courses that have approved resources — options for the course filter. */
+export const useCourseFacets = () =>
+  useQuery({
+    queryKey: resourceKeys.courses(),
+    queryFn: () => resourceService.getCourses(),
+    staleTime: 1000 * 60 * 10,
+  });
+
 /**
  * Single resource details.
  */

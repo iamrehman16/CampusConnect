@@ -21,11 +21,24 @@ export function PageHeader({ title, subtitle, actions, children }: PageHeaderPro
     <Box component="header" sx={{ mb: 3 }}>
       <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
         <Box sx={{ flex: 1, minWidth: 220 }}>
-          <Typography variant="h5" component="h1" fontWeight={700} sx={{ letterSpacing: "-0.01em" }}>
+          {/* Below md the mobile top bar already shows the page title. */}
+          <Typography
+            variant="h5"
+            component="h1"
+            fontWeight={700}
+            sx={{
+              letterSpacing: "-0.01em",
+              position: { xs: "absolute", md: "static" },
+              width: { xs: "1px", md: "auto" },
+              height: { xs: "1px", md: "auto" },
+              overflow: { xs: "hidden", md: "visible" },
+              clip: { xs: "rect(0 0 0 0)", md: "auto" },
+            }}
+          >
             {title}
           </Typography>
           {subtitle && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: { xs: 0, md: 0.5 } }}>
               {subtitle}
             </Typography>
           )}
