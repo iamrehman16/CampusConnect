@@ -1,104 +1,146 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState } from "react";
+import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import {
+  Alert,
   Box,
-  Stack,
-  Typography,
   Button,
+  Card,
   Chip,
   Divider,
-  Skeleton,
   IconButton,
-  Paper,
-} from '@mui/material';
-import { ArrowBack as ArrowBackIcon, Download as DownloadIcon, Edit as EditIcon, Delete as DeleteIcon, PictureAsPdf as PictureAsPdfIcon, Description as DescriptionIcon, Slideshow as SlideshowIcon, Image as ImageIcon, FolderZip as FolderZipIcon, InsertDriveFile as InsertDriveFileIcon, CalendarToday as CalendarTodayIcon, School as SchoolIcon } from "@/shared/icons";
-import { useResource, useDeleteResource } from '../hooks/resource.hooks';
-import { EditResourceModal } from '../components/EditResourceModal';
-import { FileType, ApprovalStatus } from '@/shared/types/enums';
-import { useAuth } from '@/shared/hooks/useAuth';
-import { UserRole } from '@/shared/types/enums';
-import { ROUTES } from '@/shared/constants/routes';
-import resourceService from '../services/resource.service';
-import { formatRelativeTime } from '@/shared/utils/format';
-import { PageContainer } from '@/shared/components/PageContainer';
+  Link,
+  Skeleton,
+  Stack,
+  Tooltip,
+  Typography,
+} from "@mui/material";
+import {
+  ArrowBack,
+  AutoAwesome,
+  Delete as DeleteIcon,
+  Download as DownloadIcon,
+  Edit as EditIcon,
+  OpenInNew,
+} from "@/shared/icons";
+import { useDeleteResource, useResource, useResources } from "../hooks/resource.hooks";
+import { EditResourceModal } from "../components/EditResourceModal";
+import { ResourceRow } from "../components/ResourceRow";
+import { ApprovalStatus, UserRole } from "@/shared/types/enums";
+import { useAuth } from "@/shared/hooks/useAuth";
+import { ROUTES } from "@/shared/constants/routes";
+import resourceService from "../services/resource.service";
+import { formatRelativeTime } from "@/shared/utils/format";
+import { PageContainer } from "@/shared/components/PageContainer";
 import UserAvatar from "@/shared/components/UserAvatar";
-import { TierChip } from '@/features/reputation/components/TierChip';
-
-// ─── File type config (mirrors ResourceCard) ──────────────────────────────────
-
-const FILE_TYPE_CONFIG: Record<FileType, { icon: React.ReactNode; color: string; bg: string; label: string }> = {
-  [FileType.PDF]: { icon: <PictureAsPdfIcon />, color: '#ef5350', bg: 'rgba(239,83,80,0.12)', label: 'PDF Document' },
-  [FileType.DOC]: { icon: <DescriptionIcon />, color: '#42a5f5', bg: 'rgba(66,165,245,0.12)', label: 'Word Document' },
-  [FileType.PPT]: { icon: <SlideshowIcon />, color: '#ff7043', bg: 'rgba(255,112,67,0.12)', label: 'Presentation' },
-  [FileType.IMAGE]: { icon: <ImageIcon />, color: '#66bb6a', bg: 'rgba(102,187,106,0.12)', label: 'Image' },
-  [FileType.ZIP]: { icon: <FolderZipIcon />, color: '#ffa726', bg: 'rgba(255,167,38,0.12)', label: 'Archive' },
-  [FileType.OTHER]: { icon: <InsertDriveFileIcon />, color: '#bdbdbd', bg: 'rgba(189,189,189,0.12)', label: 'File' },
-};
-
-const RESOURCE_TYPE_COLORS: Record<string, string> = {
-  Notes: '#7c4dff', Slides: '#00bcd4', Assignment: '#ff9800', Lab: '#4caf50',
-  PastPaper: '#e91e63', Book: '#795548', ResearchPaper: '#607d8b', Other: '#9e9e9e',
-};
-
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
+import { TierChip } from "@/features/reputation/components/TierChip";
+import type { Resource } from "../types/resource.dto";
+import {
+  FILE_TYPE_LABEL,
+  RESOURCE_TYPE_LABEL,
+  formatFileSize,
+  resourcePreviewUrl,
+} from "../utils/resource-labels";
 
 function DetailSkeleton() {
   return (
-    <Box sx={{ px: { xs: 2, sm: 3 }, py: 3, maxWidth: 800, mx: 'auto' }}>
-      <Skeleton variant="text" width={80} height={32} sx={{ mb: 3 }} />
-      <Skeleton variant="rounded" height={160} sx={{ mb: 3, borderRadius: 3 }} />
-      <Skeleton variant="text" width="70%" height={32} />
-      <Skeleton variant="text" width="40%" height={20} sx={{ mb: 2 }} />
-      <Skeleton variant="text" width="100%" height={16} />
-      <Skeleton variant="text" width="90%" height={16} />
-      <Skeleton variant="text" width="60%" height={16} />
+    <Box sx={{ display: "grid", gap: 3, gridTemplateColumns: { xs: "1fr", md: "minmax(0, 2fr) minmax(0, 1fr)" } }}>
+      <Stack spacing={2}>
+        <Skeleton width={120} />
+        <Skeleton variant="text" height={44} width="80%" />
+        <Skeleton width="50%" />
+        <Skeleton variant="rounded" height={420} />
+      </Stack>
+      <Stack spacing={2}>
+        <Skeleton variant="rounded" height={140} />
+        <Skeleton variant="rounded" height={180} />
+      </Stack>
     </Box>
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <Stack direction="row" justifyContent="space-between" gap={2} sx={{ py: 1 }}>
+      <Typography variant="body2" color="text.secondary">
+        {label}
+      </Typography>
+      <Typography variant="body2" fontWeight={500} textAlign="right">
+        {value}
+      </Typography>
+    </Stack>
+  );
+}
 
+/** Other approved resources for the same course. */
+function RelatedResources({ resource }: { resource: Resource }) {
+  const { data, isLoading } = useResources({ course: resource.course, status: ApprovalStatus.APPROVED });
+  const related = (data?.pages[0]?.data ?? []).filter((r) => r._id !== resource._id).slice(0, 4);
+  if (!isLoading && related.length === 0) return null;
+  return (
+    <Card>
+      <Typography variant="subtitle2" fontWeight={600} sx={{ px: 2, pt: 1.75, pb: 0.5 }}>
+        More for {resource.course}
+      </Typography>
+      <Box sx={{ px: 0.5, pb: 1 }}>
+        {isLoading ? (
+          <Stack spacing={1} sx={{ p: 1.5 }}>
+            <Skeleton variant="rounded" height={36} />
+            <Skeleton variant="rounded" height={36} />
+          </Stack>
+        ) : (
+          related.map((r) => <ResourceRow key={r._id} resource={r} />)
+        )}
+      </Box>
+    </Card>
+  );
+}
+
+/**
+ * Resource detail (BACKLOG.md D7): first-page preview, primary actions
+ * (download, ask the AI about it), author card and related resources.
+ */
 export default function ResourceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-
   const [editOpen, setEditOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [previewFailed, setPreviewFailed] = useState(false);
 
   const { data: resource, isLoading, isError } = useResource(id!);
   const { mutate: deleteResource } = useDeleteResource();
 
-  if (isLoading)
+  if (isLoading) {
     return (
-      <PageContainer>
+      <PageContainer width="wide">
         <DetailSkeleton />
-      </PageContainer>
-    );
-
-  if (isError || !resource) {
-    return (
-      <PageContainer>
-        <Box textAlign="center" py={10}>
-          <Typography variant="h6" color="text.secondary">Resource not found.</Typography>
-          <Button onClick={() => navigate(ROUTES.RESOURCES)} sx={{ mt: 2 }}>
-            Back to Resources
-          </Button>
-        </Box>
       </PageContainer>
     );
   }
 
-  const fileConfig = FILE_TYPE_CONFIG[resource.fileType] ?? FILE_TYPE_CONFIG[FileType.OTHER];
-  const resourceTypeColor = RESOURCE_TYPE_COLORS[resource.resourceType] ?? '#9e9e9e';
+  if (isError || !resource) {
+    return (
+      <PageContainer width="narrow">
+        <Card sx={{ py: 8, textAlign: "center" }}>
+          <Typography variant="subtitle1" fontWeight={600}>
+            This resource isn't available
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 2 }}>
+            It may have been removed, or the link is wrong.
+          </Typography>
+          <Button variant="outlined" onClick={() => navigate(ROUTES.RESOURCES)}>
+            Back to the library
+          </Button>
+        </Card>
+      </PageContainer>
+    );
+  }
 
   const canManage =
     user?.role === UserRole.ADMIN ||
     (user?.role === UserRole.CONTRIBUTOR && user._id === resource.uploadedBy._id);
-
-  const fileSizeLabel = resource.fileSize < 1024 * 1024
-    ? `${Math.round(resource.fileSize / 1024)} KB`
-    : `${(resource.fileSize / (1024 * 1024)).toFixed(1)} MB`;
+  const isApproved = resource.approvalStatus === ApprovalStatus.APPROVED;
+  const preview = previewFailed ? undefined : resourcePreviewUrl(resource.fileUrl, resource.fileType);
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -111,274 +153,171 @@ export default function ResourceDetailPage() {
 
   const handleDelete = () => {
     if (window.confirm(`Delete "${resource.title}"?`)) {
-      deleteResource(resource._id, {
-        onSuccess: () => navigate(ROUTES.RESOURCES),
-      });
+      deleteResource(resource._id, { onSuccess: () => navigate(ROUTES.RESOURCES) });
     }
   };
 
+  const askAi = () =>
+    navigate(ROUTES.AI_CHAT, {
+      state: {
+        initialPrompt: `Summarise the key ideas in "${resource.title}" (${resource.course}) and what I should focus on for the exam.`,
+      },
+    });
+
   return (
-    <PageContainer>
-      <Box sx={{ px: { xs: 2, sm: 3 }, py: 3, maxWidth: 800, mx: 'auto' }}>
-      {/* Back button */}
-      <Button
-        startIcon={<ArrowBackIcon />}
+    <PageContainer width="wide">
+      <Link
+        component="button"
         onClick={() => navigate(-1)}
-        sx={{ mb: 3, color: 'text.secondary', pl: 0 }}
+        underline="hover"
+        color="text.secondary"
+        variant="body2"
+        sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, mb: 2 }}
       >
-        Back
-      </Button>
+        <ArrowBack sx={{ fontSize: 16 }} /> Back
+      </Link>
 
-      {/* Hero section — file type icon + title block */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: 3,
-          mb: 3,
-          borderRadius: 3,
-          border: '1px solid',
-          borderColor: 'divider',
-          bgcolor: 'background.paper',
-        }}
-      >
-        <Stack direction={{ xs: 'column', sm: 'row' }} gap={3} alignItems={{ sm: 'flex-start' }}>
-          {/* Large file type badge */}
-          <Box
-            sx={{
-              width: 72,
-              height: 72,
-              borderRadius: 3,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              bgcolor: fileConfig.bg,
-              color: fileConfig.color,
-              flexShrink: 0,
-              '& svg': { fontSize: 36 },
-            }}
-          >
-            {fileConfig.icon}
-          </Box>
-
-          {/* Title + meta */}
-          <Box flexGrow={1} minWidth={0}>
-            <Stack direction="row" alignItems="flex-start" justifyContent="space-between" gap={1}>
-              <Typography variant="h5" fontWeight={700} sx={{ lineHeight: 1.3, mb: 1 }}>
+      <Box sx={{ display: "grid", gap: 3, gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 2fr) minmax(0, 1fr)" }, alignItems: "start" }}>
+        {/* ── Main column ── */}
+        <Stack spacing={2.5} sx={{ minWidth: 0 }}>
+          <Box>
+            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+              {RESOURCE_TYPE_LABEL[resource.resourceType]} · {resource.course}
+            </Typography>
+            <Stack direction="row" alignItems="flex-start" gap={1}>
+              <Typography variant="h5" component="h1" fontWeight={700} sx={{ lineHeight: 1.3, flex: 1, letterSpacing: "-0.01em" }}>
                 {resource.title}
               </Typography>
-
-              {/* Action buttons */}
               {canManage && (
-                <Stack direction="row" gap={0.5} flexShrink={0}>
-                  <IconButton
-                    size="small"
-                    onClick={() => setEditOpen(true)}
-                    sx={{ color: 'text.secondary' }}
-                  >
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={handleDelete}
-                    sx={{ color: 'error.main' }}
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
+                <Stack direction="row">
+                  <Tooltip title="Edit">
+                    <IconButton onClick={() => setEditOpen(true)} aria-label="Edit resource">
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete">
+                    <IconButton onClick={handleDelete} aria-label="Delete resource" sx={{ color: "error.main" }}>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
                 </Stack>
               )}
             </Stack>
-
-            {/* Chips row */}
-            <Stack direction="row" flexWrap="wrap" gap={1} mb={1.5}>
-              <Chip
-                label={resource.resourceType}
-                size="small"
-                sx={{
-                  bgcolor: `${resourceTypeColor}22`,
-                  color: resourceTypeColor,
-                  border: `1px solid ${resourceTypeColor}44`,
-                  fontWeight: 600,
-                  fontSize: '0.75rem',
-                }}
-              />
-              <Chip
-                label={fileConfig.label}
-                size="small"
-                variant="outlined"
-                sx={{ fontSize: '0.75rem' }}
-              />
-              <Chip
-                label={`Semester ${resource.semester}`}
-                size="small"
-                variant="outlined"
-                sx={{ fontSize: '0.75rem' }}
-              />
-              {resource.approvalStatus === ApprovalStatus.PENDING && (
-                <Chip label="Pending Review" size="small" color="warning" variant="outlined" sx={{ fontSize: '0.75rem' }} />
-              )}
-              {resource.approvalStatus === ApprovalStatus.REJECTED && (
-                <Chip label="Rejected" size="small" color="error" variant="outlined" sx={{ fontSize: '0.75rem' }} />
-              )}
-            </Stack>
-
-            {/* Subject · Course */}
-            <Stack direction="row" alignItems="center" gap={1}>
-              <SchoolIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
-              <Typography variant="body2" color="text.secondary">
-                {resource.subject} · {resource.course}
-              </Typography>
-            </Stack>
-          </Box>
-        </Stack>
-      </Paper>
-
-      {/* Description */}
-      {resource.description && (
-        <Paper
-          elevation={0}
-          sx={{
-            p: 2.5,
-            mb: 3,
-            borderRadius: 3,
-            border: '1px solid',
-            borderColor: 'divider',
-            bgcolor: 'background.paper',
-          }}
-        >
-          <Typography variant="overline" color="text.secondary" fontWeight={700} mb={1}>
-            DESCRIPTION
-          </Typography>
-          <Typography variant="body2" sx={{ lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-            {resource.description}
-          </Typography>
-        </Paper>
-      )}
-
-      {/* File info + uploader */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: 2.5,
-          mb: 3,
-          borderRadius: 3,
-          border: '1px solid',
-          borderColor: 'divider',
-          bgcolor: 'background.paper',
-        }}
-      >
-        <Typography variant="overline" color="text.secondary" fontWeight={700} mb={2}>
-          DETAILS
-        </Typography>
-
-        <Stack spacing={1.5}>
-          {/* Uploader */}
-          <Stack direction="row" alignItems="center" justifyContent="space-between">
-            <Typography variant="body2" color="text.secondary">Uploaded by</Typography>
-            <Stack direction="row" alignItems="center" gap={1}>
-              <UserAvatar name={resource.uploadedBy.name} avatar={resource.uploadedBy.avatar} size={22} />
-              <Typography variant="body2" fontWeight={500}>
-                {resource.uploadedBy.name}
-              </Typography>
-              <TierChip tier={resource.uploadedBy.tier} hideNewcomer />
-            </Stack>
-          </Stack>
-
-          <Divider />
-
-          <Stack direction="row" alignItems="center" justifyContent="space-between">
-            <Typography variant="body2" color="text.secondary">File size</Typography>
-            <Typography variant="body2" fontWeight={500}>{fileSizeLabel}</Typography>
-          </Stack>
-
-          <Divider />
-
-          <Stack direction="row" alignItems="center" justifyContent="space-between">
-            <Typography variant="body2" color="text.secondary">Format</Typography>
-            <Typography variant="body2" fontWeight={500} sx={{ textTransform: 'uppercase' }}>
-              {resource.fileFormat}
+            <Typography variant="body2" color="text.tertiary" sx={{ mt: 0.5 }}>
+              {resource.subject} · Semester {resource.semester} · Shared {formatRelativeTime(resource.createdAt)}
             </Typography>
-          </Stack>
+          </Box>
 
-          <Divider />
+          {resource.approvalStatus === ApprovalStatus.PENDING && (
+            <Alert severity="warning">In review — only you and admins can see this until it's approved.</Alert>
+          )}
+          {resource.approvalStatus === ApprovalStatus.REJECTED && (
+            <Alert severity="error">
+              Not approved{resource.rejectionReason ? `: ${resource.rejectionReason}` : "."}
+            </Alert>
+          )}
 
-          <Stack direction="row" alignItems="center" justifyContent="space-between">
-            <Typography variant="body2" color="text.secondary">Downloads</Typography>
-            <Typography variant="body2" fontWeight={500}>{resource.downloads}</Typography>
-          </Stack>
-
-          <Divider />
-
-          <Stack direction="row" alignItems="center" justifyContent="space-between">
-            <Typography variant="body2" color="text.secondary">Uploaded</Typography>
-            <Stack direction="row" alignItems="center" gap={0.5}>
-              <CalendarTodayIcon sx={{ fontSize: 12, color: 'text.disabled' }} />
-              <Typography variant="body2" fontWeight={500}>
-                {formatRelativeTime(resource.createdAt)}
-              </Typography>
+          {isApproved && (
+            <Stack direction={{ xs: "column", sm: "row" }} gap={1}>
+              <Button variant="contained" startIcon={<DownloadIcon />} onClick={handleDownload} disabled={downloading}>
+                {downloading ? "Preparing…" : "Download"}
+              </Button>
+              <Button variant="outlined" startIcon={<AutoAwesome />} onClick={askAi}>
+                Ask AI about this
+              </Button>
             </Stack>
-          </Stack>
+          )}
+
+          {preview ? (
+            <Card sx={{ p: 0, overflow: "hidden", bgcolor: "surface.subtle" }}>
+              <Box
+                component="img"
+                src={preview}
+                alt={`First page of ${resource.title}`}
+                loading="lazy"
+                onError={() => setPreviewFailed(true)}
+                sx={{ display: "block", width: "100%", height: "auto", maxHeight: 720, objectFit: "cover", objectPosition: "top", bgcolor: "#fff" }}
+              />
+              <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: 2, py: 1.25, bgcolor: "surface.card", borderTop: "1px solid", borderColor: "border.default" }}>
+                <Typography variant="caption" color="text.tertiary">
+                  Preview · page 1
+                </Typography>
+                {isApproved && (
+                  <Button size="small" variant="text" endIcon={<OpenInNew sx={{ fontSize: 14 }} />} onClick={handleDownload}>
+                    Full document
+                  </Button>
+                )}
+              </Stack>
+            </Card>
+          ) : null}
+
+          {resource.description && (
+            <Box>
+              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 0.5 }}>
+                About this resource
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                {resource.description}
+              </Typography>
+            </Box>
+          )}
+
+          {resource.tags?.length > 0 && (
+            <Stack direction="row" flexWrap="wrap" gap={1}>
+              {resource.tags.map((tag) => (
+                <Chip
+                  key={tag}
+                  label={tag}
+                  onClick={() => navigate(`${ROUTES.RESOURCES}?q=${encodeURIComponent(tag)}`)}
+                />
+              ))}
+            </Stack>
+          )}
         </Stack>
-      </Paper>
 
-      {/* Tags */}
-      {resource.tags?.length > 0 && (
-        <Stack direction="row" flexWrap="wrap" gap={1} mb={3}>
-          {resource.tags.map((tag) => (
-            <Chip
-              key={tag}
-              label={`#${tag}`}
-              size="small"
-              variant="outlined"
-              sx={{ fontSize: '0.75rem', color: 'text.secondary' }}
-            />
-          ))}
+        {/* ── Aside ── */}
+        <Stack spacing={2.5} sx={{ minWidth: 0 }}>
+          <Card sx={{ p: 2 }}>
+            <Typography variant="caption" color="text.tertiary" fontWeight={600}>
+              Shared by
+            </Typography>
+            <Stack direction="row" alignItems="center" gap={1.5} sx={{ mt: 1 }}>
+              <UserAvatar name={resource.uploadedBy.name} avatar={resource.uploadedBy.avatar} size={44} />
+              <Box sx={{ minWidth: 0 }}>
+                <Stack direction="row" alignItems="center" gap={0.75}>
+                  <Typography variant="subtitle2" fontWeight={600} noWrap>
+                    {resource.uploadedBy.name}
+                  </Typography>
+                  <TierChip tier={resource.uploadedBy.tier} hideNewcomer />
+                </Stack>
+                <Link
+                  component={RouterLink}
+                  to={ROUTES.PUBLIC_PROFILE.replace(":userId", resource.uploadedBy._id)}
+                  variant="caption"
+                  underline="hover"
+                  fontWeight={600}
+                >
+                  View profile
+                </Link>
+              </Box>
+            </Stack>
+          </Card>
+
+          <Card sx={{ px: 2, py: 1 }}>
+            <DetailRow label="Format" value={FILE_TYPE_LABEL[resource.fileType]} />
+            <Divider />
+            <DetailRow label="Size" value={formatFileSize(resource.fileSize)} />
+            <Divider />
+            <DetailRow label="Downloads" value={resource.downloads} />
+            <Divider />
+            <DetailRow label="Semester" value={resource.semester} />
+          </Card>
+
+          <RelatedResources resource={resource} />
         </Stack>
-      )}
+      </Box>
 
-      {/* Rejection reason */}
-      {resource.approvalStatus === ApprovalStatus.REJECTED && resource.rejectionReason && (
-        <Paper
-          elevation={0}
-          sx={{
-            p: 2,
-            mb: 3,
-            borderRadius: 2,
-            border: '1px solid',
-            borderColor: 'error.dark',
-            bgcolor: 'rgba(211,47,47,0.08)',
-          }}
-        >
-          <Typography variant="overline" color="error.light" fontWeight={700} display="block" mb={0.5}>
-            REJECTION REASON
-          </Typography>
-          <Typography variant="body2" color="error.light">
-            {resource.rejectionReason}
-          </Typography>
-        </Paper>
-      )}
-
-      {/* Download CTA — only for approved resources */}
-      {resource.approvalStatus === ApprovalStatus.APPROVED && (
-        <Button
-          variant="contained"
-          fullWidth
-          size="large"
-          startIcon={<DownloadIcon />}
-          onClick={handleDownload}
-          disabled={downloading}
-          sx={{ borderRadius: 2, minHeight: 48 }}
-        >
-          {downloading ? 'Preparing download...' : 'Download Resource'}
-        </Button>
-      )}
-
-      {/* Edit modal */}
-      <EditResourceModal
-        open={editOpen}
-        resource={resource}
-        onClose={() => setEditOpen(false)}
-      />
-    </Box>
+      <EditResourceModal open={editOpen} resource={resource} onClose={() => setEditOpen(false)} />
     </PageContainer>
   );
 }

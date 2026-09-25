@@ -5,6 +5,7 @@ import { ROUTES } from "@/shared/constants/routes";
 // These hold the actual pathname strings, e.g. ROUTES.HOME === "/"
 const home = ROUTES.HOME;
 const resources = ROUTES.RESOURCES;
+const resourceDetail = ROUTES.RESOURCE_DETAIL;
 const community = ROUTES.COMMUNITY;
 const profile = ROUTES.PROFILE;
 const chats = ROUTES.CHAT;
@@ -44,6 +45,11 @@ const routeConfig: Record<string, RouteConfig> = {
     showBottomNav: true,
   },
   [resources]: {
+    title: "Library",
+    topBarMode: "standard",
+    showBottomNav: true,
+  },
+  [resourceDetail]: {
     title: "Library",
     topBarMode: "standard",
     showBottomNav: true,
