@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { ResourceQueryBuilder } from './build-resource-query';
 import { ResourceQueryDto } from '../resource-query.dto';
 
