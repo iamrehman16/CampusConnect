@@ -13,7 +13,7 @@ import {
   Chip,
   Autocomplete,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
+import { Close as CloseIcon } from "@/shared/icons";
 import { useState } from 'react';
 import { useUpdateResource } from '../hooks/resource.hooks';
 import { ResourceType } from '@/shared/types/enums';

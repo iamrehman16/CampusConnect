@@ -1,5 +1,5 @@
 import { IconButton, Tooltip, CircularProgress } from "@mui/material";
-import { CheckCircleOutline, ErrorOutline } from "@mui/icons-material";
+import { CheckCircleOutline, ErrorOutline } from "@/shared/icons";
 import type { Message } from "../types/chat-dto";
 
 interface Props {

@@ -7,7 +7,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { ChatBubbleOutline } from "@mui/icons-material";
+import { ChatBubbleOutline } from "@/shared/icons";
 import type { PaginatedResult } from "@/shared/types/api.types";
 import type { Post } from "@/features/community/types/community.dto";
 import { PostCard } from "@/features/community/components/PostCard";

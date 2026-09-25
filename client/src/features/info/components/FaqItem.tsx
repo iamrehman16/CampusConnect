@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Box, Stack, Typography, IconButton, Collapse, Divider } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
-import RemoveIcon from "@mui/icons-material/Remove";
+import { Add as AddIcon, Remove as RemoveIcon } from "@/shared/icons";
 
 interface FaqItemProps {
   q: string;

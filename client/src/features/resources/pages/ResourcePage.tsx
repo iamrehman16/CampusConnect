@@ -12,8 +12,7 @@ import {
   Chip,
   Fab,
 } from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
-import AddIcon from "@mui/icons-material/Add";
+import { Search as SearchIcon, Add as AddIcon } from "@/shared/icons";
 import { useInView } from "react-intersection-observer";
 import { useEffect } from "react";
 import {

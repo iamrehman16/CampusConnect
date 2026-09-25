@@ -15,9 +15,7 @@ import {
   Chip,
   Autocomplete,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import { Close as CloseIcon, CloudUpload as CloudUploadIcon, InsertDriveFile as InsertDriveFileIcon } from "@/shared/icons";
 import { useCreateResource } from '../hooks/resource.hooks';
 import { ResourceType } from '@/shared/types/enums';
 import type { CreateResourceDto } from '../types/resource.dto';

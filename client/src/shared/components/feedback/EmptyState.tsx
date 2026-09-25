@@ -1,6 +1,6 @@
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import InboxIcon from '@mui/icons-material/Inbox';
+import { Inbox as InboxIcon } from "@/shared/icons";
 
 interface EmptyStateProps {
   message?: string;

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Badge, IconButton } from "@mui/material";
-import NotificationsIcon from "@mui/icons-material/NotificationsNone";
+import { NotificationsNone as NotificationsIcon } from "@/shared/icons";
 import { useUnreadNotificationCount } from "../hooks/notification.hooks";
 import { NotificationPopover } from "./NotificationPopover";
 

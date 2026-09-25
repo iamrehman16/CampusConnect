@@ -1,5 +1,5 @@
 import { Box, IconButton } from "@mui/material";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import { KeyboardArrowDown as KeyboardArrowDownIcon } from "@/shared/icons";
 import { MessageBubble } from "./MessageBubble";
 import { ChatEmptyState } from "./ChatEmptyState";
 import type { ConversationMessage } from "../types/ai-chat.dto";

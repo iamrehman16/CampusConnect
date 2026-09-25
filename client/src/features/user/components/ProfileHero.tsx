@@ -12,15 +12,7 @@ import {
   Typography,
   IconButton,
 } from "@mui/material";
-import {
-  CalendarToday,
-  School,
-  CheckCircle,
-  HourglassEmpty,
-  Cancel,
-  Article,
-  PhotoCamera,
-} from "@mui/icons-material";
+import { CalendarToday, School, CheckCircle, HourglassEmpty, Cancel, Article, PhotoCamera } from "@/shared/icons";
 import { UserRole } from "@/shared/types/enums";
 import { TierChip } from "@/features/reputation/components/TierChip";
 import { MentorProfileBlock } from "./MentorProfileBlock";

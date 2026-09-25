@@ -2,10 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import BottomNavigation from '@mui/material/BottomNavigation';
 import BottomNavigationAction from '@mui/material/BottomNavigationAction';
 import Paper from '@mui/material/Paper';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
-import ForumIcon from '@mui/icons-material/Forum';
+import { Dashboard as DashboardIcon, LibraryBooks as LibraryBooksIcon, SmartToy as SmartToyIcon, Forum as ForumIcon } from "@/shared/icons";
 import { ROUTES } from '@/shared/constants/routes';
 
 const NAV_ITEMS = [

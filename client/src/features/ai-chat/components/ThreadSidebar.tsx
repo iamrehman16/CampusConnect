@@ -1,6 +1,5 @@
 import { Box, CircularProgress, Fab, List, Typography } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
-import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
+import { Add as AddIcon, ChatBubbleOutline as ChatBubbleOutlineIcon } from "@/shared/icons";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   useDeleteThread,

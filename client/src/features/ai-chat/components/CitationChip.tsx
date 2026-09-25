@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Card, CardActionArea, Chip, Collapse, Stack, Typography } from '@mui/material';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import { OpenInNew as OpenInNewIcon } from "@/shared/icons";
 import type { Citation } from '../types/ai-chat.dto';
 
 interface CitationsChipProps {

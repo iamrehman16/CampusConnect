@@ -1,5 +1,5 @@
 import { Chip, Stack, Tooltip } from "@mui/material";
-import EmojiEventsOutlinedIcon from "@mui/icons-material/EmojiEventsOutlined";
+import { EmojiEventsOutlined as EmojiEventsOutlinedIcon } from "@/shared/icons";
 import { useUserBadges } from "../hooks/reputation.hooks";
 
 interface Props {

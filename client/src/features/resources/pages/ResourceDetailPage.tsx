@@ -12,18 +12,7 @@ import {
   IconButton,
   Paper,
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import DownloadIcon from '@mui/icons-material/Download';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
-import DescriptionIcon from '@mui/icons-material/Description';
-import SlideshowIcon from '@mui/icons-material/Slideshow';
-import ImageIcon from '@mui/icons-material/Image';
-import FolderZipIcon from '@mui/icons-material/FolderZip';
-import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import SchoolIcon from '@mui/icons-material/School';
+import { ArrowBack as ArrowBackIcon, Download as DownloadIcon, Edit as EditIcon, Delete as DeleteIcon, PictureAsPdf as PictureAsPdfIcon, Description as DescriptionIcon, Slideshow as SlideshowIcon, Image as ImageIcon, FolderZip as FolderZipIcon, InsertDriveFile as InsertDriveFileIcon, CalendarToday as CalendarTodayIcon, School as SchoolIcon } from "@/shared/icons";
 import { useResource, useDeleteResource } from '../hooks/resource.hooks';
 import { EditResourceModal } from '../components/EditResourceModal';
 import { FileType, ApprovalStatus } from '@/shared/types/enums';

@@ -2,9 +2,7 @@ import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
-import PeopleIcon from '@mui/icons-material/People';
-import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
-import ForumIcon from '@mui/icons-material/Forum';
+import { People as PeopleIcon, LibraryBooks as LibraryBooksIcon, Forum as ForumIcon } from "@/shared/icons";
 import { useOverviewStats } from '@/features/admin/hooks/admin-hooks';
 
 interface StatRowProps {

@@ -1,7 +1,5 @@
 import { Box, IconButton, Typography } from "@mui/material";
-import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
-import MenuIcon from "@mui/icons-material/Menu";
-import SmartToyOutlinedIcon from "@mui/icons-material/SmartToyOutlined";
+import { ArrowBackIosNew as ArrowBackIosNewIcon, Menu as MenuIcon, SmartToyOutlined as SmartToyOutlinedIcon } from "@/shared/icons";
 
 interface AiChatHeaderProps {
   isStreaming: boolean;

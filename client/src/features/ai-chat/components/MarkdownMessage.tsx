@@ -1,7 +1,6 @@
 import { isValidElement, useState, type ReactNode } from "react";
 import { Box, IconButton, Tooltip, Typography, Table, TableHead, TableBody, TableRow, TableCell, Link, useTheme } from "@mui/material";
-import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
-import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
+import { ContentCopyRounded as ContentCopyRoundedIcon, CheckRounded as CheckRoundedIcon } from "@/shared/icons";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 

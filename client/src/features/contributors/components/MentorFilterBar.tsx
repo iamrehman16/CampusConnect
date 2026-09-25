@@ -8,7 +8,7 @@ import {
   Switch,
   TextField,
 } from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
+import { Search as SearchIcon } from "@/shared/icons";
 import { DEPARTMENTS, SEMESTERS } from "@/features/auth/components/onboarding/onboarding.constants";
 import type { MentorFilters, MentorSort } from "../types/mentor.dto";
 

@@ -3,7 +3,7 @@ import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import IconButton from "@mui/material/IconButton";
 import Typography from "@mui/material/Typography";
-import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
+import { ArrowBackIosNew as ArrowBackIosNewIcon } from "@/shared/icons";
 import { useNavigate } from "react-router-dom";
 
 interface ContextualBarProps {

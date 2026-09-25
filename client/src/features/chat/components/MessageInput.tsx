@@ -1,5 +1,5 @@
 import { Box, IconButton, TextField } from "@mui/material";
-import { Send } from "@mui/icons-material";
+import { Send } from "@/shared/icons";
 import { useState, useCallback } from "react";
 import type { CreateMessageDto } from "../types/chat-dto";
 

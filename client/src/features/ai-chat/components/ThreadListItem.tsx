@@ -8,7 +8,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
+import { MoreVert as MoreVertIcon } from "@/shared/icons";
 import { formatDistanceToNow } from "date-fns";
 import type { AiConversationThread } from "../types/ai-chat.dto";
 

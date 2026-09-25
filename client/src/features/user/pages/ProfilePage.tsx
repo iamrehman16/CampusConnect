@@ -6,7 +6,7 @@ import {
   Tab,
   Tabs,
 } from "@mui/material";
-import { Edit } from "@mui/icons-material";
+import { Edit } from "@/shared/icons";
 import { PageContainer } from '@/shared/components/PageContainer';
 import ProfileAvatarDialog from "../components/ProfileAvatarDialog";
 

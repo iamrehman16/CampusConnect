@@ -10,12 +10,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { alpha, type Theme } from "@mui/material/styles";
-import {
-  CheckCircle,
-  HourglassEmpty,
-  Cancel,
-  InsertDriveFile,
-} from "@mui/icons-material";
+import { CheckCircle, HourglassEmpty, Cancel, InsertDriveFile } from "@/shared/icons";
 import { ApprovalStatus } from "@/shared/types/enums";
 import type { PaginatedResult } from "@/shared/types/api.types";
 import type { Resource } from "@/features/resources/types/resource.dto";

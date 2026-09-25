@@ -3,9 +3,7 @@ import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
-import SchoolIcon from '@mui/icons-material/School';
-import LightModeIcon from '@mui/icons-material/LightMode';
-import DarkModeIcon from '@mui/icons-material/DarkMode';
+import { School as SchoolIcon, LightMode as LightModeIcon, DarkMode as DarkModeIcon } from "@/shared/icons";
 import { useThemeModeContext } from '@/shared/hooks/useThemeModeContext';
 
 interface NavbarProps {

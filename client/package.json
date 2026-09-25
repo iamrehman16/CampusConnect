@@ -12,7 +12,6 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@mui/icons-material": "^7.3.8",
     "@mui/material": "^7.3.8",
     "@mui/x-data-grid": "^9.0.2",
     "@tanstack/query-async-storage-persister": "^5.100.10",
@@ -22,6 +21,7 @@
     "axios": "^1.13.6",
     "date-fns": "^4.1.0",
     "idb-keyval": "^6.2.2",
+    "lucide-react": "^1.48.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hook-form": "^7.71.2",

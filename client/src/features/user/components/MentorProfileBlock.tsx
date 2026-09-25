@@ -1,5 +1,5 @@
 import { Box, Chip, Stack, Typography } from "@mui/material";
-import HandshakeOutlinedIcon from "@mui/icons-material/HandshakeOutlined";
+import { HandshakeOutlined as HandshakeOutlinedIcon } from "@/shared/icons";
 import type { ProfileUserViewModel } from "../types/profile.types";
 
 interface Props {

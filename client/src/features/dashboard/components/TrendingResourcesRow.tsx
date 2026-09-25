@@ -1,6 +1,5 @@
 import { Box, Typography, Skeleton, Stack, Button } from "@mui/material";
-import WhatshotIcon from "@mui/icons-material/Whatshot";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import { Whatshot as WhatshotIcon, ArrowForward as ArrowForwardIcon } from "@/shared/icons";
 import { useNavigate } from "react-router-dom";
 import { ResourceCard } from "@/features/resources/components/ResourceCard";
 import { useTrendingResources } from "@/features/resources/hooks/resource.hooks";

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { IconButton, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
+import { MoreVert as MoreVertIcon } from "@/shared/icons";
 
 export interface KebabMenuItem {
   label: string;

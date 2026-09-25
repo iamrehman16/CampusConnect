@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Box, Button, Container, Tab, Tabs, Typography } from "@mui/material";
-import { ArrowBack } from "@mui/icons-material";
+import { ArrowBack } from "@/shared/icons";
 import { useNavigate, useParams } from "react-router-dom";
 import { ApprovalStatus } from "@/shared/types/enums";
 import { PageContainer } from '@/shared/components/PageContainer';

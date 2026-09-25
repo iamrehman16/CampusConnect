@@ -1,8 +1,7 @@
 // src/features/ai-chat/components/ChatInput.tsx
 import { useState, useRef, useEffect } from 'react';
 import { Box, IconButton, Typography, TextField } from '@mui/material';
-import SendIcon from '@mui/icons-material/Send';
-import StopIcon from '@mui/icons-material/Stop';
+import { Send as SendIcon, Stop as StopIcon } from "@/shared/icons";
 
 const MAX_CHARS = 1000;
 

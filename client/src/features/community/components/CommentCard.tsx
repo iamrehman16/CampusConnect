@@ -10,7 +10,7 @@ import {
   Button,
   Stack,
 } from '@mui/material';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
+import { MoreVert as MoreVertIcon } from "@/shared/icons";
 import type { Comment } from '../types/community.dto';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { formatRelativeTime } from '@/shared/utils/format';

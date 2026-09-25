@@ -1,6 +1,4 @@
-import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
-import LinkedInIcon from "@mui/icons-material/LinkedIn";
-import GitHubIcon from "@mui/icons-material/GitHub";
+import { EmailOutlined as EmailOutlinedIcon, LinkedIn as LinkedInIcon, GitHub as GitHubIcon } from "@/shared/icons";
 
 export const FAQ_SECTIONS = [
   {

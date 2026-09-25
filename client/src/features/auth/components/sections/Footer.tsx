@@ -2,7 +2,7 @@ import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
-import SchoolIcon from '@mui/icons-material/School';
+import { School as SchoolIcon } from "@/shared/icons";
 import { useIntersectionObserver } from '@/shared/hooks/useIntersectionObserver';
 import { footerLinks } from '../../data/landingContent';
 

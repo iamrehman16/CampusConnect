@@ -7,8 +7,7 @@ import {
   List,
   Typography,
 } from "@mui/material";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import PeopleOutlineIcon from "@mui/icons-material/PeopleOutline";
+import { EditOutlined as EditOutlinedIcon, PeopleOutline as PeopleOutlineIcon } from "@/shared/icons";
 import { useNavigate, useParams } from "react-router-dom";
 import { useConversationsQuery } from "../hooks/chat-hooks";
 import { ConversationListItem } from "./ConversationListItem";

@@ -14,7 +14,7 @@ import {
   Typography,
 } from "@mui/material";
 import { alpha, type Theme } from "@mui/material/styles";
-import { Save } from "@mui/icons-material";
+import { Save } from "@/shared/icons";
 import type { UpdateUserDto } from "../types/user.dto";
 import {
   DEFAULT_MAX_ACTIVE_MENTEES,

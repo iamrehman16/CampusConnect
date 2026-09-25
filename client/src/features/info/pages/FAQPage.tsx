@@ -1,5 +1,5 @@
 import { Box, Typography, Stack, Chip, Divider, Avatar, IconButton } from "@mui/material";
-import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import { AutoAwesome as AutoAwesomeIcon } from "@/shared/icons";
 import { PageContainer } from "@/shared/components/PageContainer";
 import { FAQ_SECTIONS, CREATOR } from "../data/faq.data";
 import { FaqItem } from "../components/FaqItem";

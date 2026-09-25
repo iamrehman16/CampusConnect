@@ -4,7 +4,7 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { CheckCircle as CheckCircleIcon } from "@/shared/icons";
 import { useAdminPendingResources } from '@/features/resources/hooks/resource.hooks';
 import ResourceModerationCard from './ResourceModerationCard';
 

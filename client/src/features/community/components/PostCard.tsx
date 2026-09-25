@@ -14,10 +14,7 @@ import {
   Stack,
   Collapse
 } from '@mui/material';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import ThumbUpIcon from '@mui/icons-material/ThumbUp';
-import ThumbUpOutlinedIcon from '@mui/icons-material/ThumbUpOutlined';
-import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import { MoreVert as MoreVertIcon, ThumbUp as ThumbUpIcon, ThumbUpOutlined as ThumbUpOutlinedIcon, ChatBubbleOutline as ChatBubbleOutlineIcon } from "@/shared/icons";
 import type { Post } from '../types/community.dto';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { formatRelativeTime } from '@/shared/utils/format';

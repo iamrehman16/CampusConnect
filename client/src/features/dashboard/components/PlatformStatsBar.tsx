@@ -1,9 +1,5 @@
 import { Box, Typography, Skeleton, Stack, IconButton } from "@mui/material";
-import PeopleOutlineIcon from "@mui/icons-material/PeopleOutline";
-import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
-import FolderOutlinedIcon from "@mui/icons-material/FolderOutlined";
-import ForumOutlinedIcon from "@mui/icons-material/ForumOutlined";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import { PeopleOutline as PeopleOutlineIcon, SchoolOutlined as SchoolOutlinedIcon, FolderOutlined as FolderOutlinedIcon, ForumOutlined as ForumOutlinedIcon, ArrowForward as ArrowForwardIcon } from "@/shared/icons";
 import { usePublicStats } from "@/features/dashboard/hooks/dashboard.hooks";
 import type { PublicStatsDto } from "../types/dashboard.types";
 import { useNavigate } from "react-router-dom";

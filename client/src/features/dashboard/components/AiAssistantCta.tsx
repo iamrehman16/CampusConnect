@@ -7,8 +7,7 @@ import {
   Stack,
   IconButton,
 } from "@mui/material";
-import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import { AutoAwesome as AutoAwesomeIcon, ArrowForward as ArrowForwardIcon } from "@/shared/icons";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/shared/constants/routes";
 

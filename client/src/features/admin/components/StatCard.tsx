@@ -3,13 +3,13 @@ import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import Skeleton from '@mui/material/Skeleton';
-import type { SvgIconComponent } from '@mui/icons-material';
+import type { AppIcon } from "@/shared/icons";
 
 interface StatCardProps {
   label: string;
   value: number | string;
   sub?: string;         // e.g. "+12 this week"
-  icon: SvgIconComponent;
+  icon: AppIcon;
   iconColor?: string;   // MUI color token e.g. 'primary.main'
   loading?: boolean;
 }

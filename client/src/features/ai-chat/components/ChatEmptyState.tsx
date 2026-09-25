@@ -1,5 +1,5 @@
 import { Box, Typography, Chip } from '@mui/material';
-import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined';
+import { SmartToyOutlined as SmartToyOutlinedIcon } from "@/shared/icons";
 
 const SUGGESTIONS = [
   'Explain normalization in databases',

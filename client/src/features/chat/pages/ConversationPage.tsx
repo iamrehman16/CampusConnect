@@ -6,7 +6,7 @@ import {
   Divider,
   CircularProgress,
 } from "@mui/material";
-import { ArrowBack } from "@mui/icons-material";
+import { ArrowBack } from "@/shared/icons";
 import { Navigate } from "react-router-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMediaQuery, useTheme } from "@mui/material";

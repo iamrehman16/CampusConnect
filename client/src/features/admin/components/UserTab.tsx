@@ -8,7 +8,7 @@ import Switch from "@mui/material/Switch";
 import Typography from "@mui/material/Typography";
 import TextField from "@mui/material/TextField";
 import InputAdornment from "@mui/material/InputAdornment";
-import SearchIcon from "@mui/icons-material/Search";
+import { Search as SearchIcon } from "@/shared/icons";
 import {
   DataGrid,
   type GridColDef,

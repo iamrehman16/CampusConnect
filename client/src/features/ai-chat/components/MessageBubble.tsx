@@ -1,11 +1,6 @@
 import { useState } from "react";
 import { Box, IconButton, Tooltip, keyframes } from "@mui/material";
-import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
-import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
-import ThumbUpRoundedIcon from "@mui/icons-material/ThumbUpRounded";
-import ThumbUpOutlinedIcon from "@mui/icons-material/ThumbUpOutlined";
-import ThumbDownRoundedIcon from "@mui/icons-material/ThumbDownRounded";
-import ThumbDownOutlinedIcon from "@mui/icons-material/ThumbDownOutlined";
+import { ContentCopyRounded as ContentCopyRoundedIcon, CheckRounded as CheckRoundedIcon, ThumbUpRounded as ThumbUpRoundedIcon, ThumbUpOutlined as ThumbUpOutlinedIcon, ThumbDownRounded as ThumbDownRoundedIcon, ThumbDownOutlined as ThumbDownOutlinedIcon } from "@/shared/icons";
 import { ThinkingBubble } from "./ThinkingBubble";
 import { CitationsChip } from "./CitationChip";
 import { MarkdownMessage } from "./MarkdownMessage";

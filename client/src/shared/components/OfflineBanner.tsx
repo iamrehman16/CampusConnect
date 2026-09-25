@@ -1,5 +1,5 @@
 import { Alert, Collapse } from '@mui/material';
-import WifiOffIcon from '@mui/icons-material/WifiOff';
+import { WifiOff as WifiOffIcon } from "@/shared/icons";
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
 
 export function OfflineBanner() {

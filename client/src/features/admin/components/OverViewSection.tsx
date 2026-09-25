@@ -1,10 +1,7 @@
 // features/admin/components/OverviewSection.tsx
 import Grid from "@mui/material/Grid";
 import Alert from "@mui/material/Alert";
-import PeopleIcon from "@mui/icons-material/People";
-import SchoolIcon from "@mui/icons-material/School";
-import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
-import ForumIcon from "@mui/icons-material/Forum";
+import { People as PeopleIcon, School as SchoolIcon, LibraryBooks as LibraryBooksIcon, Forum as ForumIcon } from "@/shared/icons";
 import StatCard from "./StatCard";
 import { useOverviewStats } from "../hooks/admin-hooks";
 

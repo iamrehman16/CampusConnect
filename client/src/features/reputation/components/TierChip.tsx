@@ -1,5 +1,5 @@
 import { Chip, type ChipProps } from "@mui/material";
-import StarRoundedIcon from "@mui/icons-material/StarRounded";
+import { StarRounded as StarRoundedIcon } from "@/shared/icons";
 import { TIER_DISPLAY } from "../utils/tier-display";
 import type { ReputationTier } from "../types/reputation.types";
 

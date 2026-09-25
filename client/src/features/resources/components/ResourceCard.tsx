@@ -8,15 +8,7 @@ import {
   Typography,
   Tooltip,
 } from '@mui/material';
-import DescriptionIcon from '@mui/icons-material/Description';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
-import SlideshowIcon from '@mui/icons-material/Slideshow';
-import ImageIcon from '@mui/icons-material/Image';
-import FolderZipIcon from '@mui/icons-material/FolderZip';
-import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
-import DownloadIcon from '@mui/icons-material/Download';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
+import { Description as DescriptionIcon, PictureAsPdf as PictureAsPdfIcon, Slideshow as SlideshowIcon, Image as ImageIcon, FolderZip as FolderZipIcon, InsertDriveFile as InsertDriveFileIcon, Download as DownloadIcon, Edit as EditIcon, Delete as DeleteIcon } from "@/shared/icons";
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { KebabMenu } from '@/shared/components/KebabMenu';
