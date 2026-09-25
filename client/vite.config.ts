@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
       react(),
       VitePWA({
         registerType: "prompt",
-        includeAssets: ["favicon.ico", "icons/*.png"],
+        includeAssets: ["icons/*"],
         manifest: false,
         workbox: {
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],

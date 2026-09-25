@@ -1,10 +1,10 @@
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
-import { School as SchoolIcon, LightMode as LightModeIcon, DarkMode as DarkModeIcon } from "@/shared/icons";
+import { LightMode as LightModeIcon, DarkMode as DarkModeIcon } from "@/shared/icons";
 import { useThemeModeContext } from '@/shared/hooks/useThemeModeContext';
+import { BrandLockup } from "@/shared/components/BrandMark";
 
 interface NavbarProps {
   onSignIn: () => void;
@@ -32,12 +32,7 @@ export default function Navbar({ onSignIn }: NavbarProps) {
         justifyContent: 'space-between',
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <SchoolIcon sx={{ color: 'primary.main', fontSize: 28 }} />
-        <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main', letterSpacing: '-0.5px' }}>
-          CampusConnect
-        </Typography>
-      </Box>
+      <BrandLockup size={30} />
       <Stack direction="row" alignItems="center" spacing={1}>
         <IconButton
           onClick={toggle}

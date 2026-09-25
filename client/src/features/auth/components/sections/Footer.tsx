@@ -2,9 +2,9 @@ import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
-import { School as SchoolIcon } from "@/shared/icons";
 import { useIntersectionObserver } from '@/shared/hooks/useIntersectionObserver';
 import { footerLinks } from '../../data/landingContent';
+import { BrandLockup } from "@/shared/components/BrandMark";
 
 export default function Footer() {
   const { isIntersecting, targetRef } = useIntersectionObserver({ threshold: 0.1 });
@@ -37,12 +37,7 @@ export default function Footer() {
           }}
         >
           <Box sx={{ textAlign: { xs: 'center', md: 'left' } }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, justifyContent: { xs: 'center', md: 'flex-start' } }}>
-              <SchoolIcon sx={{ color: 'primary.main', fontSize: 22 }} />
-              <Typography variant="subtitle1" fontWeight={700} color="primary.main">
-                CampusConnect
-              </Typography>
-            </Box>
+            <BrandLockup size={24} sx={{ mb: 1, justifyContent: { xs: 'center', md: 'flex-start' } }} />
             <Typography variant="caption" color="text.secondary" display="block">
               Built with ♥ at Quaid-i-Azam University
             </Typography>
