@@ -69,7 +69,7 @@ export function ConversationList() {
           variant="body2"
           fontWeight={600}
           color="primary"
-          onClick={() => navigate(ROUTES.CONTRIBUTORS)}
+          onClick={() => navigate(ROUTES.MENTORS)}
           sx={{
             cursor: "pointer",
             "&:hover": { textDecoration: "underline" },
@@ -132,7 +132,7 @@ export function ConversationList() {
         size="small"
         color="primary"
         aria-label="Start new conversation"
-        onClick={() => navigate(ROUTES.CONTRIBUTORS)}
+        onClick={() => navigate(ROUTES.MENTORS)}
         sx={{
           position: "absolute",
           bottom: 16,

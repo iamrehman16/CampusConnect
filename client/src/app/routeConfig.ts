@@ -8,8 +8,9 @@ const resources = ROUTES.RESOURCES;
 const community = ROUTES.COMMUNITY;
 const profile = ROUTES.PROFILE;
 const chats = ROUTES.CHAT;
-const contributors = ROUTES.CONTRIBUTORS;
-const mentorship = ROUTES.MENTORSHIP;
+const mentors = ROUTES.MENTORS;
+const myMentors = ROUTES.MY_MENTORS;
+const mentoring = ROUTES.MENTORING;
 const aichat = ROUTES.AI_CHAT;
 
 // Dynamic segment: the chat list route + a :id param appended.
@@ -43,7 +44,7 @@ const routeConfig: Record<string, RouteConfig> = {
     showBottomNav: true,
   },
   [resources]: {
-    title: "Resources",
+    title: "Library",
     topBarMode: "standard",
     showBottomNav: true,
   },
@@ -58,20 +59,25 @@ const routeConfig: Record<string, RouteConfig> = {
     showBottomNav: true,
   },
 
-  // ── Contextual sub-pages ─────────────────────────────────────────────────────
+  // Primary destinations (BACKLOG.md D5) — standard bar + bottom nav.
   [chats]: {
     title: "Messages",
-    topBarMode: "contextual",
+    topBarMode: "standard",
     showBottomNav: true,
   },
-  [contributors]: {
+  [mentors]: {
     title: "Mentors",
-    topBarMode: "contextual",
+    topBarMode: "standard",
     showBottomNav: true,
   },
-  [mentorship]: {
-    title: "Mentorship",
-    topBarMode: "contextual",
+  [myMentors]: {
+    title: "Mentors",
+    topBarMode: "standard",
+    showBottomNav: true,
+  },
+  [mentoring]: {
+    title: "Mentors",
+    topBarMode: "standard",
     showBottomNav: true,
   },
 

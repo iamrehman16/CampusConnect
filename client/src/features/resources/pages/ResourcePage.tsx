@@ -29,6 +29,7 @@ import { useAuth } from "@/shared/hooks/useAuth";
 import { UserRole } from "@/shared/types/enums";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { PageContainer } from '@/shared/components/PageContainer';
+import { useSearchParams } from "react-router-dom";
 // ─── Filter bar config ────────────────────────────────────────────────────────
 
 const RESOURCE_TYPE_OPTIONS = [
@@ -83,7 +84,18 @@ type TabType = "all" | "mine";
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function ResourcePage() {
+/**
+ * Route entry: the desktop top bar's global search lands here as
+ * /resources?q=… — keying on q starts a fresh search each time (including
+ * when the Library is already open) without syncing state in an Effect.
+ */
+export default function ResourcePageRoute() {
+  const [params] = useSearchParams();
+  const q = params.get("q") ?? "";
+  return <ResourcePage key={q} initialSearch={q} />;
+}
+
+function ResourcePage({ initialSearch }: { initialSearch: string }) {
   const { user } = useAuth();
   const isContributor = user?.role === UserRole.CONTRIBUTOR;
   const isAdmin = user?.role === UserRole.ADMIN;
@@ -93,7 +105,7 @@ export default function ResourcePage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Resource | null>(null);
 
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
   const debouncedSearch = useDebounce(searchTerm, 500);
 
   const [filters, setFilters] = useState<

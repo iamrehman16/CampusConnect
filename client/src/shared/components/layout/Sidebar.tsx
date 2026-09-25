@@ -1,377 +1,166 @@
-import { useLocation, useNavigate } from 'react-router-dom';
-import Badge from '@mui/material/Badge';
-import Box from '@mui/material/Box';
-import Drawer from '@mui/material/Drawer';
-import List from '@mui/material/List';
-import ListItemButton from '@mui/material/ListItemButton';
-import ListItemIcon from '@mui/material/ListItemIcon';
-import ListItemText from '@mui/material/ListItemText';
-import Typography from '@mui/material/Typography';
-import Divider from '@mui/material/Divider';
-import Tooltip from '@mui/material/Tooltip';
-import IconButton from '@mui/material/IconButton';
-import { Dashboard as DashboardIcon, LibraryBooks as LibraryBooksIcon, SmartToy as SmartToyIcon, Chat as ChatIcon, Forum as ForumIcon, Person as PersonIcon, AdminPanelSettings as AdminPanelSettingsIcon, Logout as LogoutIcon, Menu as MenuIcon, ChevronRight as ChevronRightIcon, LightMode as LightModeIcon, DarkMode as DarkModeIcon, NotificationsNone as NotificationsIcon, HandshakeOutlined as HandshakeIcon, People } from "@/shared/icons";
-import { alpha, useTheme } from '@mui/material/styles';
-import { ROUTES } from '@/shared/constants/routes';
-import { useAuth } from '@/shared/hooks/useAuth';
-import { UserRole } from '@/shared/types/enums';
-import { useUIStore } from '@/shared/store/ui.store';
-import { useThemeModeContext } from '@/shared/hooks/useThemeModeContext';
-import { NotificationPopover } from '@/features/notifications/components/NotificationPopover';
-import { useUnreadNotificationCount } from '@/features/notifications/hooks/notification.hooks';
-import { usePendingRequestCount } from '@/features/mentorship/hooks/mentorship.hooks';
-import { useState } from 'react';
-import { useTotalUnread } from '@/features/chat/hooks/chat-hooks';
+import { useLocation, useNavigate } from "react-router-dom";
+import Badge from "@mui/material/Badge";
+import Box from "@mui/material/Box";
+import IconButton from "@mui/material/IconButton";
+import List from "@mui/material/List";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
+import Tooltip from "@mui/material/Tooltip";
+import Typography from "@mui/material/Typography";
+import { ArrowBackIosNew, ChevronRight } from "@/shared/icons";
+import { BrandLockup, BrandMark } from "@/shared/components/BrandMark";
+import { useAuth } from "@/shared/hooks/useAuth";
+import { useUIStore } from "@/shared/store/ui.store";
+import { UserRole } from "@/shared/types/enums";
+import {
+  ADMIN_NAV,
+  PRIMARY_NAV,
+  isNavActive,
+  useNavBadges,
+  type NavItem,
+} from "./navigation";
 
-export const SIDEBAR_WIDTH = 260;
-export const SIDEBAR_COLLAPSED_WIDTH = 64;
-
-const MAIN_NAV = [
-  { label: 'Dashboard', icon: <DashboardIcon />, path: ROUTES.HOME },
-  { label: 'Resources', icon: <LibraryBooksIcon />, path: ROUTES.RESOURCES },
-  { label: 'AI Assistant', icon: <SmartToyIcon />, path: ROUTES.AI_CHAT },
-  { label: 'Messages', icon: <ChatIcon />, path: ROUTES.CHAT },
-  { label: 'Mentors', icon: <People />, path: ROUTES.CONTRIBUTORS },
-  { label: 'Mentorship', icon: <HandshakeIcon />, path: ROUTES.MENTORSHIP },
-  { label: 'Community', icon: <ForumIcon />, path: ROUTES.COMMUNITY },
-];
-
-const BOTTOM_NAV = [
-  { label: 'Profile', icon: <PersonIcon />, path: ROUTES.PROFILE },
-];
+export const SIDEBAR_WIDTH = 240;
+export const SIDEBAR_COLLAPSED_WIDTH = 68;
 
 /**
- * Desktop sidebar navigation.
- * Permanent drawer visible at `md` breakpoint and above (handled by AppLayout).
+ * Desktop sidebar (md+) — navigation only. Account, theme, notifications and
+ * log out live in the top bar (BACKLOG.md D5): the old sidebar mixed 11
+ * destinations and actions in one column.
  */
 export default function Sidebar() {
-  const location = useLocation();
+  const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
-  const theme = useTheme();
-  const { sidebarCollapsed, toggleSidebar } = useUIStore();
-  const { mode, toggle } = useThemeModeContext();
+  const { user } = useAuth();
+  const { sidebarCollapsed: collapsed, toggleSidebar } = useUIStore();
+  const badges = useNavBadges();
 
-  const totalUnread = useTotalUnread();
-  const { data: pendingMentorRequests = 0 } = usePendingRequestCount();
-  const { data: unreadNotifications = 0 } = useUnreadNotificationCount();
-  const [notifAnchor, setNotifAnchor] = useState<HTMLElement | null>(null);
-
-  const isAdmin = user?.role === UserRole.ADMIN;
-
-  const isActive = (path: string) =>
-    location.pathname === path ||
-    (path !== ROUTES.HOME && location.pathname.startsWith(path));
-
-  return (
-    <Drawer
-      variant="permanent"
-      sx={{
-        width: sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH,
-        flexShrink: 0,
-        '& .MuiDrawer-paper': {
-          width: sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH,
-          overflowX: 'hidden',
-          transition: theme.transitions.create('width', {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.enteringScreen,
-          }),
-          boxSizing: 'border-box',
-          bgcolor: 'background.paper',
-          display: 'flex',
-          flexDirection: 'column',
-          borderRight: '1px solid',
-          borderColor: 'divider',
-        },
-      }}
-    >
-      {/* Logo / Brand */}
-      <Box
-        sx={{
-          px: sidebarCollapsed ? 1 : 2.5,
-          height: 64,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: sidebarCollapsed ? 'center' : 'space-between',
-          flexShrink: 0,
-        }}
-      >
-        {/* Logo — hidden when collapsed */}
-        {!sidebarCollapsed && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <SmartToyIcon sx={{ color: 'primary.main', fontSize: 28 }} />
-            <Typography variant="h6" fontWeight={700} color="primary.main">
-              CampusConnect
-            </Typography>
-          </Box>
-        )}
-
-        {/* Toggle button */}
-        <Tooltip title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} placement="right">
-          <IconButton
-            onClick={toggleSidebar}
-            size="small"
-            sx={{ color: 'text.secondary' }}
-          >
-            {sidebarCollapsed ? <ChevronRightIcon /> : <MenuIcon />}
-          </IconButton>
-        </Tooltip>
-      </Box>
-
-      <Divider />
-
-      {/* Main Navigation */}
-      <List sx={{ flex: 1, px: sidebarCollapsed ? 0.5 : 1.5, py: 1 }}>
-        {MAIN_NAV.map((item) => (
-          <Tooltip
-            title={sidebarCollapsed ? item.label : ''}
-            placement="right"
-            arrow
-            key={item.label}
-          >
-            <ListItemButton
-              selected={isActive(item.path)}
-              onClick={() => navigate(item.path)}
-              sx={{
-                borderRadius: 1,
-                mb: 0.5,
-                minHeight: 44,
-                justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
-                px: sidebarCollapsed ? 1 : 1.5,
-                borderLeft: '3px solid',
-                borderColor: isActive(item.path) ? 'primary.main' : 'transparent',
-                '&.Mui-selected': {
-                  bgcolor: 'action.selected',
-                  '& .MuiListItemIcon-root': { color: 'primary.main' },
-                },
-              }}
+  const renderItem = (item: NavItem) => {
+    const active = isNavActive(pathname, item.path);
+    const count = item.badge ? badges[item.badge] : 0;
+    return (
+      <Tooltip key={item.key} title={collapsed ? item.label : ""} placement="right">
+        <ListItemButton
+          selected={active}
+          onClick={() => navigate(item.path)}
+          aria-current={active ? "page" : undefined}
+          sx={{
+            minHeight: 40,
+            mb: 0.25,
+            px: 1.25,
+            justifyContent: collapsed ? "center" : "flex-start",
+            color: (t) =>
+              active
+                ? t.palette.mode === "dark"
+                  ? t.palette.primary.main
+                  : t.palette.primary.dark
+                : t.palette.text.secondary,
+            "&:hover": { color: active ? undefined : "text.primary" },
+            ".MuiListItemIcon-root": { color: "inherit" },
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: collapsed ? 0 : 36 }}>
+            <Badge
+              badgeContent={count}
+              color="error"
+              max={99}
+              variant={collapsed ? "dot" : "standard"}
+              invisible={!count || !collapsed}
             >
-              <ListItemIcon
-                sx={{
-                  minWidth: sidebarCollapsed ? 'unset' : 40,
-                  color: isActive(item.path) ? 'primary.main' : 'text.secondary',
-                }}
-              >
-                {item.path === ROUTES.CHAT ? (
-                  <Badge badgeContent={totalUnread} color="error" max={99}>
-                    {item.icon}
-                  </Badge>
-                ) : item.path === ROUTES.MENTORSHIP ? (
-                  <Badge badgeContent={pendingMentorRequests} color="error" max={99}>
-                    {item.icon}
-                  </Badge>
-                ) : (
-                  item.icon
-                )}
-              </ListItemIcon>
-
-              {/* Label — hidden when collapsed */}
-              {!sidebarCollapsed && (
-                <ListItemText
-                  primary={item.label}
-                  primaryTypographyProps={{
-                    fontWeight: isActive(item.path) ? 700 : 500,
-                    fontSize: '0.875rem',
-                  }}
-                />
-              )}
-            </ListItemButton>
-          </Tooltip>
-        ))}
-
-        {/* Admin Section */}
-        {isAdmin && (
-          <>
-            <Divider sx={{ my: 1 }} />
-            <Tooltip title={sidebarCollapsed ? 'Admin Panel' : ''} placement="right" arrow>
-              <ListItemButton
-                selected={isActive(ROUTES.ADMIN)}
-                onClick={() => navigate(ROUTES.ADMIN)}
-                sx={{
-                  borderRadius: 1,
-                  mb: 0.5,
-                  minHeight: 44,
-                  justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
-                  px: sidebarCollapsed ? 1 : 1.5,
-                  borderLeft: '3px solid',
-                  borderColor: isActive(ROUTES.ADMIN) ? 'primary.main' : 'transparent',
-                  '&.Mui-selected': {
-                    bgcolor: 'action.selected',
-                    '& .MuiListItemIcon-root': { color: 'primary.main' },
-                  },
-                }}
-              >
-                <ListItemIcon
+              {item.icon}
+            </Badge>
+          </ListItemIcon>
+          {!collapsed && (
+            <>
+              <ListItemText
+                primary={item.label}
+                primaryTypographyProps={{ fontSize: "0.875rem", fontWeight: active ? 600 : 500 }}
+              />
+              {count > 0 && (
+                <Box
+                  component="span"
                   sx={{
-                    minWidth: sidebarCollapsed ? 'unset' : 40,
-                    color: isActive(ROUTES.ADMIN) ? 'primary.main' : 'text.secondary',
+                    minWidth: 20,
+                    height: 20,
+                    px: 0.75,
+                    borderRadius: 10,
+                    bgcolor: "primary.main",
+                    color: "primary.contrastText",
+                    fontSize: "0.6875rem",
+                    fontWeight: 700,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
-                  <AdminPanelSettingsIcon />
-                </ListItemIcon>
+                  {count > 99 ? "99+" : count}
+                </Box>
+              )}
+            </>
+          )}
+        </ListItemButton>
+      </Tooltip>
+    );
+  };
 
-                {/* Label — hidden when collapsed */}
-                {!sidebarCollapsed && (
-                  <ListItemText
-                    primary="Admin Panel"
-                    primaryTypographyProps={{
-                      fontWeight: isActive(ROUTES.ADMIN) ? 700 : 500,
-                      fontSize: '0.875rem',
-                    }}
-                  />
-                )}
-              </ListItemButton>
-            </Tooltip>
+  return (
+    <Box
+      component="nav"
+      aria-label="Main"
+      sx={{
+        width: collapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH,
+        flexShrink: 0,
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        bgcolor: "surface.card",
+        borderRight: "1px solid",
+        borderColor: "border.default",
+        transition: (t) => t.transitions.create("width", { duration: t.transitions.duration.shorter }),
+        overflow: "hidden",
+      }}
+    >
+      <Box
+        sx={{
+          height: 56,
+          px: collapsed ? 0 : 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: collapsed ? "center" : "flex-start",
+          flexShrink: 0,
+          cursor: "pointer",
+        }}
+        onClick={() => navigate("/")}
+      >
+        {collapsed ? <BrandMark size={28} /> : <BrandLockup size={28} />}
+      </Box>
+
+      <List sx={{ flex: 1, px: 1.25, py: 1, overflowY: "auto" }}>
+        {PRIMARY_NAV.map(renderItem)}
+        {user?.role === UserRole.ADMIN && (
+          <>
+            {!collapsed && (
+              <Typography
+                variant="caption"
+                color="text.tertiary"
+                sx={{ display: "block", px: 1.25, pt: 2, pb: 0.5, fontWeight: 600, letterSpacing: "0.04em" }}
+              >
+                MANAGE
+              </Typography>
+            )}
+            {renderItem(ADMIN_NAV)}
           </>
         )}
       </List>
 
-      <Divider />
-
-      {/* Bottom actions */}
-      <List sx={{ px: sidebarCollapsed ? 0.5 : 1.5, py: 1 }}>
-        {BOTTOM_NAV.map((item) => (
-          <Tooltip
-            title={sidebarCollapsed ? item.label : ''}
-            placement="right"
-            arrow
-            key={item.label}
-          >
-            <ListItemButton
-              selected={isActive(item.path)}
-              onClick={() => navigate(item.path)}
-              sx={{
-                borderRadius: 1,
-                mb: 0.5,
-                minHeight: 44,
-                justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
-                px: sidebarCollapsed ? 1 : 1.5,
-                borderLeft: '3px solid',
-                borderColor: isActive(item.path) ? 'primary.main' : 'transparent',
-                '&.Mui-selected': {
-                  bgcolor: 'action.selected',
-                  '& .MuiListItemIcon-root': { color: 'primary.main' },
-                },
-              }}
-            >
-              <ListItemIcon
-                sx={{
-                  minWidth: sidebarCollapsed ? 'unset' : 40,
-                  color: isActive(item.path) ? 'primary.main' : 'text.secondary',
-                }}
-              >
-                {item.icon}
-              </ListItemIcon>
-
-              {/* Label — hidden when collapsed */}
-              {!sidebarCollapsed && (
-                <ListItemText
-                  primary={item.label}
-                  primaryTypographyProps={{
-                    fontWeight: isActive(item.path) ? 700 : 500,
-                    fontSize: '0.875rem',
-                  }}
-                />
-              )}
-            </ListItemButton>
-          </Tooltip>
-        ))}
-        <Tooltip title={sidebarCollapsed ? 'Notifications' : ''} placement="right" arrow>
-          <ListItemButton
-            onClick={(e) => setNotifAnchor(e.currentTarget)}
-            sx={{
-              borderRadius: 1,
-              mb: 0.5,
-              minHeight: 44,
-              justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
-              px: sidebarCollapsed ? 1 : 1.5,
-              borderLeft: '3px solid transparent',
-            }}
-          >
-            <ListItemIcon
-              sx={{ minWidth: sidebarCollapsed ? 'unset' : 40, color: 'text.secondary' }}
-            >
-              <Badge badgeContent={unreadNotifications} color="error" max={99}>
-                <NotificationsIcon />
-              </Badge>
-            </ListItemIcon>
-            {!sidebarCollapsed && (
-              <ListItemText
-                primary="Notifications"
-                primaryTypographyProps={{ fontWeight: 500, fontSize: '0.875rem' }}
-              />
-            )}
-          </ListItemButton>
+      <Box sx={{ p: 1.25, display: "flex", justifyContent: collapsed ? "center" : "flex-end" }}>
+        <Tooltip title={collapsed ? "Expand sidebar" : "Collapse sidebar"} placement="right">
+          <IconButton size="small" onClick={toggleSidebar} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
+            {collapsed ? <ChevronRight fontSize="small" /> : <ArrowBackIosNew fontSize="small" />}
+          </IconButton>
         </Tooltip>
-        <NotificationPopover
-          anchorEl={notifAnchor}
-          onClose={() => setNotifAnchor(null)}
-          anchorOrigin={{ vertical: 'center', horizontal: 'right' }}
-          transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-        />
-        <Tooltip
-          title={sidebarCollapsed
-            ? (mode === 'dark' ? 'Light mode' : 'Dark mode')
-            : ''}
-          placement="right"
-          arrow
-        >
-          <ListItemButton
-            onClick={toggle}
-            sx={{
-              borderRadius: 1,
-              mb: 0.5,
-              minHeight: 44,
-              justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
-              px: sidebarCollapsed ? 1 : 1.5,
-              borderLeft: '3px solid transparent',
-            }}
-          >
-            <ListItemIcon
-              sx={{
-                minWidth: sidebarCollapsed ? 'unset' : 40,
-                color: 'text.secondary',
-              }}
-            >
-              {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
-            </ListItemIcon>
-            {!sidebarCollapsed && (
-              <ListItemText
-                primary={mode === 'dark' ? 'Light mode' : 'Dark mode'}
-                primaryTypographyProps={{ fontWeight: 500, fontSize: '0.875rem' }}
-              />
-            )}
-          </ListItemButton>
-        </Tooltip>
-        <Tooltip title={sidebarCollapsed ? 'Logout' : ''} placement="right" arrow>
-          <ListItemButton
-            onClick={logout}
-            sx={{
-              borderRadius: 1,
-              minHeight: 44,
-              justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
-              px: sidebarCollapsed ? 1 : 1.5,
-              borderLeft: '3px solid transparent',
-              '&:hover': (theme ) => ({ bgcolor: alpha(theme.palette.error.main, 0.08) }),
-            }}
-          >
-            <ListItemIcon
-              sx={{
-                minWidth: sidebarCollapsed ? 'unset' : 40,
-                color: 'error.main',
-              }}
-            >
-              <LogoutIcon />
-            </ListItemIcon>
-            {!sidebarCollapsed && (
-              <ListItemText
-                primary="Logout"
-                primaryTypographyProps={{ color: 'error.main', fontWeight: 500 }}
-              />
-            )}
-          </ListItemButton>
-        </Tooltip>
-      </List>
-    </Drawer>
+      </Box>
+    </Box>
   );
 }

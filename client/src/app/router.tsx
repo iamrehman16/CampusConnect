@@ -13,6 +13,9 @@ import SuspenseWrapper from "./SuspenseWrapper";
 import AuthPage from "@/features/auth/pages/AuthPage";
 import DashboardPage from "@/features/dashboard/pages/DashboardPage";
 import OnboardingRoute from "./routes/OnboardingRoute";
+import MentorsLayout, {
+  LegacyMentorshipRedirect,
+} from "@/features/mentorship/pages/MentorsLayout";
 
 // ── Lazy-loaded (code-split) ────────────────────────────────────────
 const ResourcePage = lazy(
@@ -201,26 +204,46 @@ const router = createBrowserRouter([
             ),
           },
 
+          // Mentors section (BACKLOG.md D5): directory + both sides of
+          // mentorship under one nav item, three tabs.
+          {
+            path: ROUTES.MENTORS,
+            element: <MentorsLayout />,
+            children: [
+              {
+                index: true,
+                element: (
+                  <SuspenseWrapper>
+                    <MentorDirectoryPage />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: "mine",
+                element: (
+                  <SuspenseWrapper>
+                    <MentorshipPage view="mentee" />
+                  </SuspenseWrapper>
+                ),
+              },
+              {
+                path: "mentoring",
+                element: (
+                  <SuspenseWrapper>
+                    <MentorshipPage view="mentor" />
+                  </SuspenseWrapper>
+                ),
+              },
+            ],
+          },
+          // Pre-D5 URLs (bookmarks, notifications already stored in the DB).
           {
             path: ROUTES.CONTRIBUTORS,
-            element: (
-              <SuspenseWrapper>
-                <MainLayout>
-                  <MentorDirectoryPage />
-                </MainLayout>
-              </SuspenseWrapper>
-            ),
+            element: <Navigate to={ROUTES.MENTORS} replace />,
           },
-
           {
             path: ROUTES.MENTORSHIP,
-            element: (
-              <SuspenseWrapper>
-                <MainLayout>
-                  <MentorshipPage />
-                </MainLayout>
-              </SuspenseWrapper>
-            ),
+            element: <LegacyMentorshipRedirect />,
           },
 
           {

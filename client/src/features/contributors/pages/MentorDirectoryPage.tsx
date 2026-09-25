@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useRef } from "react";
-import { Alert, Box, Button, CircularProgress, Skeleton, Typography } from "@mui/material";
-import { useNavigate } from "react-router-dom";
-import { ROUTES } from "@/shared/constants/routes";
-import { PageContainer } from "@/shared/components/PageContainer";
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Skeleton,
+  Typography,
+} from "@mui/material";
 import { MentorCard } from "../components/MentorCard";
 import { MentorFilterBar } from "../components/MentorFilterBar";
 import { useMentors } from "../hooks/mentor.hooks";
@@ -15,7 +19,6 @@ const GRID_SX = {
 } as const;
 
 export default function MentorDirectoryPage() {
-  const navigate = useNavigate();
   const { filters, setFilters, reset, hasActiveFilters } = useMentorFilters();
   const {
     data,
@@ -47,94 +50,78 @@ export default function MentorDirectoryPage() {
   useEffect(() => () => observer.current?.disconnect(), []);
 
   return (
-    <PageContainer>
-      <Box sx={{ p: { xs: 2, md: 3 }, display: "flex", flexDirection: "column", gap: 2.5 }}>
-        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 2, flexWrap: "wrap" }}>
-          <Box sx={{ flex: 1, minWidth: 220 }}>
-            <Typography variant="h5" fontWeight={700}>
-              Find a mentor
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Students and contributors who are open to helping. Filter by
-              subject, department or semester.
-            </Typography>
-          </Box>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={() => navigate(ROUTES.MENTORSHIP)}
-            sx={{ textTransform: "none", fontWeight: 600 }}
-          >
-            My mentorships
-          </Button>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+      <MentorFilterBar
+        filters={filters}
+        hasActiveFilters={hasActiveFilters}
+        onChange={setFilters}
+        onReset={reset}
+      />
+
+      {isError && (
+        <Alert
+          severity="error"
+          action={
+            <Button color="inherit" size="small" onClick={() => refetch()}>
+              Retry
+            </Button>
+          }
+        >
+          Couldn't load mentors.
+        </Alert>
+      )}
+
+      {isLoading && (
+        <Box sx={GRID_SX}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} variant="rounded" height={210} />
+          ))}
         </Box>
+      )}
 
-        <MentorFilterBar
-          filters={filters}
-          hasActiveFilters={hasActiveFilters}
-          onChange={setFilters}
-          onReset={reset}
-        />
+      {!isLoading && !isError && mentors.length === 0 && (
+        <Box sx={{ py: 8, textAlign: "center" }}>
+          <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+            {hasActiveFilters
+              ? "No mentors match those filters"
+              : "No mentors yet"}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {hasActiveFilters
+              ? "Try widening your search."
+              : "Mentors appear here once they turn on mentoring in their profile settings."}
+          </Typography>
+          {hasActiveFilters && (
+            <Button variant="outlined" size="small" onClick={reset}>
+              Clear filters
+            </Button>
+          )}
+        </Box>
+      )}
 
-        {isError && (
-          <Alert
-            severity="error"
-            action={
-              <Button color="inherit" size="small" onClick={() => refetch()}>
-                Retry
-              </Button>
-            }
+      {mentors.length > 0 && (
+        <>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            aria-live="polite"
           >
-            Couldn't load mentors.
-          </Alert>
-        )}
-
-        {isLoading && (
+            {total} {total === 1 ? "mentor" : "mentors"}
+            {isFetching && !isFetchingNextPage ? " · updating…" : ""}
+          </Typography>
           <Box sx={GRID_SX}>
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} variant="rounded" height={210} />
+            {mentors.map((mentor) => (
+              <MentorCard key={mentor.id} mentor={mentor} />
             ))}
           </Box>
-        )}
-
-        {!isLoading && !isError && mentors.length === 0 && (
-          <Box sx={{ py: 8, textAlign: "center" }}>
-            <Typography variant="subtitle1" fontWeight={600} gutterBottom>
-              {hasActiveFilters ? "No mentors match those filters" : "No mentors yet"}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              {hasActiveFilters
-                ? "Try widening your search."
-                : "Mentors appear here once they turn on mentoring in their profile settings."}
-            </Typography>
-            {hasActiveFilters && (
-              <Button variant="outlined" size="small" onClick={reset}>
-                Clear filters
-              </Button>
-            )}
-          </Box>
-        )}
-
-        {mentors.length > 0 && (
-          <>
-            <Typography variant="caption" color="text.secondary" aria-live="polite">
-              {total} {total === 1 ? "mentor" : "mentors"}
-              {isFetching && !isFetchingNextPage ? " · updating…" : ""}
-            </Typography>
-            <Box sx={GRID_SX}>
-              {mentors.map((mentor) => (
-                <MentorCard key={mentor.id} mentor={mentor} />
-              ))}
+          <div ref={sentinelRef} />
+          {isFetchingNextPage && (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+              <CircularProgress size={22} />
             </Box>
-            <div ref={sentinelRef} />
-            {isFetchingNextPage && (
-              <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-                <CircularProgress size={22} />
-              </Box>
-            )}
-          </>
-        )}
-      </Box>
-    </PageContainer>
+          )}
+        </>
+      )}
+    </Box>
   );
 }

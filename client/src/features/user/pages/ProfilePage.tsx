@@ -26,6 +26,10 @@ import ProfilePostsTab from "../components/ProfilePostsTab";
 import ProfileResourcesTab from "../components/ProfileResourcesTab";
 import ProfileSettingsTab from "../components/ProfileSettingsTab";
 import { toProfileUserViewModel } from "../types/profile.types";
+import { useSearchParams } from "react-router-dom";
+
+const PROFILE_TABS = ["posts", "resources", "settings"] as const;
+type ProfileTab = (typeof PROFILE_TABS)[number];
 
 // ─── Tab panel wrapper ────────────────────────────────────────────────────────
 const TabPanel = ({
@@ -48,7 +52,13 @@ const TabPanel = ({
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const ProfilePage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState(0);
+  // Tab lives in the URL so the account menu's "Settings" (/profile?tab=settings)
+  // can deep-link, including when Profile is already open.
+  const [params, setParams] = useSearchParams();
+  const tabIndex = PROFILE_TABS.indexOf(params.get("tab") as ProfileTab);
+  const activeTab = tabIndex === -1 ? 0 : tabIndex;
+  const setActiveTab = (i: number) =>
+    setParams(i === 0 ? {} : { tab: PROFILE_TABS[i] }, { replace: true });
   const [resourceFilter, setResourceFilter] = useState<ApprovalStatus | "all">(
     "all",
   );

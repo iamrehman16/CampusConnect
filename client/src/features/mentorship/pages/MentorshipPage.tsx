@@ -4,21 +4,15 @@ import {
   Box,
   CircularProgress,
   Stack,
-  Tab,
-  Tabs,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
 import { useSearchParams } from "react-router-dom";
-import { PageContainer } from "@/shared/components/PageContainer";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { useUserProfile } from "@/features/user/hooks/profile-hooks";
 import { MentorshipCard } from "../components/MentorshipCard";
-import {
-  useMentorships,
-  usePendingRequestCount,
-} from "../hooks/mentorship.hooks";
+import { useMentorships } from "../hooks/mentorship.hooks";
 import {
   PAST_STATUSES,
   type MentorshipStatus,
@@ -59,8 +53,14 @@ function MentorshipList({
   view: MentorshipView;
   section: Section;
 }) {
-  const { data, isLoading, isError, hasNextPage, isFetchingNextPage, fetchNextPage } =
-    useMentorships(view, SECTION_STATUSES[section]);
+  const {
+    data,
+    isLoading,
+    isError,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useMentorships(view, SECTION_STATUSES[section]);
 
   const observer = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useCallback(
@@ -108,34 +108,27 @@ function MentorshipList({
   );
 }
 
-export default function MentorshipPage() {
+/**
+ * One side of the mentorship lifecycle — requests/active/past as a mentee
+ * ("My mentors") or as a mentor ("Mentoring"). Rendered inside the Mentors
+ * section (MentorsLayout, BACKLOG.md D5), which owns the page header and
+ * the tab between the two views.
+ */
+export default function MentorshipPage({ view }: { view: MentorshipView }) {
   const { user } = useAuth();
   const [params, setParams] = useSearchParams();
   const { data: profile } = useUserProfile(user?._id ?? "");
-  // Someone who isn't a mentor has nothing on the mentor tab — open on "My
-  // mentors" unless the URL says otherwise.
-  const tabParam = params.get("tab");
-  const view: MentorshipView =
-    tabParam === "mentee" || tabParam === "mentor"
-      ? tabParam
-      : profile && !profile.isOpenToMentor
-        ? "mentee"
-        : "mentor";
   const section: Section =
     params.get("section") === "active" || params.get("section") === "past"
       ? (params.get("section") as Section)
       : "pending";
 
-  const { data: pendingCount = 0 } = usePendingRequestCount();
-
-  const update = (patch: Record<string, string | undefined>) =>
+  const setSection = (v: Section) =>
     setParams(
       (prev) => {
         const next = new URLSearchParams(prev);
-        for (const [k, v] of Object.entries(patch)) {
-          if (v) next.set(k, v);
-          else next.delete(k);
-        }
+        if (v === "pending") next.delete("section");
+        else next.set("section", v);
         return next;
       },
       { replace: true },
@@ -145,64 +138,39 @@ export default function MentorshipPage() {
   const used = profile?.activeMenteeCount ?? 0;
 
   return (
-    <PageContainer>
-      <Box sx={{ p: { xs: 2, md: 3 }, display: "flex", flexDirection: "column", gap: 2 }}>
-        <Box>
-          <Typography variant="h5" fontWeight={700}>
-            Mentorship
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Requests you've received and the mentors you've asked.
-          </Typography>
-        </Box>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      {view === "mentor" && profile?.isOpenToMentor && (
+        <Typography variant="body2" color="text.secondary">
+          {used} of {max} mentee slots in use
+        </Typography>
+      )}
+      {view === "mentor" && profile && !profile.isOpenToMentor && (
+        <Alert severity="info">
+          You're not open to mentoring, so people can't send you requests. Turn
+          it on in Settings.
+        </Alert>
+      )}
 
-        <Tabs
-          value={view}
-          onChange={(_, v: MentorshipView) => update({ tab: v, section: undefined })}
-          sx={{ borderBottom: 1, borderColor: "divider" }}
-        >
-          <Tab
-            value="mentor"
-            label={
-              pendingCount > 0
-                ? `As mentor (${pendingCount} new)`
-                : "As mentor"
-            }
-            sx={{ textTransform: "none" }}
-          />
-          <Tab value="mentee" label="My mentors" sx={{ textTransform: "none" }} />
-        </Tabs>
+      <ToggleButtonGroup
+        exclusive
+        size="small"
+        value={section}
+        onChange={(_, v: Section | null) => v && setSection(v)}
+        aria-label="Filter mentorships"
+        sx={{ alignSelf: "flex-start" }}
+      >
+        {(Object.keys(SECTION_LABEL) as Section[]).map((s) => (
+          <ToggleButton key={s} value={s} sx={{ px: 2 }}>
+            {SECTION_LABEL[s]}
+          </ToggleButton>
+        ))}
+      </ToggleButtonGroup>
 
-        {view === "mentor" && profile?.isOpenToMentor && (
-          <Typography variant="caption" color="text.secondary">
-            {used} of {max} mentee slots in use
-          </Typography>
-        )}
-        {view === "mentor" && profile && !profile.isOpenToMentor && (
-          <Alert severity="info">
-            You're not open to mentoring, so people can't send you new requests.
-            Turn it on in Profile → Settings.
-          </Alert>
-        )}
-
-        <ToggleButtonGroup
-          exclusive
-          size="small"
-          value={section}
-          onChange={(_, v: Section | null) =>
-            v && update({ section: v === "pending" ? undefined : v })
-          }
-          aria-label="Filter mentorships"
-        >
-          {(Object.keys(SECTION_LABEL) as Section[]).map((s) => (
-            <ToggleButton key={s} value={s} sx={{ textTransform: "none", px: 2 }}>
-              {SECTION_LABEL[s]}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
-
-        <MentorshipList key={`${view}-${section}`} view={view} section={section} />
-      </Box>
-    </PageContainer>
+      <MentorshipList
+        key={`${view}-${section}`}
+        view={view}
+        section={section}
+      />
+    </Box>
   );
 }

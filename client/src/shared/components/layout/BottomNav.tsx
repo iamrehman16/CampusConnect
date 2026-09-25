@@ -1,78 +1,54 @@
-import { useLocation, useNavigate } from 'react-router-dom';
-import BottomNavigation from '@mui/material/BottomNavigation';
-import BottomNavigationAction from '@mui/material/BottomNavigationAction';
-import Paper from '@mui/material/Paper';
-import { Dashboard as DashboardIcon, LibraryBooks as LibraryBooksIcon, SmartToy as SmartToyIcon, Forum as ForumIcon } from "@/shared/icons";
-import { ROUTES } from '@/shared/constants/routes';
+import { useLocation, useNavigate } from "react-router-dom";
+import Badge from "@mui/material/Badge";
+import BottomNavigation from "@mui/material/BottomNavigation";
+import BottomNavigationAction from "@mui/material/BottomNavigationAction";
+import Paper from "@mui/material/Paper";
+import { PRIMARY_NAV, isNavActive, useNavBadges } from "./navigation";
 
-const NAV_ITEMS = [
-  { label: 'Home', icon: <DashboardIcon />, path: ROUTES.HOME },
-  { label: 'Resources', icon: <LibraryBooksIcon />, path: ROUTES.RESOURCES },
-  { label: 'AI Chat', icon: <SmartToyIcon />, path: ROUTES.AI_CHAT },
-  { label: 'Community', icon: <ForumIcon />, path: ROUTES.COMMUNITY },
-];
+const ITEMS = PRIMARY_NAV.filter((i) => !i.desktopOnly);
 
-/**
- * Mobile bottom navigation bar.
- * Only visible below the `md` breakpoint (handled by AppLayout).
- */
+/** Mobile bottom navigation (below md) — the 5 primary destinations. */
 export default function BottomNav() {
-  const location = useLocation();
+  const { pathname } = useLocation();
   const navigate = useNavigate();
-
-  // Find the active nav item index
-  const activeIndex = NAV_ITEMS.findIndex(
-    (item) =>
-      location.pathname === item.path ||
-      (item.path !== ROUTES.HOME && location.pathname.startsWith(item.path)),
-  );
+  const badges = useNavBadges();
+  const active = ITEMS.findIndex((i) => isNavActive(pathname, i.path));
 
   return (
     <Paper
+      component="nav"
+      aria-label="Main"
+      elevation={0}
       sx={{
-        position: 'fixed',
+        position: "fixed",
         bottom: 0,
         left: 0,
         right: 0,
-        zIndex: 1100,
-        elevation: 0,
-        borderTop: '1px solid',
-        borderColor: 'divider',
-        bgcolor: 'background.paper',
+        zIndex: (t) => t.zIndex.appBar,
+        pb: "env(safe-area-inset-bottom)",
+        bgcolor: "surface.card",
       }}
-      elevation={0}
     >
       <BottomNavigation
-        value={activeIndex === -1 ? 0 : activeIndex}
-        onChange={(_, newValue) => {
-          navigate(NAV_ITEMS[newValue].path, { replace: true });
-        }}
+        value={active === -1 ? false : active}
+        onChange={(_, i: number) => navigate(ITEMS[i].path)}
         showLabels
-        sx={{
-          bgcolor: 'background.paper',
-          height: 64,
-          '& .Mui-selected': {
-            color: 'primary.main',
-          },
-          '& .MuiBottomNavigationAction-root': {
-            minWidth: 48,
-            padding: '6px 0',
-            '@media (pointer: coarse)': {
-              padding: '8px 0',
-            },
-            '& .MuiBottomNavigationAction-label': {
-              fontSize: '0.6875rem',
-            },
-          },
-        }}
+        sx={{ height: 64 }}
       >
-        {NAV_ITEMS.map((item) => (
-          <BottomNavigationAction
-            key={item.label}
-            label={item.label}
-            icon={item.icon}
-          />
-        ))}
+        {ITEMS.map((item) => {
+          const count = item.badge ? badges[item.badge] : 0;
+          return (
+            <BottomNavigationAction
+              key={item.key}
+              label={item.label}
+              icon={
+                <Badge badgeContent={count} color="error" max={99}>
+                  {item.icon}
+                </Badge>
+              }
+            />
+          );
+        })}
       </BottomNavigation>
     </Paper>
   );

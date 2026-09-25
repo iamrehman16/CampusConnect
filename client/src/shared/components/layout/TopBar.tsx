@@ -6,7 +6,7 @@ import ContextualBar from "./topbar/ContextualBar";
 
 interface TopBarProps {
   /**
-   * Passed through from AppLayout → ProfileDrawer.
+   * Passed through from AppLayout → AccountDrawer.
    * Only StandardBar uses this — ContextualBar has no avatar.
    * We accept it here so AppLayout's interface stays unchanged.
    */

@@ -3,20 +3,21 @@ import { useState } from "react";
 import Box from "@mui/material/Box";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
-import Sidebar, { SIDEBAR_WIDTH, SIDEBAR_COLLAPSED_WIDTH } from "./Sidebar";
+import Sidebar from "./Sidebar";
 import BottomNav from "./BottomNav";
 import TopBar from "./TopBar";
-import ProfileDrawer from "./ProfileDrawer";
-import { useUIStore } from "@/shared/store/ui.store";
+import DesktopTopBar from "./DesktopTopBar";
+import { AccountDrawer } from "./AccountMenu";
 import { getRouteConfig } from "@/app/routeConfig";
 import { useChatPresenceSync } from "@/features/chat/hooks/useChatPresenceSync";
 import { useNotificationSync } from "@/features/notifications/hooks/useNotificationSync";
 import { useChatUnreadSync } from "@/features/chat/hooks/useChatUnreadSync";
 
 /**
- * Main application layout shell.
- * - Desktop (md+): Permanent sidebar on the left + content area
- * - Mobile (<md): Full-width content with bottom navigation
+ * Application shell (BACKLOG.md D5).
+ * - Desktop (md+): sidebar (navigation) | column [ top bar (search,
+ *   notifications, account) / page ].
+ * - Mobile: route-aware top bar + page + 5-item bottom nav.
  */
 export default function AppLayout() {
   const theme = useTheme();
@@ -24,43 +25,42 @@ export default function AppLayout() {
   useChatPresenceSync();
   useNotificationSync();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
-  const { sidebarCollapsed } = useUIStore();
-  const sidebarWidth = sidebarCollapsed
-    ? SIDEBAR_COLLAPSED_WIDTH
-    : SIDEBAR_WIDTH;
-  const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const { pathname } = useLocation();
   const { showBottomNav, topBarMode } = getRouteConfig(pathname);
   const isImmersive = topBarMode === "immersive";
 
+  if (isDesktop) {
+    return (
+      <Box sx={{ display: "flex", height: "100vh", bgcolor: "surface.canvas" }}>
+        <Sidebar />
+        <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+          <DesktopTopBar />
+          <Box component="main" sx={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+            <Outlet />
+          </Box>
+        </Box>
+      </Box>
+    );
+  }
+
   return (
     <>
-      <TopBar onAvatarClick={() => setProfileDrawerOpen(true)} />
-      <ProfileDrawer
-        open={profileDrawerOpen}
-        onClose={() => setProfileDrawerOpen(false)}
-      />
-      <Box sx={{ display: "flex", height: "100vh" }}>
-        {isDesktop && <Sidebar />}
-        <Box
-          component="main"
-          sx={{
-            flexGrow: 1,
-            width: isDesktop ? `calc(100% - ${sidebarWidth}px)` : "100%",
-            pt: { xs: isImmersive ? 0 : "56px", md: 0 },
-            pb: { xs: showBottomNav ? "64px" : 0, md: 0 },
-            overflow: "hidden",
-            bgcolor: "background.default",
-            transition: theme.transitions.create("width", {
-              easing: theme.transitions.easing.sharp,
-              duration: theme.transitions.duration.enteringScreen,
-            }),
-          }}
-        >
-          <Outlet />
-        </Box>
-        {!isDesktop && showBottomNav && <BottomNav />}
+      <TopBar onAvatarClick={() => setAccountOpen(true)} />
+      <AccountDrawer open={accountOpen} onClose={() => setAccountOpen(false)} />
+      <Box
+        component="main"
+        sx={{
+          height: "100dvh",
+          pt: isImmersive ? 0 : "56px",
+          pb: showBottomNav ? "calc(64px + env(safe-area-inset-bottom))" : 0,
+          overflow: "hidden",
+          bgcolor: "surface.canvas",
+        }}
+      >
+        <Outlet />
       </Box>
+      {showBottomNav && <BottomNav />}
     </>
   );
 }
