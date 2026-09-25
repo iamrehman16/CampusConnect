@@ -78,86 +78,80 @@ export function ChatInput({
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1 }}>
+      {/* D8: one composer surface — the field and its send/stop button share
+          a single bordered box, instead of a pill field plus a floating
+          circle button. */}
+      <Box
+        sx={(t) => ({
+          display: 'flex',
+          alignItems: 'flex-end',
+          gap: 1,
+          pl: 2,
+          pr: 1,
+          py: 1,
+          borderRadius: `${t.radius.lg}px`,
+          border: '1px solid',
+          borderColor: isOverLimit ? 'error.main' : 'border.default',
+          bgcolor: disabled ? 'surface.subtle' : 'surface.card',
+          boxShadow: t.palette.mode === 'dark' ? 'none' : '0 1px 2px rgba(28, 25, 23, 0.04)',
+          transition: t.transitions.create(['border-color', 'box-shadow', 'background-color']),
+          '&:focus-within': {
+            borderColor: isOverLimit ? 'error.main' : 'primary.main',
+            boxShadow: `0 0 0 3px ${t.palette.primary.subtle}`,
+          },
+        })}
+      >
         <TextField
           fullWidth
           multiline
-          maxRows={4}
+          maxRows={6}
           disabled={disabled}
-          placeholder={isStreaming ? 'Responding…' : 'Ask a question…'}
+          placeholder={isStreaming ? 'Responding…' : 'Ask about any course topic…'}
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          variant="outlined"
-          size="small"
+          variant="standard"
           inputRef={textareaRef}
+          slotProps={{
+            input: { disableUnderline: true },
+            htmlInput: { 'aria-label': 'Message the study assistant' },
+          }}
           sx={{
-            '& .MuiOutlinedInput-root': {
-              borderRadius: '24px',
-              bgcolor: 'background.paper',
-              transition: 'opacity 0.15s ease',
-              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                borderColor: isOverLimit ? 'error.main' : 'primary.light',
-                borderWidth: '1.5px',
-              },
-              '& .MuiOutlinedInput-notchedOutline': {
-                borderColor: isOverLimit ? 'error.main' : undefined,
-              },
-              // BACKLOG.md C2 — `disabled` prop existed on this component
-              // already but was never wired to the field, so streaming
-              // never visibly locked the composer. MUI's disabled cursor
-              // + text opacity aren't enough on their own to read as
-              // "can't type right now" rather than "form field, but
-              // muted" — the extra opacity on the whole control makes it
-              // unambiguous.
-              '&.Mui-disabled': {
-                opacity: 0.6,
-                bgcolor: 'action.disabledBackground',
-              },
-            },
+            py: 0.75,
+            '& .MuiInputBase-root': { fontSize: '0.9375rem', lineHeight: 1.6 },
+            // BACKLOG.md C2 — the composer visibly locks while streaming.
+            '& .Mui-disabled': { opacity: 0.7 },
           }}
         />
 
-        {/* Send / Stop toggle */}
         {isStreaming ? (
           <IconButton
-            size="small"
             onClick={onStop}
             aria-label="Stop response"
             sx={{
-              width: 40,
-              height: 40,
+              width: 36,
+              height: 36,
               flexShrink: 0,
-              mb: 0.25,
-              bgcolor: 'error.main',
-              color: '#fff',
-              borderRadius: '50%',
-              '&:hover': { bgcolor: 'error.dark' },
+              bgcolor: 'text.primary',
+              color: 'surface.card',
+              '&:hover': { bgcolor: 'text.secondary', color: 'surface.card' },
             }}
           >
-            <StopIcon sx={{ fontSize: 18 }} />
+            <StopIcon sx={{ fontSize: 14 }} />
           </IconButton>
         ) : (
           <IconButton
-            size="small"
             onClick={handleSend}
             disabled={!canSend}
             aria-label="Send message"
             sx={{
-              width: 40,
-              height: 40,
+              width: 36,
+              height: 36,
               flexShrink: 0,
-              mb: 0.25,
-              bgcolor: canSend ? 'primary.main' : 'action.disabledBackground',
-              color: canSend ? 'primary.contrastText' : 'text.disabled',
-              borderRadius: '50%',
-              '&:hover': {
-                bgcolor: canSend ? 'primary.dark' : 'action.disabledBackground',
-              },
-              '&.Mui-disabled': {
-                bgcolor: 'action.disabledBackground',
-                color: 'text.disabled',
-              },
+              bgcolor: 'primary.main',
+              color: 'primary.contrastText',
+              '&:hover': { bgcolor: 'primary.dark', color: 'primary.contrastText' },
+              '&.Mui-disabled': { bgcolor: 'surface.subtle', color: 'text.disabled' },
             }}
           >
             <SendIcon sx={{ fontSize: 18 }} />
@@ -170,19 +164,12 @@ export function ChatInput({
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          mt: 0.5,
+          mt: 0.75,
           px: 0.5,
         }}
       >
-        <Typography
-          variant="caption"
-          sx={{
-            display: { xs: 'none', sm: 'block' },
-            color: 'text.disabled',
-            fontSize: '0.7rem',
-          }}
-        >
-          Enter to send · Shift+Enter for new line
+        <Typography variant="caption" sx={{ display: { xs: 'none', sm: 'block' }, color: 'text.tertiary' }}>
+          Enter to send · Shift+Enter for a new line · Answers can be wrong — check the cited sources
         </Typography>
 
         {showCounter && (
@@ -192,7 +179,6 @@ export function ChatInput({
               textAlign: 'right',
               color: isOverLimit ? 'error.main' : 'text.secondary',
               fontWeight: isOverLimit ? 600 : 400,
-              transition: 'color 0.15s',
             }}
           >
             {charCount} / {MAX_CHARS}

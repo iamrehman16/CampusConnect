@@ -66,14 +66,15 @@ export function MarkdownMessage({ content, isUser = false }: MarkdownMessageProp
 
   const components: Components = {
     h1: ({ node, ...props }) => (
-      <Typography variant="subtitle1" fontWeight="bold" sx={{ mt: 1.5, mb: 0.5 }} {...props} />
+      <Typography variant="h6" fontWeight={700} sx={{ mt: 2.5, mb: 0.75, "&:first-child": { mt: 0 } }} {...props} />
     ),
     h2: ({ node, ...props }) => (
-      <Typography variant="subtitle2" fontWeight="bold" sx={{ mt: 1.5, mb: 0.5 }} {...props} />
+      <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 2.5, mb: 0.75, "&:first-child": { mt: 0 } }} {...props} />
     ),
     h3: ({ node, ...props }) => (
-      <Typography variant="body1" fontWeight="bold" sx={{ mt: 1.5, mb: 0.5 }} {...props} />
+      <Typography variant="subtitle2" fontWeight={700} sx={{ mt: 2, mb: 0.5, "&:first-child": { mt: 0 } }} {...props} />
     ),
+    hr: () => <Box component="hr" sx={{ border: 0, borderTop: "1px solid", borderColor: "border.subtle", my: 2.5 }} />,
     h4: ({ node, ...props }) => (
       <Typography variant="body2" fontWeight="bold" sx={{ mt: 1, mb: 0.5 }} {...props} />
     ),
@@ -97,10 +98,15 @@ export function MarkdownMessage({ content, isUser = false }: MarkdownMessageProp
       />
     ),
     table: ({ node, ...props }) => (
-      <Box sx={{ overflowX: "auto", my: 1 }}>
+      <Box sx={{ overflowX: "auto", my: 1.5 }}>
         <Table
           size="small"
           sx={{
+            // The bubble sets wordBreak: break-word for long URLs/tokens;
+            // in table cells that split words mid-way ("Anoma|ly").
+            wordBreak: "normal",
+            whiteSpace: "normal",
+            "& th:first-of-type, & td:first-of-type": { whiteSpace: "nowrap" },
             border: "1px solid",
             borderColor: isUser ? "rgba(255,255,255,0.2)" : "divider",
             "& th, & td": {
@@ -191,7 +197,9 @@ export function MarkdownMessage({ content, isUser = false }: MarkdownMessageProp
   return (
     <Box
       sx={{
-        "& p": { my: 0.75, "&:first-of-type": { mt: 0 }, "&:last-of-type": { mb: 0 } },
+        // Markdown's own blank lines must not become extra space.
+        whiteSpace: "normal",
+        "& p": { my: 1, "&:first-of-type": { mt: 0 }, "&:last-of-type": { mb: 0 } },
         "& ul, & ol": { mt: 0.5, mb: 0.5, pl: 2.5 },
         "& li": { mb: 0.25 },
         "& pre": { m: 0 },

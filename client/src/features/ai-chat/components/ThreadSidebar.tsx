@@ -1,4 +1,4 @@
-import { Box, CircularProgress, Fab, List, Typography } from "@mui/material";
+import { Box, Button, CircularProgress, List, Typography } from "@mui/material";
 import { Add as AddIcon, ChatBubbleOutline as ChatBubbleOutlineIcon } from "@/shared/icons";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -36,30 +36,23 @@ export function ThreadSidebar({ onNavigate }: ThreadSidebarProps) {
         overflow: "hidden",
       }}
     >
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          px: 2,
-          py: 1.5,
-          borderBottom: "1px solid",
-          borderColor: "divider",
-          flexShrink: 0,
-        }}
-      >
-        <Typography variant="subtitle2" fontWeight={600}>
-          Chats
-        </Typography>
-        <Fab
-          size="small"
-          color="primary"
-          aria-label="New chat"
+      <Box sx={{ p: 1.5, flexShrink: 0 }}>
+        <Button
+          fullWidth
+          variant="outlined"
+          startIcon={<AddIcon />}
           onClick={() => goTo(ROUTES.AI_CHAT)}
-          sx={{ boxShadow: "none", width: 32, height: 32, minHeight: 32 }}
+          sx={{ justifyContent: "flex-start" }}
         >
-          <AddIcon fontSize="small" />
-        </Fab>
+          New chat
+        </Button>
+        <Typography
+          variant="caption"
+          color="text.tertiary"
+          sx={{ display: "block", px: 0.5, pt: 2, fontWeight: 600, letterSpacing: "0.04em" }}
+        >
+          RECENT
+        </Typography>
       </Box>
 
       {isLoading ? (

@@ -38,16 +38,17 @@ export function AiChatMessageList({
         sx={{
           height: "100%",
           overflowY: "auto",
-          px: 1.75,
-          py: 2,
+          px: { xs: 1.75, sm: 3 },
+          py: 3,
           display: "flex",
           flexDirection: "column",
-          gap: 1.5,
-          bgcolor: "background.default",
+          bgcolor: "surface.card",
           "&::-webkit-scrollbar": { width: 3 },
           "&::-webkit-scrollbar-thumb": { bgcolor: "divider", borderRadius: 4 },
         }}
       >
+        {/* Centred reading column (~760px), like the composer below. */}
+        <Box sx={{ width: "100%", maxWidth: 760, mx: "auto", flex: 1, display: "flex", flexDirection: "column", gap: 3 }}>
         {messages.length === 0 && !streamingBubble ? (
           <ChatEmptyState onSuggestionClick={onSuggestionClick} />
         ) : (
@@ -69,6 +70,7 @@ export function AiChatMessageList({
           </>
         )}
         <div ref={bottomRef} />
+        </Box>
       </Box>
 
       {/* Button lives outside the scroll container, anchored to the shell */}
@@ -79,12 +81,12 @@ export function AiChatMessageList({
             position: "absolute",
             bottom: 16,
             right: 16,
-            bgcolor: "background.paper",
+            bgcolor: "surface.overlay",
             border: "1px solid",
-            borderColor: "divider",
-            boxShadow: 3,
+            borderColor: "border.default",
+            boxShadow: (t) => t.shadows[2],
             zIndex: 2,
-            "&:hover": { bgcolor: "background.paper" },
+            "&:hover": { bgcolor: "surface.subtle" },
           }}
         >
           <KeyboardArrowDownIcon />

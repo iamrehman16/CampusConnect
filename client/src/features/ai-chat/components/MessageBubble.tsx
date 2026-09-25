@@ -100,40 +100,38 @@ export function MessageBubble({ message, conversationId }: MessageBubbleProps) {
     >
       <Box
         sx={{
-          maxWidth: "78%",
+          maxWidth: isUser ? "85%" : "100%",
+          minWidth: 0,
           "&:hover .message-action-toolbar": { opacity: 1 },
         }}
       >
         <Box
           sx={{
-            px: 1.75,
-            py: 1.25,
-            borderRadius: "14px",
-            borderBottomRightRadius: isUser ? "4px" : "14px",
-            borderBottomLeftRadius: isUser ? "14px" : "4px",
+            // D8: the accent-filled user bubble made every exchange shout;
+            // user turns are a quiet neutral bubble, answers are plain text
+            // on the chat surface (easier to read long explanations).
             ...(isUser
               ? {
-                  bgcolor: "primary.main",
-                  color: "primary.contrastText",
+                  px: 1.75,
+                  py: 1.25,
+                  borderRadius: (t) => `${t.radius.lg}px`,
+                  bgcolor: "surface.subtle",
                 }
-              : {
-                  border: { xs: "1px solid", md: "none" },
-                  borderColor: { xs: "divider", md: "transparent" },
-                  bgcolor: { xs: "background.paper", md: "transparent" },
-                  px: { xs: 1.75, md: 0 },
-                  py: { xs: 1.25, md: 0.5 },
-                  color: "text.primary",
-                }),
-            fontSize: "0.875rem",
-            lineHeight: 1.6,
-            whiteSpace: "pre-wrap",
+              : { py: 0.25 }),
+            color: "text.primary",
+            fontSize: "0.9375rem",
+            lineHeight: 1.7,
+            // pre-wrap only for the user's raw text; assistant answers are
+            // markdown, where it turned every blank line into a gap.
+            whiteSpace: isUser ? "pre-wrap" : "normal",
             wordBreak: "break-word",
           }}
         >
           {message.isPending && !message.content ? (
             <ThinkingBubble />
           ) : (
-            <MarkdownMessage content={message.content} isUser={isUser} />
+            // isUser's inverse styles were for the old accent-filled bubble.
+            <MarkdownMessage content={message.content} />
           )}
         </Box>
 

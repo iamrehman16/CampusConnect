@@ -70,15 +70,17 @@ export default function AiChatPage() {
       sx={{
         display: "flex",
         flexDirection: "column",
-        height: "100svh",
-        bgcolor: "background.default",
+        // Fill the shell's content area (was 100svh, which overflowed the
+        // desktop layout by the top bar's height).
+        height: "100%",
+        bgcolor: "surface.card",
         overflow: "hidden",
       }}
     >
       <AiChatHeader
         isStreaming={isStreaming}
         title={activeTitle}
-        onBack={() => navigate("/", { replace: true })}
+        onBack={isDesktop ? undefined : () => navigate("/", { replace: true })}
         onOpenThreads={isDesktop ? undefined : () => setThreadsDrawerOpen(true)}
       />
 
@@ -108,15 +110,14 @@ export default function AiChatPage() {
 
       <Box
         sx={{
-          px: 1.5,
+          px: { xs: 1.5, sm: 3 },
           pt: 1,
-          pb: 1.5,
-          bgcolor: "background.paper",
-          borderTop: "1px solid",
-          borderColor: "divider",
+          pb: { xs: 1.5, sm: 2.5 },
+          bgcolor: "surface.card",
           flexShrink: 0,
         }}
       >
+        <Box sx={{ maxWidth: 760, mx: "auto" }}>
         <ChatInput
           onSend={handleSend}
           disabled={isStreaming} // input disabled for full duration
@@ -125,6 +126,7 @@ export default function AiChatPage() {
           prefillValue={prefill}
           onPrefillConsumed={() => setPrefill(undefined)}
         />
+        </Box>
       </Box>
 
       {!isDesktop && (
