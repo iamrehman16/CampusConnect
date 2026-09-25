@@ -71,9 +71,13 @@ export const useResource = (id: string) =>
  */
 export const useMyResources = (
   params: Omit<ResourceFilterParams, "page" | "limit">,
+  // GET /resources/my is Contributor/Admin only; callers that may render
+  // for a student must pass enabled=false or every query 403s (and toasts).
+  options: { enabled?: boolean } = {},
 ) =>
   useInfiniteQuery({
     queryKey: resourceKeys.myList(params),
+    enabled: options.enabled ?? true,
     queryFn: ({ pageParam }: { pageParam: number }) =>
       resourceService.getMyResources({
         ...params,

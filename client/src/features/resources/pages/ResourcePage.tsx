@@ -120,7 +120,10 @@ export default function ResourcePage() {
 
   // ── Data hooks ────────────────────────────────────────────────────────────
   const allQuery = useResources(activeFilters);
-  const myQuery = useMyResources(activeFilters);
+  // Contributor/Admin-only endpoint; also skip it until the "mine" tab is open.
+  const myQuery = useMyResources(activeFilters, {
+    enabled: canCreate && tab === "mine",
+  });
 
   const activeQuery = tab === "all" ? allQuery : myQuery;
   const {

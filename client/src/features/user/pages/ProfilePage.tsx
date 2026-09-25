@@ -16,7 +16,7 @@ import {
   useDeleteResource,
   useMyResources,
 } from "@/features/resources/hooks/resource.hooks";
-import { ApprovalStatus } from "@/shared/types/enums";
+import { ApprovalStatus, UserRole } from "@/shared/types/enums";
 import type { Resource } from "@/features/resources/types/resource.dto";
 import { EditResourceModal } from "@/features/resources/components/EditResourceModal";
 
@@ -67,6 +67,10 @@ const ProfilePage: React.FC = () => {
   } = useOwnPosts();
 
   const resourceParams = resourceFilter === "all" ? {} : { status: resourceFilter };
+  // Only uploaders have resources; /resources/my is Contributor/Admin only.
+  const canUpload =
+    profile?.role === UserRole.CONTRIBUTOR || profile?.role === UserRole.ADMIN;
+  const uploaderOnly = { enabled: canUpload };
 
   const {
     data: resourcesData,
@@ -74,16 +78,10 @@ const ProfilePage: React.FC = () => {
     isFetchingNextPage: resourcesFetchingNext,
     hasNextPage: resourcesHasNext,
     fetchNextPage: resourcesFetchNext,
-  } = useMyResources(resourceParams);
-  const { data: approvedResourcesData } = useMyResources({
-    status: ApprovalStatus.APPROVED,
-  });
-  const { data: pendingResourcesData } = useMyResources({
-    status: ApprovalStatus.PENDING,
-  });
-  const { data: rejectedResourcesData } = useMyResources({
-    status: ApprovalStatus.REJECTED,
-  });
+  } = useMyResources(resourceParams, uploaderOnly);
+  const { data: approvedResourcesData } = useMyResources({ status: ApprovalStatus.APPROVED }, uploaderOnly);
+  const { data: pendingResourcesData } = useMyResources({ status: ApprovalStatus.PENDING }, uploaderOnly);
+  const { data: rejectedResourcesData } = useMyResources({ status: ApprovalStatus.REJECTED }, uploaderOnly);
 
   const { mutate: updateProfile, isPending: isSaving } = useUpdateProfile();
   const { mutate: deleteResource } = useDeleteResource();
