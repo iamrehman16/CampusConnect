@@ -52,7 +52,7 @@ export class PostService {
 
     const populatedPost = await savedPost.populate({
       path: 'author',
-      select: 'name email',
+      select: 'name avatar',
     });
 
     return populatedPost.toObject();
@@ -64,14 +64,14 @@ export class PostService {
       dto,
       this.queryBuilder,
       { build: () => ({ createdAt: -1 }) },
-      { path: 'author', select: 'name email' },
+      { path: 'author', select: 'name avatar' },
     );
   }
 
   async getPostById(id: string) {
     const post = await this.postModel
       .findOne({ _id: id, isDeleted: false })
-      .populate('author', 'name email')
+      .populate('author', 'name avatar')
       .lean()
       .exec();
 
@@ -97,7 +97,7 @@ export class PostService {
         { $set: dto },
         { new: true },
       )
-      .populate('author', 'name email')
+      .populate('author', 'name avatar')
       .lean()
       .exec();
 
@@ -110,7 +110,7 @@ export class PostService {
   async adminUpdatePost(id: string, dto: AdminUpdatePostDto) {
     const updatedPost = await this.postModel
       .findByIdAndUpdate(id, { $set: dto }, { new: true })
-      .populate('author', 'name email')
+      .populate('author', 'name avatar')
       .lean()
       .exec();
 
@@ -131,7 +131,7 @@ export class PostService {
         { $set: { isDeleted: true } },
         { new: true },
       )
-      .populate('author', 'name email')
+      .populate('author', 'name avatar')
       .lean()
       .exec();
 
@@ -148,7 +148,7 @@ export class PostService {
         { $set: { isDeleted: true } },
         { new: true },
       )
-      .populate('author', 'name email')
+      .populate('author', 'name avatar')
       .lean()
       .exec();
 
@@ -169,7 +169,7 @@ export class PostService {
         { $pull: { upvotes: uid } },
         { new: true },
       )
-      .populate('author', 'name email')
+      .populate('author', 'name avatar')
       .lean()
       .exec();
 
@@ -182,7 +182,7 @@ export class PostService {
           { $addToSet: { upvotes: uid } },
           { new: true },
         )
-        .populate('author', 'name email')
+        .populate('author', 'name avatar')
         .lean()
         .exec();
     }
@@ -218,7 +218,7 @@ export class PostService {
         { session },
       );
 
-      const populatedComment = await comment.populate('author', 'name');
+      const populatedComment = await comment.populate('author', 'name avatar');
 
       const post = await this.postModel
         .findOneAndUpdate(
@@ -300,7 +300,7 @@ export class PostService {
         { $set: dto },
         { new: true },
       )
-      .populate('author', 'name')
+      .populate('author', 'name avatar')
       .lean()
       .exec();
 
@@ -328,7 +328,7 @@ export class PostService {
           { $set: { isDeleted: true } },
           { session, new: true },
         )
-        .populate('author', 'name')
+        .populate('author', 'name avatar')
         .lean()
         .exec();
 
@@ -359,9 +359,9 @@ export class PostService {
         { $set: dto },
         { new: true },
       )
-      .populate('author', 'name')
+      .populate('author', 'name avatar')
       .lean()
-      .populate('author', 'name')
+      .populate('author', 'name avatar')
       .exec();
 
     if (!updatedComment) {
@@ -382,7 +382,7 @@ export class PostService {
           { $set: { isDeleted: true } },
           { session, new: true },
         )
-        .populate('author', 'name')
+        .populate('author', 'name avatar')
         .lean()
         .exec();
 

@@ -4,20 +4,22 @@ import type { AuthorPost, AuthorComment } from '../types/community.dto';
 
 /**
  * Checks if the current user has permission to edit or delete a post.
- * Admin can edit anything. Owners can edit their own posts based on email.
+ * Admin can edit anything; otherwise only the author (matched by id).
  */
 export function canEditPost(currentUser: User | null, author: AuthorPost): boolean {
   if (!currentUser) return false;
   if (currentUser.role === UserRole.ADMIN) return true;
-  return currentUser.email === author.email;
+  return currentUser._id === author._id;
 }
 
 /**
  * Checks if the current user has permission to edit or delete a comment.
- * Admin can edit anything. Owners can edit their own based on name (since DTO lacks email).
+ * Admin can edit anything; otherwise only the author (matched by id — names
+ * aren't unique, so the old name comparison showed edit controls to anyone
+ * sharing the author's display name).
  */
 export function canEditComment(currentUser: User | null, author: AuthorComment): boolean {
   if (!currentUser) return false;
   if (currentUser.role === UserRole.ADMIN) return true;
-  return currentUser.name === author.name;
+  return currentUser._id === author._id;
 }

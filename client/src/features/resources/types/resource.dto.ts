@@ -11,7 +11,7 @@ import type { PaginationParams } from "@/shared/types/api.types";
 export interface ResourceAuthor {
   _id: string;
   name: string;
-  email: string;
+  avatar?: string;
   tier?: ReputationTier;
 }
 

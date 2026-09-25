@@ -19,6 +19,7 @@ export interface DistributionItem {
 export interface TopContributor {
   userId: string;
   name: string;
+  avatar?: string;
   uploads: number;
 }
 

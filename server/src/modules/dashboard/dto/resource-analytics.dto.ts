@@ -18,6 +18,7 @@ export class DistributionItemDto {
 export class TopContributorDto {
   userId: string;
   name: string;
+  avatar?: string;
   uploads: number;
 }
 

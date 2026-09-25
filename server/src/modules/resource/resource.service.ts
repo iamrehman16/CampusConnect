@@ -48,10 +48,10 @@ import {
 
 const UPLOADED_BY_POPULATE = {
   path: 'uploadedBy',
-  select: 'name email tier',
+  select: 'name avatar tier',
 };
 
-/** `uploadedBy` is populated to `{ _id, name, email }` by UPLOADED_BY_POPULATE. */
+/** `uploadedBy` is populated to `{ _id, name, avatar, tier }` by UPLOADED_BY_POPULATE. */
 function populatedUploaderId(resource: { uploadedBy: unknown }): string {
   const id = populatedId(resource.uploadedBy);
   if (!id) {
@@ -502,7 +502,8 @@ export class ResourceService {
                 $project: {
                   _id: 0,
                   userId: { $toString: '$_id' },
-                  name: '$user.name', // adjust to your User.name field
+                  name: '$user.name',
+                  avatar: '$user.avatar',
                   uploads: 1,
                 },
               },

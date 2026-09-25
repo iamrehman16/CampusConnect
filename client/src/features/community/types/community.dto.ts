@@ -1,11 +1,16 @@
 
+// Populated `{ _id, name, avatar }` — email is deliberately not sent to
+// other users; ownership checks compare `_id` (see utils/permissions.ts).
 export interface AuthorPost{
+    _id:string;
     name:string;
-    email:string;
+    avatar?:string;
 }
 
 export interface AuthorComment{
+    _id:string;
     name:string;
+    avatar?:string;
 }
 
 export interface Post{
