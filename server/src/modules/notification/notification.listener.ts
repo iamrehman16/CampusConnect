@@ -122,6 +122,7 @@ export class NotificationListener {
     const other = endedByMentor ? event.mentorId : event.menteeId;
     return this.notify(recipient, NotificationType.MENTORSHIP_COMPLETED, {
       otherName: await this.nameOf(other),
+      recipientRole: endedByMentor ? 'mentee' : 'mentor',
     });
   }
 

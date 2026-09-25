@@ -32,7 +32,11 @@ export interface NotificationPayloads {
     mentorName: string;
     reason?: string;
   };
-  [NotificationType.MENTORSHIP_COMPLETED]: { otherName: string };
+  [NotificationType.MENTORSHIP_COMPLETED]: {
+    otherName: string;
+    /** Which side the recipient was on — decides which Mentors tab to open. */
+    recipientRole: 'mentor' | 'mentee';
+  };
 }
 
 export interface NotificationContent {
@@ -91,7 +95,7 @@ export const notificationBuilders: Builders = {
   [NotificationType.MENTORSHIP_REQUESTED]: ({ menteeName, topic }) => ({
     title: 'New mentorship request',
     body: `${menteeName} would like your help with ${topic}.`,
-    link: '/mentorship?tab=mentor',
+    link: '/mentors/mentoring',
   }),
   [NotificationType.MENTORSHIP_ACCEPTED]: ({ mentorName, conversationId }) => ({
     title: 'Mentorship accepted',
@@ -103,11 +107,14 @@ export const notificationBuilders: Builders = {
     body: reason
       ? `${mentorName} can't take this on: ${reason}`
       : `${mentorName} can't take this on right now.`,
-    link: '/mentorship?tab=mentee',
+    link: '/mentors/mine?section=past',
   }),
-  [NotificationType.MENTORSHIP_COMPLETED]: ({ otherName }) => ({
+  [NotificationType.MENTORSHIP_COMPLETED]: ({ otherName, recipientRole }) => ({
     title: 'Mentorship completed',
     body: `Your mentorship with ${otherName} was marked complete.`,
-    link: '/mentorship',
+    link:
+      recipientRole === 'mentee'
+        ? '/mentors/mine?section=past'
+        : '/mentors/mentoring?section=past',
   }),
 };

@@ -226,7 +226,7 @@ describe('NotificationListener', () => {
         expect(notifications.record).toHaveBeenCalledWith(
           ids[recipientRole as 'mentor' | 'mentee'],
           NotificationType.MENTORSHIP_COMPLETED,
-          { otherName: 'Sara' },
+          { otherName: 'Sara', recipientRole },
         );
       },
     );
