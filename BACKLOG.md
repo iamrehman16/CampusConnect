@@ -206,7 +206,7 @@ and errors that say what happened and offer a retry.
 
 ---
 
-## Epic D — Design system & UI overhaul (Phases 2–3) — D4–D7 DONE, NEXT: D8
+## Epic D — Design system & UI overhaul (Phases 2–3) — D4–D7 DONE, D8 IN PROGRESS
 
 ### Audit (2026-09-24, screenshots of every page, desktop + mobile, light)
 
@@ -376,6 +376,15 @@ pending/rejected items (builder defaulted to APPROVED).
   typing, unread styled per D4; mobile single-pane navigation.
 - Respects `CLAUDE.md` §4 streaming decisions (hooks split, rAF batching,
   raw fetch) — visual changes only.
+
+**D8 status: IN PROGRESS (2026-09-25).** Done: Ask AI visual redesign
+(layout fits shell, reading column, bubbles, markdown spacing, composer,
+empty state, sidebar); citations now persisted per message (they vanished
+on thread reload). **Remaining:** verify citation chips render on a fresh
+answer and after reload; retrieval returns weakly related citations (e.g.
+"Linked Lists" for a Banker's question) — consider a higher threshold or
+top-N for display (overlaps E14); Messages restyle (conversation list sits
+on the right of an empty pane); mobile single-pane nav check.
 
 ### D9 — Mentors, Profile, Community
 **Effort:** 5
