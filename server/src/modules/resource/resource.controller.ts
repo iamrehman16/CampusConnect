@@ -55,6 +55,13 @@ export class ResourceController {
     return this.resourceService.findAll(query);
   }
 
+  // Declared before ':id' so "courses" isn't captured as an id.
+  @Public()
+  @Get('courses')
+  getCourses() {
+    return this.resourceService.getCourseFacets();
+  }
+
   @Get('my')
   @Role(Roles.CONTRIBUTOR, Roles.ADMIN)
   getMyResources(

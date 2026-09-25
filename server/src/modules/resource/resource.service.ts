@@ -45,6 +45,7 @@ import {
   ResourceAnalyticsDto,
   TopContributorDto,
 } from '../dashboard/dto/resource-analytics.dto';
+import { CourseFacetDto } from './dto/course-facet.dto';
 
 const UPLOADED_BY_POPULATE = {
   path: 'uploadedBy',
@@ -536,6 +537,31 @@ export class ResourceService {
       avgApprovalHours,
       topContributors: result.topContributors,
     };
+  }
+
+  /**
+   * Courses that have approved resources, for the Library's course filter
+   * (BACKLOG.md D7). Grouped case-insensitively since stored codes aren't
+   * normalised; the most common spelling is returned.
+   */
+  async getCourseFacets(): Promise<CourseFacetDto[]> {
+    return this.resourceModel
+      .aggregate<CourseFacetDto>([
+        {
+          $match: { isDeleted: false, approvalStatus: ApprovalStatus.APPROVED },
+        },
+        {
+          $group: {
+            _id: { $toUpper: '$course' },
+            course: { $first: '$course' },
+            subject: { $first: '$subject' },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { _id: 1 } },
+        { $project: { _id: 0, course: 1, subject: 1, count: 1 } },
+      ])
+      .exec();
   }
 
   async getTotalResourceCount() {

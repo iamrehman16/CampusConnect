@@ -1,4 +1,10 @@
-import { IsOptional, IsEnum, IsNumber, IsString } from 'class-validator';
+import {
+  IsOptional,
+  IsEnum,
+  IsNumber,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ResourceType } from '../enums/resource-types.enum';
 import { ResourceSort } from '../enums/resource-sort.enum';
@@ -30,4 +36,10 @@ export class ResourceQueryDto extends BaseQueryDto {
   @IsOptional()
   @IsString()
   uploadedBy?: string;
+
+  /** Course code, matched exactly but case-insensitively ("cs-341"). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  course?: string;
 }
