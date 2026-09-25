@@ -45,14 +45,16 @@ function normalizeThread(thread: RawThread): AiConversationThread {
   };
 }
 
-// Server's AiMessage (BACKLOG.md B3) — no citations/retrievalStatus, those
-// are transient SSE/response payload, never persisted per-message.
+// Server's AiMessage (BACKLOG.md B3). Assistant replies carry their
+// persisted citations/retrievalStatus, so sources survive a reload.
 type RawMessage = {
   _id?: string;
   id?: string;
   role: "user" | "assistant";
   content: string;
   feedback?: MessageFeedback;
+  citations?: Citation[];
+  retrievalStatus?: RetrievalStatus;
 };
 
 function normalizeMessage(message: RawMessage): ConversationMessage {
@@ -61,6 +63,8 @@ function normalizeMessage(message: RawMessage): ConversationMessage {
     role: message.role,
     content: message.content,
     feedback: message.feedback ?? null,
+    citations: message.citations,
+    retrievalStatus: message.retrievalStatus,
   };
 }
 

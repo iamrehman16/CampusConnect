@@ -22,6 +22,10 @@ import {
 } from '../../../common/services/pagination.service';
 import { BaseQueryDto } from '../../../common/dto/base-query.dto';
 import { MemoryService } from './memory.service';
+import {
+  Citation,
+  RetrievalStatus,
+} from '../interfaces/retrieved-context.interface';
 
 @Injectable()
 export class ConversationService implements OnModuleInit {
@@ -130,6 +134,11 @@ export class ConversationService implements OnModuleInit {
     userMessage: string,
     assistantMessage: string,
     summarizeFn: (content: string) => Promise<string>,
+    /** Sources and retrieval outcome for the assistant reply. */
+    assistantMeta?: {
+      citations: Citation[];
+      retrievalStatus: RetrievalStatus;
+    },
   ): Promise<{ userMessageId: string; assistantMessageId: string }> {
     conversation.recentMessages.push(
       { role: 'user', content: userMessage, timestamp: new Date() },
@@ -148,6 +157,10 @@ export class ConversationService implements OnModuleInit {
         conversationId: conversation._id,
         role: 'assistant',
         content: assistantMessage,
+        ...(assistantMeta && {
+          citations: assistantMeta.citations,
+          retrievalStatus: assistantMeta.retrievalStatus,
+        }),
       },
     ]);
 

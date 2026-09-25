@@ -478,6 +478,50 @@ describe('ConversationService#appendMessages', () => {
     ]);
   });
 
+  it('persists citations and retrieval status on the assistant message', async () => {
+    const conversationId = new Types.ObjectId();
+    const conversation = {
+      _id: conversationId,
+      summaryBuffer: '',
+      recentMessages: [],
+      save: jest.fn().mockResolvedValue(undefined),
+    } as unknown as AiConversationDocument;
+    const messageModel: Partial<MockMessageModel> = {
+      insertMany: jest
+        .fn()
+        .mockResolvedValue([
+          { _id: new Types.ObjectId() },
+          { _id: new Types.ObjectId() },
+        ]),
+    };
+    const service = buildConversationService({}, undefined, messageModel);
+    const citations = [
+      {
+        title: 'Normalization: 1NF to BCNF',
+        pageNumber: 1,
+        semester: 4,
+        course: 'CS-321',
+        resourceId: 'r1',
+      },
+    ];
+
+    await service.appendMessages(conversation, 'q', 'a', jest.fn(), {
+      citations,
+      retrievalStatus: 'ok',
+    });
+
+    expect(messageModel.insertMany).toHaveBeenCalledWith([
+      { conversationId, role: 'user', content: 'q' },
+      {
+        conversationId,
+        role: 'assistant',
+        content: 'a',
+        citations,
+        retrievalStatus: 'ok',
+      },
+    ]);
+  });
+
   it('returns the persisted user and assistant message ids (C1)', async () => {
     const conversationId = new Types.ObjectId();
     const userMessageId = new Types.ObjectId();

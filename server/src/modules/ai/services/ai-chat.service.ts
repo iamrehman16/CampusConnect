@@ -70,6 +70,7 @@ export class AiChatService {
     );
 
     const answer = await this.groqService.generateResponse(messages);
+    const citations = this.buildCitations(context);
 
     const { assistantMessageId } =
       await this.conversationService.appendMessages(
@@ -77,6 +78,7 @@ export class AiChatService {
         message,
         answer,
         (content: string) => this.groqService.summarize(content),
+        { citations, retrievalStatus },
       );
 
     // Fire-and-forget (BACKLOG.md B4): maybeGenerateTitle never rejects —
@@ -89,8 +91,6 @@ export class AiChatService {
         (m) => this.groqService.generateTitle(m),
       );
     }
-
-    const citations = this.buildCitations(context);
 
     return {
       answer,
@@ -173,6 +173,7 @@ export class AiChatService {
               message,
               fullAnswer,
               (content: string) => this.groqService.summarize(content),
+              { citations, retrievalStatus },
             );
 
           // BACKLOG.md C1 — the client has no real message id until now

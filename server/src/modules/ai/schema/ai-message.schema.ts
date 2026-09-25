@@ -1,6 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { MessageRole } from '../interfaces/conversation.interface';
+import {
+  Citation,
+  RetrievalStatus,
+} from '../interfaces/retrieved-context.interface';
 
 export type AiMessageDocument = AiMessage & Document;
 
@@ -32,6 +36,27 @@ export class AiMessage {
   // asked" both look like a missing field rather than a stored 'none'.
   @Prop({ type: String, enum: ['up', 'down'] })
   feedback?: 'up' | 'down';
+
+  // Assistant replies only. Persisted so a thread reopened from history
+  // (B8 syncs from the server) still shows its sources; they used to exist
+  // only in the live SSE/response payload and vanished on reload.
+  @Prop({
+    type: [
+      {
+        _id: false,
+        title: String,
+        pageNumber: Number,
+        semester: Number,
+        course: String,
+        resourceId: String,
+      },
+    ],
+    default: undefined,
+  })
+  citations?: Citation[];
+
+  @Prop({ type: String, enum: ['ok', 'no-matches', 'below-threshold'] })
+  retrievalStatus?: RetrievalStatus;
 
   createdAt: Date;
 }
