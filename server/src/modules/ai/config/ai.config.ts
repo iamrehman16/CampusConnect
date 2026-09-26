@@ -2,9 +2,13 @@ import { registerAs } from '@nestjs/config';
 
 export default registerAs('ai', () => ({
   groqApiKey: process.env.GROQ_API_KEY,
+  // Defaults must be models Groq still serves — it retires ids without
+  // notice (llama-3.3-70b-versatile / llama-3.1-8b-instant were dropped,
+  // and every call 404'd). `GET https://api.groq.com/openai/v1/models`
+  // lists what the key can use.
   models: {
-    reasoning: process.env.GROQ_REASONING_MODEL || 'llama-3.3-70b-versatile',
-    fast: process.env.GROQ_FAST_MODEL || 'llama-3.1-8b-instant',
+    reasoning: process.env.GROQ_REASONING_MODEL || 'openai/gpt-oss-120b',
+    fast: process.env.GROQ_FAST_MODEL || 'qwen/qwen3.8-27b',
     embedding: process.env.GEMINI_EMBEDDING_MODEL || 'gemini-embedding-001',
   },
   groqTimeoutMs: Number(process.env.GROQ_TIMEOUT_MS) || 30_000,
