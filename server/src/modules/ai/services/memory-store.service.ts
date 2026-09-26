@@ -60,19 +60,28 @@ export class MemoryStoreService implements OnModuleInit {
 
       if (exists) {
         this.logger.log(`Collection "${this.COLLECTION_NAME}" already exists`);
-        return;
+      } else {
+        await this.client.createCollection(this.COLLECTION_NAME, {
+          vectors: {
+            size: this.VECTOR_SIZE,
+            distance: 'Cosine',
+          },
+        });
+        this.logger.log(
+          `Collection "${this.COLLECTION_NAME}" created successfully`,
+        );
       }
 
-      await this.client.createCollection(this.COLLECTION_NAME, {
-        vectors: {
-          size: this.VECTOR_SIZE,
-          distance: 'Cosine',
-        },
+      // search() filters on userId. Qdrant Cloud runs collections in strict
+      // mode (unindexed_filtering_retrieve: false), which rejects a filter
+      // on an unindexed field with a bare 400 — memory recall failed on
+      // every turn. Also applied to existing collections; creating an
+      // index that already exists is a no-op.
+      await this.client.createPayloadIndex(this.COLLECTION_NAME, {
+        field_name: 'userId',
+        field_schema: 'keyword',
+        wait: true,
       });
-
-      this.logger.log(
-        `Collection "${this.COLLECTION_NAME}" created successfully`,
-      );
     } catch (err) {
       this.logger.error('Failed to initialize Qdrant memory collection', err);
       throw err;
