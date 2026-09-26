@@ -23,17 +23,30 @@ import type {
 // event is already flushed to the client — see ai-chat.service.ts on the
 // server), which could clobber correct optimistic messages with an
 // incomplete read moments later.
+//
+// Exception: history that ends on a user message means the reply was never
+// committed locally — the page was reloaded (or closed) mid-answer. The
+// cache is persisted to IndexedDB with staleTime Infinity, so without a
+// refetch that thread stayed missing its reply forever, even though the
+// server had saved it. Such an entry is refetched once on mount.
 // ---------------------------------------------------------------------------
 export function useConversation(conversationId: string) {
   const queryClient = useQueryClient();
   const isNewThread = conversationId === NEW_THREAD_KEY;
 
+  const cached = getConversation(queryClient, conversationId);
+  const replyMissing = cached[cached.length - 1]?.role === "user";
+
   return useQuery<ConversationMessage[]>({
     queryKey: aiChatKeys.conversation(conversationId),
     queryFn: () => aiChatService.getMessages(conversationId),
-    enabled:
-      !isNewThread &&
-      getConversation(queryClient, conversationId).length === 0,
+    enabled: !isNewThread && (cached.length === 0 || replyMissing),
+    // Only on mount: a send in flight also ends on a user message, but the
+    // page streaming it is already mounted, so it never triggers this.
+    refetchOnMount: (query) => {
+      const data = query.state.data;
+      return data?.[data.length - 1]?.role === "user" ? "always" : false;
+    },
     staleTime: Infinity,
     gcTime: Infinity,
     initialData: isNewThread ? [] : undefined,
