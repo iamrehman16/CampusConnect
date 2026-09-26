@@ -96,22 +96,12 @@ describe('ConversationService#getOrCreateConversation', () => {
     ).rejects.toThrow(NotFoundException);
   });
 
-  it('falls back to the most recently updated thread when no conversationId is given', async () => {
-    const mostRecent = { _id: new Types.ObjectId(), userId: 'user-1' };
-    const conversationModel: Partial<MockConversationModel> = {
-      findOne: jest.fn().mockReturnValue(chainableQuery(mostRecent)),
-    };
-    const service = buildConversationService(conversationModel);
-
-    const result = await service.getOrCreateConversation('user-1');
-
-    expect(result).toBe(mostRecent);
-  });
-
-  it('creates a new thread when the user has none yet', async () => {
+  // Regression: "New chat" sends no conversationId. The old fallback
+  // returned the most recent thread, so a new chat appended to it.
+  it('creates a new thread when no conversationId is given, even if the user has others', async () => {
     const created = { _id: new Types.ObjectId(), userId: 'user-1' };
     const conversationModel: Partial<MockConversationModel> = {
-      findOne: jest.fn().mockReturnValue(chainableQuery(null)),
+      findOne: jest.fn(),
       create: jest.fn().mockResolvedValue(created),
     };
     const service = buildConversationService(conversationModel);
@@ -120,6 +110,26 @@ describe('ConversationService#getOrCreateConversation', () => {
 
     expect(result).toBe(created);
     expect(conversationModel.create).toHaveBeenCalledWith({ userId: 'user-1' });
+    expect(conversationModel.findOne).not.toHaveBeenCalled();
+  });
+});
+
+describe('ConversationService#findMostRecentConversation', () => {
+  it('returns the most recently updated thread', async () => {
+    const mostRecent = { _id: new Types.ObjectId(), userId: 'user-1' };
+    const query = chainableQuery(mostRecent);
+    const conversationModel: Partial<MockConversationModel> = {
+      findOne: jest.fn().mockReturnValue(query),
+    };
+    const service = buildConversationService(conversationModel);
+
+    const result = await service.findMostRecentConversation('user-1');
+
+    expect(result).toBe(mostRecent);
+    expect(conversationModel.findOne).toHaveBeenCalledWith({
+      userId: 'user-1',
+    });
+    expect(query.sort).toHaveBeenCalledWith({ updatedAt: -1 });
   });
 });
 

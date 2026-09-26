@@ -154,8 +154,8 @@ export class AiChatService {
           // empty array distinguishes "nothing matched" from "matches were
           // too weak to trust") then done. conversationId is included so
           // the client learns which thread this landed in — relevant the
-          // first time, when no conversationId was sent and one got
-          // created via the getOrCreateConversation fallback.
+          // first time, when no conversationId was sent and a new thread
+          // was created by getOrCreateConversation.
           observer.next({
             data: {
               type: 'citations',
@@ -204,12 +204,11 @@ export class AiChatService {
   }
 
   async clearSession(userId: string): Promise<void> {
-    // No conversationId from the client yet (BACKLOG.md B2 adds thread
-    // selection) — clears the user's most recently active thread, the
-    // same bridge behavior getOrCreateConversation uses elsewhere in this
-    // service.
+    // Legacy endpoint with no conversationId — clears the user's most
+    // recently active thread. Nothing to clear if they have none.
     const conversation =
-      await this.conversationService.getOrCreateConversation(userId);
+      await this.conversationService.findMostRecentConversation(userId);
+    if (!conversation) return;
     await this.conversationService.clearConversation(
       userId,
       conversation._id.toString(),

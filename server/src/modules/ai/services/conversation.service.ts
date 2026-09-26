@@ -95,16 +95,16 @@ export class ConversationService implements OnModuleInit {
   }
 
   /**
-   * Ownership-scoped lookup/creation, replacing the old userId-only
-   * singleton getOrCreateSession. When conversationId is given, the thread
-   * must belong to userId or this throws (a user can only read/write their
-   * own threads — new requirement per B1, the old model never needed it).
+   * Ownership-scoped lookup/creation. When conversationId is given, the
+   * thread must belong to userId or this throws (a user can only read/write
+   * their own threads, B1).
    *
-   * When conversationId is omitted, falls back to the user's most
-   * recently updated thread (creating one if none exists) — a bridge for
-   * chat/chat.stream, which don't accept a conversationId from the client
-   * yet. That wiring is BACKLOG.md B2; until then this preserves today's
-   * single-thread-per-user behavior on top of the new data model.
+   * When conversationId is omitted the caller is starting a new thread
+   * (the client's "New chat" sends no id and learns the real one from the
+   * stream's citations event, B7), so a fresh thread is created. This used
+   * to fall back to the most recently updated thread — a pre-B2 bridge for
+   * a single-thread client — which made every "New chat" (and every
+   * "Ask AI about this" entry point) append to the previous thread.
    */
   async getOrCreateConversation(
     userId: string,
@@ -121,12 +121,14 @@ export class ConversationService implements OnModuleInit {
       return conversation;
     }
 
-    const mostRecent = await this.conversationModel
-      .findOne({ userId })
-      .sort({ updatedAt: -1 });
-    if (mostRecent) return mostRecent;
-
     return this.conversationModel.create({ userId });
+  }
+
+  /** The user's most recently active thread, or null if they have none. */
+  async findMostRecentConversation(
+    userId: string,
+  ): Promise<AiConversationDocument | null> {
+    return this.conversationModel.findOne({ userId }).sort({ updatedAt: -1 });
   }
 
   async appendMessages(
