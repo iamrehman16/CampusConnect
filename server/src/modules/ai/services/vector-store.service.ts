@@ -65,21 +65,47 @@ export class VectorStoreService implements OnModuleInit {
 
       if (exists) {
         this.logger.log(`Collection "${this.COLLECTION_NAME}" already exists`);
-        return;
+      } else {
+        await this.client.createCollection(this.COLLECTION_NAME, {
+          vectors: {
+            size: this.VECTOR_SIZE,
+            distance: 'Cosine',
+          },
+        });
+        this.logger.log(
+          `Collection "${this.COLLECTION_NAME}" created successfully`,
+        );
       }
 
-      await this.client.createCollection(this.COLLECTION_NAME, {
-        vectors: {
-          size: this.VECTOR_SIZE,
-          distance: 'Cosine',
-        },
+      // deleteByResourceId filters on resourceId. Qdrant Cloud's strict
+      // mode rejects filtered updates on unindexed fields
+      // (unindexed_filtering_update: false). Idempotent for existing
+      // collections.
+      await this.client.createPayloadIndex(this.COLLECTION_NAME, {
+        field_name: 'resourceId',
+        field_schema: 'keyword',
+        wait: true,
       });
-
-      this.logger.log(
-        `Collection "${this.COLLECTION_NAME}" created successfully`,
-      );
     } catch (err) {
       this.logger.error('Failed to initialize Qdrant collection', err);
+      throw err;
+    }
+  }
+
+  /** Removes every chunk of a resource, so it can no longer be retrieved or cited. */
+  async deleteByResourceId(resourceId: string): Promise<void> {
+    try {
+      await this.ready();
+      await this.client.delete(this.COLLECTION_NAME, {
+        wait: true,
+        filter: { must: [{ key: 'resourceId', match: { value: resourceId } }] },
+      });
+      this.logger.log(`Vectors deleted for resource: ${resourceId}`);
+    } catch (err) {
+      this.logger.error(
+        `Failed to delete vectors for resource: ${resourceId}`,
+        err,
+      );
       throw err;
     }
   }

@@ -8,15 +8,19 @@ import {
 
 const getCollections = jest.fn();
 const createCollection = jest.fn();
+const createPayloadIndex = jest.fn();
 const search = jest.fn();
 const upsert = jest.fn();
+const deletePoints = jest.fn();
 
 jest.mock('@qdrant/js-client-rest', () => ({
   QdrantClient: jest.fn().mockImplementation(() => ({
     getCollections,
     createCollection,
+    createPayloadIndex,
     search,
     upsert,
+    delete: deletePoints,
   })),
 }));
 
@@ -68,5 +72,40 @@ describe('VectorStoreService — Qdrant down at boot (BACKLOG.md G4)', () => {
     expect(err).toBeInstanceOf(ServiceUnavailableException);
     expect((err as Error).message).toBe(VECTOR_STORE_UNAVAILABLE_MESSAGE);
     expect(search).not.toHaveBeenCalled();
+  });
+});
+
+describe('VectorStoreService#deleteByResourceId', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('indexes resourceId (strict mode needs it for filtered deletes) and deletes by filter', async () => {
+    getCollections.mockResolvedValueOnce({
+      collections: [{ name: 'campus_resources' }],
+    });
+    const service = new VectorStoreService(cfg);
+
+    await service.deleteByResourceId('res-1');
+
+    expect(createPayloadIndex).toHaveBeenCalledWith('campus_resources', {
+      field_name: 'resourceId',
+      field_schema: 'keyword',
+      wait: true,
+    });
+    expect(deletePoints).toHaveBeenCalledWith('campus_resources', {
+      wait: true,
+      filter: { must: [{ key: 'resourceId', match: { value: 'res-1' } }] },
+    });
+  });
+
+  it('rethrows a Qdrant failure so the caller can log it', async () => {
+    getCollections.mockResolvedValueOnce({
+      collections: [{ name: 'campus_resources' }],
+    });
+    deletePoints.mockRejectedValueOnce(new Error('Bad Request'));
+    const service = new VectorStoreService(cfg);
+
+    await expect(service.deleteByResourceId('res-1')).rejects.toThrow(
+      'Bad Request',
+    );
   });
 });

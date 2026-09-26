@@ -25,6 +25,7 @@ import { RetrievalService } from './services/retrieval.service';
 import { MemoryStoreService } from './services/memory-store.service';
 import { MemoryService } from './services/memory.service';
 import { CommonModule } from '../../common/common.module';
+import { VectorCleanupListener } from './vector-cleanup.listener';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { CommonModule } from '../../common/common.module';
     RetrievalService,
     MemoryStoreService,
     MemoryService,
+    VectorCleanupListener,
   ],
   exports: [AiChatService, IngestionService],
 })
