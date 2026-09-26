@@ -1,14 +1,6 @@
 import { Box, ButtonBase, Typography } from '@mui/material';
 import { AutoAwesome } from "@/shared/icons";
-
-// Grounded in the library's actual content (same set as Home's Ask card),
-// so a first question gets a cited answer.
-const SUGGESTIONS = [
-  { title: 'Explain normalization up to BCNF', hint: 'Database Systems · CS-321' },
-  { title: 'How does TCP slow start work?', hint: 'Computer Networks · CS-341' },
-  { title: "Walk me through the Banker's algorithm", hint: 'Operating Systems · CS-311' },
-  { title: 'When does dynamic programming apply?', hint: 'Algorithms · CS-202' },
-];
+import { useStarterPrompts } from '../hooks/useStarterPrompts';
 
 interface ChatEmptyStateProps {
   onSuggestionClick: (text: string) => void;
@@ -16,6 +8,7 @@ interface ChatEmptyStateProps {
 
 /** New-chat state (BACKLOG.md D8): a clear prompt and 4 starter questions. */
 export function ChatEmptyState({ onSuggestionClick }: ChatEmptyStateProps) {
+  const suggestions = useStarterPrompts(4);
   return (
     <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', py: 4 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, color: 'primary.main' }}>
@@ -33,10 +26,10 @@ export function ChatEmptyState({ onSuggestionClick }: ChatEmptyStateProps) {
       </Typography>
 
       <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
-        {SUGGESTIONS.map((s) => (
+        {suggestions.map((s) => (
           <ButtonBase
-            key={s.title}
-            onClick={() => onSuggestionClick(s.title)}
+            key={s.label}
+            onClick={() => onSuggestionClick(s.prompt)}
             sx={{
               display: 'block',
               textAlign: 'left',
@@ -48,8 +41,8 @@ export function ChatEmptyState({ onSuggestionClick }: ChatEmptyStateProps) {
               '&:hover': { borderColor: 'border.strong', bgcolor: 'surface.subtle' },
             }}
           >
-            <Typography variant="body2" fontWeight={600}>{s.title}</Typography>
-            <Typography variant="caption" color="text.tertiary">{s.hint}</Typography>
+            <Typography variant="body2" fontWeight={600}>{s.label}</Typography>
+            {s.hint && <Typography variant="caption" color="text.tertiary">{s.hint}</Typography>}
           </ButtonBase>
         ))}
       </Box>

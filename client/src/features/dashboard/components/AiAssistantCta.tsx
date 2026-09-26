@@ -3,19 +3,13 @@ import { Box, Card, Chip, IconButton, InputBase, Stack, Typography } from "@mui/
 import { AutoAwesome, ArrowForward } from "@/shared/icons";
 import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/shared/constants/routes";
-
-// Grounded in the library's actual content, so a first-time user's first
-// question gets a cited answer rather than "I couldn't find that".
-const SUGGESTIONS = [
-  "Explain normalization up to BCNF",
-  "How does TCP slow start work?",
-  "Walk me through the Banker's algorithm",
-];
+import { useStarterPrompts } from "@/features/ai-chat/hooks/useStarterPrompts";
 
 /** Home's primary action: ask the AI assistant, or pick a suggestion. */
 export function AiAssistantCTA() {
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState("");
+  const suggestions = useStarterPrompts(3);
 
   const ask = (text: string) => {
     const trimmed = text.trim();
@@ -83,8 +77,14 @@ export function AiAssistantCTA() {
       </Box>
 
       <Stack direction="row" gap={1} flexWrap="wrap" mt={1.5}>
-        {SUGGESTIONS.map((s) => (
-          <Chip key={s} label={s} variant="outlined" onClick={() => ask(s)} />
+        {suggestions.map((s) => (
+          <Chip
+            key={s.label}
+            label={s.label}
+            variant="outlined"
+            onClick={() => ask(s.prompt)}
+            sx={{ maxWidth: "100%" }}
+          />
         ))}
       </Stack>
     </Card>
