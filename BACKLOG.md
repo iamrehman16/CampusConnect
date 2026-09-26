@@ -206,7 +206,7 @@ and errors that say what happened and offer a retry.
 
 ---
 
-## Epic D — Design system & UI overhaul (Phases 2–3) — D4–D7 DONE, D8 IN PROGRESS
+## Epic D — Design system & UI overhaul (Phases 2–3) — D4–D8 DONE
 
 ### Audit (2026-09-24, screenshots of every page, desktop + mobile, light)
 
@@ -377,14 +377,42 @@ pending/rejected items (builder defaulted to APPROVED).
 - Respects `CLAUDE.md` §4 streaming decisions (hooks split, rAF batching,
   raw fetch) — visual changes only.
 
-**D8 status: IN PROGRESS (2026-09-25).** Done: Ask AI visual redesign
-(layout fits shell, reading column, bubbles, markdown spacing, composer,
-empty state, sidebar); citations now persisted per message (they vanished
-on thread reload). **Remaining:** verify citation chips render on a fresh
-answer and after reload; retrieval returns weakly related citations (e.g.
-"Linked Lists" for a Banker's question) — consider a higher threshold or
-top-N for display (overlaps E14); Messages restyle (conversation list sits
-on the right of an empty pane); mobile single-pane nav check.
+**D8 status: DONE (2026-09-26).** Ask AI: layout fits shell, reading
+column, bubbles, markdown spacing, composer, empty state, sidebar;
+starter prompts built from popular resources for the student's semester
+(shared with Home's Ask card). Messages: two-pane like Ask AI (list
+left), header "new message" + people filter, presence dot, unread pill,
+day separators, same composer; mobile single-pane verified. Citations
+verified on a fresh answer and after reload.
+
+Bugs found and fixed while verifying D8 (each its own commit):
+- **"New chat" appended to the previous thread.** The server's omitted-id
+  fallback was still the pre-B2 "most recent thread" bridge.
+- **Groq models retired.** The code defaults / `.env.example`
+  (`llama-3.3-70b-versatile`, `llama-3.1-8b-instant`) and the local fast
+  model (`qwen/qwen3.6-27b`) 404'd, so titles, summaries and memory
+  extraction all failed. Defaults are now `openai/gpt-oss-120b` +
+  `qwen/qwen3.8-27b`.
+- **Memory recall never worked on Qdrant Cloud.** Strict mode rejects
+  filtering on an unindexed `userId`, so a keyword index was added.
+- **Off-topic citations.** A relative cutoff was added: hits must be
+  within 0.05 of the best score. Measured noise floor 0.55–0.62,
+  relevant hits 0.66–0.78.
+- **Deleted resources stayed in the RAG index** and were still cited.
+  They're now removed on `RESOURCE_REMOVED` (with a `resourceId` index).
+- **Reload mid-answer lost the reply locally.** The persisted cache had
+  `staleTime: Infinity`; history ending on a user message is now
+  refetched on mount.
+- **Sidebar showed "New conversation"** until a reload. The thread list
+  now polls briefly while a fresh thread awaits its title.
+- **Messenger:** the pane was 100svh inside the shell (overflowed on
+  desktop), newlines were collapsed, and status icons were illegible on
+  own bubbles.
+
+Follow-ups (not blocking): vectors of resources deleted *before*
+f677c48 remain in the dev collection (one-off cleanup script, or fold
+into E14); an ingestion job still queued when its resource is deleted
+will re-ingest it.
 
 ### D9 — Mentors, Profile, Community
 **Effort:** 5
