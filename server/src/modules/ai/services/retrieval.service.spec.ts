@@ -50,7 +50,7 @@ function result(score: number, title = 'Some Resource'): VectorSearchResultDto {
 
 describe('RetrievalService#retrieve', () => {
   it('returns status "ok" with context when results clear the score threshold', async () => {
-    const { service } = buildService([result(0.9), result(0.75)]);
+    const { service } = buildService([result(0.72), result(0.7)]);
 
     const { context, status } = await service.retrieve(
       'user-1',
@@ -59,6 +59,25 @@ describe('RetrievalService#retrieve', () => {
 
     expect(status).toBe('ok');
     expect(context).toHaveLength(2);
+  });
+
+  it('drops candidates that clear the absolute threshold but trail the best hit', async () => {
+    // Real scores from the demo corpus for a Banker's algorithm question.
+    const { service } = buildService([
+      result(0.751, "Deadlocks and the Banker's Algorithm"),
+      result(0.59, 'Operating Systems Final Exam'),
+      result(0.62, 'Linked Lists, Stacks and Queues'),
+    ]);
+
+    const { context, status } = await service.retrieve(
+      'user-1',
+      "how does the banker's algorithm decide a state is safe",
+    );
+
+    expect(status).toBe('ok');
+    expect(context.map((c) => c.title)).toEqual([
+      "Deadlocks and the Banker's Algorithm",
+    ]);
   });
 
   it('returns status "no-matches" when the vector store returns nothing at all', async () => {

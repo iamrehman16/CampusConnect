@@ -14,6 +14,15 @@ import {
 export class RetrievalService {
   private readonly logger = new Logger(RetrievalService.name);
   private readonly SCORE_THRESHOLD = 0.6;
+  /**
+   * Candidates must also score within this margin of the best hit. With
+   * gemini-embedding-001 over course notes, unrelated documents sit at a
+   * ~0.55–0.62 noise floor while real matches score ~0.66–0.78, so the
+   * absolute threshold alone let in (and cited) off-topic notes — e.g.
+   * "Linked Lists" at 0.589 next to "Banker's Algorithm" at 0.751. Measured
+   * on the demo corpus (2026-09-26); revisit with E14's evaluation set.
+   */
+  private readonly RELATIVE_MARGIN = 0.05;
   private readonly TOP_K = 5;
 
   constructor(
@@ -56,8 +65,11 @@ export class RetrievalService {
       return { context: [], status: 'no-matches', memories };
     }
 
+    const best = Math.max(...results.map((r) => r.score));
+    const cutoff = Math.max(this.SCORE_THRESHOLD, best - this.RELATIVE_MARGIN);
+
     const context: RetrievedContext[] = results
-      .filter((r) => r.score >= this.SCORE_THRESHOLD)
+      .filter((r) => r.score >= cutoff)
       .map((r) => ({
         text: r.payload.text,
         pageNumber: r.payload.pageNumber,
