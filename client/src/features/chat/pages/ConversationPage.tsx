@@ -1,8 +1,8 @@
 import {
   Box,
+  ButtonBase,
   IconButton,
   Typography,
-  Divider,
   CircularProgress,
 } from "@mui/material";
 import { ArrowBack } from "@/shared/icons";
@@ -113,21 +113,28 @@ export default function ConversationPage() {
     );
   }
 
+  const profilePath = otherParticipant
+    ? ROUTES.PUBLIC_PROFILE.replace(":userId", otherParticipant.id)
+    : undefined;
+
+  // height: 100% (not 100svh) — on desktop the pane sits under the shell's
+  // top bar, so a viewport-height box overflowed it and pushed the composer
+  // below the fold.
   return (
     <Box
       sx={{
         display: "flex",
         flexDirection: "column",
-        height: "100svh",
+        height: "100%",
         overflow: "hidden",
-        bgcolor: "background.default",
+        bgcolor: "surface.canvas",
       }}
     >
       {/* Header */}
       <Box
         sx={{
-          px: 2,
-          py: 1.5,
+          px: { xs: 1, md: 2.5 },
+          py: 1,
           display: "flex",
           alignItems: "center",
           gap: 1.5,
@@ -135,32 +142,31 @@ export default function ConversationPage() {
           borderColor: "divider",
           flexShrink: 0,
           bgcolor: "background.paper",
-          minHeight: 56,
+          minHeight: 60,
         }}
       >
         {isMobile && (
-          <IconButton size="small" onClick={() => navigate(-1)} sx={{ minWidth: 44, minHeight: 44 }}>
+          <IconButton onClick={() => navigate(ROUTES.CHAT)} aria-label="Back to messages" sx={{ minWidth: 44, minHeight: 44 }}>
             <ArrowBack fontSize="small" />
           </IconButton>
         )}
-        <UserAvatar
-          name={otherParticipant?.name}
-          avatar={otherParticipant?.avatar}
-          size={40}
-        />
-        <Box sx={{ minWidth: 0 }}>
-          <Typography variant="subtitle1" fontWeight={600} lineHeight={1.3}>
-            {otherParticipant?.name?.trim() || "Unknown user"}
-          </Typography>
-          <PresenceStatus
-            participant={otherParticipant}
-            isTyping={isPeerTyping}
-          />
-        </Box>
+        <ButtonBase
+          onClick={() => profilePath && navigate(profilePath)}
+          disabled={!profilePath}
+          sx={{ display: "flex", alignItems: "center", gap: 1.5, borderRadius: 1, pr: 1, minWidth: 0, textAlign: "left" }}
+        >
+          <UserAvatar name={otherParticipant?.name} avatar={otherParticipant?.avatar} size={36} />
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="subtitle2" fontWeight={600} lineHeight={1.3} noWrap>
+              {otherParticipant?.name?.trim() || "Unknown user"}
+            </Typography>
+            <PresenceStatus participant={otherParticipant} isTyping={isPeerTyping} />
+          </Box>
+        </ButtonBase>
       </Box>
 
       {/* Feed */}
-      <Box sx={{ flex: 1, overflow: "hidden" }}>
+      <Box sx={{ flex: 1, minHeight: 0 }}>
         <MessageFeed
           messages={messages}
           retryMessage={retryMessage}
@@ -171,16 +177,16 @@ export default function ConversationPage() {
         />
       </Box>
 
-      <Divider />
-
       {/* Input */}
-      <Box sx={{ flexShrink: 0 }}>
-        <MessageInput
-          conversationId={activeConversationId}
-          sendMessage={sendMessage}
-          onTyping={notifyTyping}
-          onStopTyping={stopTyping}
-        />
+      <Box sx={{ flexShrink: 0, px: { xs: 1.5, md: 3 }, pt: 1, pb: { xs: 1.5, md: 2 } }}>
+        <Box sx={{ maxWidth: 760, mx: "auto" }}>
+          <MessageInput
+            conversationId={activeConversationId}
+            sendMessage={sendMessage}
+            onTyping={notifyTyping}
+            onStopTyping={stopTyping}
+          />
+        </Box>
       </Box>
     </Box>
   );

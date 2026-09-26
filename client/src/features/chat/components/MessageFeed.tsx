@@ -1,7 +1,14 @@
 import { Box, CircularProgress, Typography } from "@mui/material";
-import { useEffect, useRef } from "react";
+import { Fragment, useEffect, useRef } from "react";
+import { format, isSameDay, isToday, isYesterday } from "date-fns";
 import type { Message } from "../types/chat-dto";
 import { MessageBubble } from "./MessageBubble";
+
+function dayLabel(date: Date): string {
+  if (isToday(date)) return "Today";
+  if (isYesterday(date)) return "Yesterday";
+  return format(date, "EEEE, d MMMM");
+}
 
 interface Props {
   messages: Message[];
@@ -49,47 +56,57 @@ export function MessageFeed({
   return (
     <Box
       ref={containerRef}
-      sx={{
-        height: "100%",
-        overflowY: "auto",
-        display: "flex",
-        flexDirection: "column",
-        px: 2,
-        py: 1,
-        gap: 0.5,
-        bgcolor: "background.default",
-      }}
+      sx={{ height: "100%", overflowY: "auto", px: { xs: 1.5, md: 3 }, py: 2 }}
     >
-      {isFetchingNextPage && (
-        <Box sx={{ display: "flex", justifyContent: "center", py: 1 }}>
-          <CircularProgress size={20} />
-        </Box>
-      )}
+      <Box sx={{ maxWidth: 760, mx: "auto", display: "flex", flexDirection: "column" }}>
+        {isFetchingNextPage && (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 1 }}>
+            <CircularProgress size={20} />
+          </Box>
+        )}
 
-      {!hasNextPage && (
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          textAlign="center"
-          py={1}
-        >
-          Beginning of conversation
-        </Typography>
-      )}
+        {!hasNextPage && (
+          <Typography variant="caption" color="text.tertiary" textAlign="center" sx={{ pb: 1 }}>
+            Beginning of conversation
+          </Typography>
+        )}
 
-      {messages.map((message) => (
-        <MessageBubble
-          key={message.clientId || message.id}
-          message={message}
-          retryMessage={retryMessage}
-          showSeenAt={
-            (message.id || message.clientId) ===
-            (latestSeenOwnMessageKey?.id || latestSeenOwnMessageKey?.clientId)
-          }
-        />
-      ))}
+        {messages.map((message, i) => {
+          const prev = messages[i - 1];
+          const created = new Date(message.createdAt);
+          const newDay = !prev || !isSameDay(new Date(prev.createdAt), created);
+          // Consecutive messages from one sender sit tight; a change of
+          // speaker (or day) gets breathing room.
+          const sameSender = !newDay && prev?.sender === message.sender;
+          return (
+            <Fragment key={message.clientId || message.id}>
+              {newDay && (
+                <Typography
+                  variant="caption"
+                  color="text.tertiary"
+                  fontWeight={600}
+                  textAlign="center"
+                  sx={{ py: 1.5 }}
+                >
+                  {dayLabel(created)}
+                </Typography>
+              )}
+              <Box sx={{ display: "flex", flexDirection: "column", mt: sameSender ? 0.5 : 1.5 }}>
+                <MessageBubble
+                  message={message}
+                  retryMessage={retryMessage}
+                  showSeenAt={
+                    (message.id || message.clientId) ===
+                    (latestSeenOwnMessageKey?.id || latestSeenOwnMessageKey?.clientId)
+                  }
+                />
+              </Box>
+            </Fragment>
+          );
+        })}
 
-      <div ref={bottomRef} />
+        <div ref={bottomRef} />
+      </Box>
     </Box>
   );
 }

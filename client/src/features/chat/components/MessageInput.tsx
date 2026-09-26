@@ -33,59 +33,59 @@ export function MessageInput({
     }
   };
 
+  const canSend = content.trim().length > 0;
+
+  // Same single composer surface as Ask AI's ChatInput (BACKLOG.md D8).
   return (
     <Box
-      sx={{
+      sx={(t) => ({
         display: "flex",
         alignItems: "flex-end",
         gap: 1,
-        px: 2,
-        py: 1.5,
-      }}
+        pl: 2,
+        pr: 1,
+        py: 0.75,
+        borderRadius: `${t.radius.lg}px`,
+        border: "1px solid",
+        borderColor: "border.default",
+        bgcolor: "surface.card",
+        transition: t.transitions.create(["border-color", "box-shadow"]),
+        "&:focus-within": {
+          borderColor: "primary.main",
+          boxShadow: `0 0 0 3px ${t.palette.primary.subtle}`,
+        },
+      })}
     >
       <TextField
         fullWidth
         multiline
-        maxRows={4}
-        placeholder="Write a message..."
+        maxRows={5}
+        placeholder="Write a message…"
         value={content}
         onChange={(e) => {
           setContent(e.target.value);
           if (e.target.value) onTyping?.();
         }}
         onKeyDown={handleKeyDown}
-        variant="outlined"
-        size="small"
-        sx={{
-          "& .MuiOutlinedInput-root": {
-            borderRadius: "24px",
-            bgcolor: "background.paper",
-            "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-              borderColor: "primary.light",
-              borderWidth: "1.5px",
-            },
-          },
+        variant="standard"
+        slotProps={{
+          input: { disableUnderline: true },
+          htmlInput: { "aria-label": "Write a message" },
         }}
+        sx={{ py: 0.75, "& .MuiInputBase-root": { fontSize: "0.9375rem", lineHeight: 1.5 } }}
       />
       <IconButton
-        size="small"
         onClick={handleSend}
-        disabled={!content.trim()}
+        disabled={!canSend}
+        aria-label="Send message"
         sx={{
-          width: 40,
-          height: 40,
+          width: 36,
+          height: 36,
           flexShrink: 0,
-          mb: 0.25,
-          bgcolor: content.trim() ? "primary.main" : "action.disabledBackground",
-          color: content.trim() ? "primary.contrastText" : "text.disabled",
-          borderRadius: "50%",
-          "&:hover": {
-            bgcolor: content.trim() ? "primary.dark" : "action.disabledBackground",
-          },
-          "&.Mui-disabled": {
-            bgcolor: "action.disabledBackground",
-            color: "text.disabled",
-          },
+          bgcolor: "primary.main",
+          color: "primary.contrastText",
+          "&:hover": { bgcolor: "primary.dark", color: "primary.contrastText" },
+          "&.Mui-disabled": { bgcolor: "surface.subtle", color: "text.disabled" },
         }}
       >
         <Send sx={{ fontSize: 18 }} />

@@ -22,7 +22,7 @@ export function MessageStatusIcon({
       <CircularProgress
         size={10}
         thickness={5}
-        sx={{ color: "text.disabled" }}
+        sx={{ color: "inherit", opacity: 0.8 }}
       />
     );
   }
@@ -33,9 +33,10 @@ export function MessageStatusIcon({
         <IconButton
           size="small"
           onClick={() => retryMessage(clientId, { conversationId, content })}
-          sx={{ p: 0 }}
+          aria-label="Retry sending"
+          sx={{ p: 0, color: "inherit" }}
         >
-          <ErrorOutline sx={{ fontSize: 14, color: "error.main" }} />
+          <ErrorOutline sx={{ fontSize: 14 }} />
         </IconButton>
       </Tooltip>
     );
@@ -43,6 +44,6 @@ export function MessageStatusIcon({
 
   // SENT
   return (
-    <CheckCircleOutline sx={{ fontSize: 12, color: "text.disabled" }} />
+    <CheckCircleOutline sx={{ fontSize: 12, opacity: 0.8 }} />
   );
 }

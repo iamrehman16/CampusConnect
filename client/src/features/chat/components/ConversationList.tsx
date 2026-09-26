@@ -1,148 +1,148 @@
 // src/features/chat/components/ConversationList.tsx
+import { useMemo, useState } from "react";
 import {
   Box,
-  CircularProgress,
-  Divider,
-  Fab,
+  Button,
+  IconButton,
+  InputAdornment,
   List,
+  Skeleton,
+  Stack,
+  TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
-import { EditOutlined as EditOutlinedIcon, PeopleOutline as PeopleOutlineIcon } from "@/shared/icons";
+import {
+  EditOutlined as EditOutlinedIcon,
+  PeopleOutline as PeopleOutlineIcon,
+  Search as SearchIcon,
+} from "@/shared/icons";
 import { useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "@/shared/hooks/useAuth";
 import { useConversationsQuery } from "../hooks/chat-hooks";
 import { ConversationListItem } from "./ConversationListItem";
 import { ROUTES } from "@/shared/constants/routes";
 
+/**
+ * Conversation pane (BACKLOG.md D8). Header carries the title (desktop —
+ * the mobile top bar already shows it), a name filter and the "new
+ * message" action, which replaces the old floating FAB that covered the
+ * last row. New conversations start from a mentor, so the action routes
+ * to the people you mentor with.
+ */
 export function ConversationList() {
   const { conversationId: activeId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { data: conversations, isLoading } = useConversationsQuery();
+  const [query, setQuery] = useState("");
 
-  // ── Loading ────────────────────────────────────────────────────────────────
-  if (isLoading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", pt: 4 }}>
-        <CircularProgress size={24} />
-      </Box>
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return conversations ?? [];
+    return (conversations ?? []).filter((c) =>
+      c.participants.some(
+        (p) => p.id !== user?._id && p.name?.toLowerCase().includes(q),
+      ),
     );
-  }
+  }, [conversations, query, user?._id]);
 
-  // ── Empty state ────────────────────────────────────────────────────────────
-  if (!conversations?.length) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-          px: 4,
-          gap: 2,
-          textAlign: "center",
-        }}
-      >
+  const hasAny = (conversations?.length ?? 0) > 0;
+
+  const newMessageButton = (
+    <Tooltip title="New message">
+      <IconButton aria-label="New message" onClick={() => navigate(ROUTES.MY_MENTORS)}>
+        <EditOutlinedIcon fontSize="small" />
+      </IconButton>
+    </Tooltip>
+  );
+
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+      <Box sx={{ p: 1.5, pb: 1, flexShrink: 0 }}>
+        <Stack
+          direction="row"
+          alignItems="center"
+          sx={{ mb: 1.25, minHeight: 36, display: { xs: "none", md: "flex" } }}
+        >
+          <Typography variant="subtitle1" component="h1" fontWeight={700} sx={{ flex: 1, px: 0.5 }}>
+            Messages
+          </Typography>
+          {newMessageButton}
+        </Stack>
+        {hasAny && (
+          <Stack direction="row" alignItems="center" gap={0.5}>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="Search people"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ fontSize: 16, color: "text.tertiary" }} />
+                    </InputAdornment>
+                  ),
+                },
+                htmlInput: { "aria-label": "Search conversations" },
+              }}
+            />
+            {/* Mobile has no title row (the top bar shows it). */}
+            <Box sx={{ display: { xs: "block", md: "none" } }}>{newMessageButton}</Box>
+          </Stack>
+        )}
+      </Box>
+
+      {isLoading ? (
+        <Stack spacing={1} sx={{ px: 1.5, pt: 1 }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} variant="rounded" height={56} />
+          ))}
+        </Stack>
+      ) : !hasAny ? (
         <Box
           sx={{
-            width: 56,
-            height: 56,
-            borderRadius: "50%",
-            bgcolor: "action.hover",
+            flex: 1,
             display: "flex",
+            flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
+            px: 4,
+            gap: 1.5,
+            textAlign: "center",
           }}
         >
-          <PeopleOutlineIcon sx={{ fontSize: 28, color: "text.secondary" }} />
+          <PeopleOutlineIcon sx={{ fontSize: 28, color: "text.tertiary" }} />
+          <Box>
+            <Typography variant="subtitle2" fontWeight={600}>
+              No conversations yet
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              When a mentor accepts your request, you can message them here.
+            </Typography>
+          </Box>
+          <Button size="small" variant="outlined" onClick={() => navigate(ROUTES.MENTORS)}>
+            Find a mentor
+          </Button>
         </Box>
-
-        <Box>
-          <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-            No conversations yet
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Find a mentor and start a conversation.
-          </Typography>
-        </Box>
-
-        <Typography
-          variant="body2"
-          fontWeight={600}
-          color="primary"
-          onClick={() => navigate(ROUTES.MENTORS)}
-          sx={{
-            cursor: "pointer",
-            "&:hover": { textDecoration: "underline" },
-          }}
-        >
-          Find a mentor →
+      ) : filtered.length === 0 ? (
+        <Typography variant="body2" color="text.secondary" sx={{ px: 2.5, py: 3, textAlign: "center" }}>
+          No one matches “{query.trim()}”.
         </Typography>
-      </Box>
-    );
-  }
-
-  // ── Populated list ─────────────────────────────────────────────────────────
-  //
-  // The title "Messages" is gone from here — ContextualBar in the top bar
-  // already owns it. Showing it twice was redundant and visually noisy.
-  //
-  // The FAB replaces the old pencil-in-a-row pattern. Why FAB over an
-  // icon button in the header?
-  // - A header row with only one icon and no label looks unbalanced.
-  // - FAB is the established mobile convention for "primary action on a list"
-  //   (WhatsApp, Telegram, Gmail all do this).
-  // - It stays visible as the user scrolls — always accessible.
-  //
-  // The tradeoff: FAB overlaps the last list item slightly. We compensate
-  // with pb on the List so the last item is never hidden behind it.
-  return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        overflow: "hidden",
-        position: "relative", // FAB is positioned relative to this container
-      }}
-    >
-      <List
-        disablePadding
-        sx={{
-          flex: 1,
-          overflowY: "auto",
-          // Extra bottom padding so the last conversation item is never
-          // obscured by the FAB (FAB height 40px + margin 16px + buffer 8px)
-          pb: "72px",
-        }}
-      >
-        {conversations.map((conversation) => (
-          <ConversationListItem
-            key={conversation.id}
-            conversation={conversation}
-            isActive={conversation.id === activeId}
-            onClick={() => navigate(`/chat/${conversation.id}`)}
-          />
-        ))}
-      </List>
-
-      {/* FAB — positioned inside the list container, not the whole screen.
-          bottom/right values align it to the corner of the list panel,
-          which on desktop is the right sidebar and on mobile is full width. */}
-      <Fab
-        size="small"
-        color="primary"
-        aria-label="Start new conversation"
-        onClick={() => navigate(ROUTES.MENTORS)}
-        sx={{
-          position: "absolute",
-          bottom: 16,
-          right: 16,
-        }}
-      >
-        <EditOutlinedIcon fontSize="small" />
-      </Fab>
-
-      <Divider />
+      ) : (
+        <List disablePadding sx={{ flex: 1, overflowY: "auto", px: 1, pb: 1 }}>
+          {filtered.map((conversation) => (
+            <ConversationListItem
+              key={conversation.id}
+              conversation={conversation}
+              isActive={conversation.id === activeId}
+              onClick={() => navigate(`${ROUTES.CHAT}/${conversation.id}`)}
+            />
+          ))}
+        </List>
+      )}
     </Box>
   );
 }

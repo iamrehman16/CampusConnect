@@ -17,7 +17,7 @@ export function MessageBubble({
 }: Props) {
   const { user } = useAuth();
   const isOwn = message.sender === user?._id;
-  const timestampColor = isOwn ? "rgba(255,255,255,0.78)" : "text.disabled";
+  const timestampColor = isOwn ? "rgba(255,255,255,0.8)" : "text.tertiary";
   const seenAt = message.seenAt ? format(new Date(message.seenAt), "HH:mm") : null;
 
   return (
@@ -26,7 +26,7 @@ export function MessageBubble({
         display: "flex",
         flexDirection: "column",
         alignItems: isOwn ? "flex-end" : "flex-start",
-        maxWidth: "70%",
+        maxWidth: { xs: "85%", sm: "75%" },
         alignSelf: isOwn ? "flex-end" : "flex-start",
       }}
     >
@@ -34,11 +34,14 @@ export function MessageBubble({
         sx={{
           px: 1.5,
           py: 1,
-          borderRadius: isOwn ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-          bgcolor: isOwn ? "primary.main" : "background.paper",
+          borderRadius: (t) => {
+            const r = t.radius.lg;
+            return isOwn ? `${r}px ${r}px 4px ${r}px` : `${r}px ${r}px ${r}px 4px`;
+          },
+          bgcolor: isOwn ? "primary.main" : "surface.card",
           color: isOwn ? "primary.contrastText" : "text.primary",
-          border: isOwn ? "none" : "1px solid",
-          borderColor: isOwn ? "transparent" : "divider",
+          border: "1px solid",
+          borderColor: isOwn ? "primary.main" : "border.default",
           opacity: message._status === "PENDING" ? 0.7 : 1,
         }}
       >
@@ -51,7 +54,12 @@ export function MessageBubble({
             This message was deleted
           </Typography>
         ) : (
-          <Typography variant="body2">{message.content}</Typography>
+          <Typography
+            variant="body2"
+            sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", lineHeight: 1.5 }}
+          >
+            {message.content}
+          </Typography>
         )}
 
         <Box
@@ -81,8 +89,14 @@ export function MessageBubble({
         </Box>
       </Box>
 
+      {isOwn && message._status === "FAILED" && (
+        <Typography variant="caption" color="error.main" sx={{ mt: 0.25, px: 0.5 }}>
+          Not sent — tap the icon to retry
+        </Typography>
+      )}
+
       {isOwn && showSeenAt && seenAt && (
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.25, px: 0.5 }}>
+        <Typography variant="caption" color="text.tertiary" sx={{ mt: 0.25, px: 0.5 }}>
           Seen at {seenAt}
         </Typography>
       )}
