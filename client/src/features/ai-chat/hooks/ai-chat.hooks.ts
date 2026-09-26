@@ -3,7 +3,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { aiChatService } from "../services/ai-chat.service";
 import { aiChatKeys, NEW_THREAD_KEY } from "./ai-chat.keys";
 import { getConversation, setMessageFeedback } from "../utils/ai-chat.cache";
-import type { ConversationMessage, MessageFeedback } from "../types/ai-chat.dto";
+import type {
+  AiConversationThread,
+  ConversationMessage,
+  MessageFeedback,
+} from "../types/ai-chat.dto";
 
 // ---------------------------------------------------------------------------
 // useConversation
@@ -39,11 +43,29 @@ export function useConversation(conversationId: string) {
 // ---------------------------------------------------------------------------
 // Thread CRUD (BACKLOG.md B7) — wired to B2's ai/conversations endpoints.
 // ---------------------------------------------------------------------------
+// Mirrors the server's DEFAULT_CONVERSATION_TITLE (ai-conversation.schema.ts).
+const DEFAULT_THREAD_TITLE = "New conversation";
+const TITLE_POLL_WINDOW_MS = 30_000;
+
+/**
+ * The server names a new thread fire-and-forget, after the stream has
+ * already closed (BACKLOG.md B4), so the refetch on thread resolution
+ * still sees "New conversation". While a recently active thread carries
+ * the default title, poll briefly until the generated one lands.
+ */
+function awaitingTitle(threads: AiConversationThread[] | undefined): boolean {
+  const cutoff = Date.now() - TITLE_POLL_WINDOW_MS;
+  return (threads ?? []).some(
+    (t) => t.title === DEFAULT_THREAD_TITLE && new Date(t.updatedAt).getTime() > cutoff,
+  );
+}
+
 export function useThreadsQuery() {
   return useQuery({
     queryKey: aiChatKeys.threads(),
     queryFn: () => aiChatService.getThreads(),
     staleTime: 1000 * 30,
+    refetchInterval: (query) => (awaitingTitle(query.state.data) ? 2000 : false),
   });
 }
 
