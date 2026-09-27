@@ -51,6 +51,23 @@ describe('UpdateUserProfileDto — mentor profile (E8)', () => {
   });
 });
 
+describe('UpdateUserProfileDto — expertise', () => {
+  it('accepts a list of skills and normalizes it like topics', async () => {
+    const { dto, errors } = await check({
+      expertise: [' Python ', 'python', 'Java', ''],
+    });
+
+    expect(errors).toHaveLength(0);
+    expect(dto.expertise).toEqual(['Python', 'Java']);
+  });
+
+  // Regression: a comma-joined string used to be stored as one tag.
+  it('rejects a comma-joined string', async () => {
+    const { errors } = await check({ expertise: 'Python, Java' });
+    expect(errors.length).toBeGreaterThan(0);
+  });
+});
+
 describe('UpdateUserProfileDto — through the production ValidationPipe', () => {
   // Mirrors main.ts: forbidNonWhitelisted rejects any field the DTO doesn't
   // declare, which is what made the avatar picker's PATCH fail with 400.

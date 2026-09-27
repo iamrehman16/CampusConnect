@@ -30,9 +30,16 @@ export class UpdateUserProfileDto {
   @IsString()
   academicInfo?: string;
 
+  // Stored as string[] (user.schema). This was typed `string`, so the
+  // Settings form's "Python, Java" was cast by Mongoose into a single
+  // ["Python, Java"] tag.
   @IsOptional()
-  @IsString()
-  expertise?: string;
+  @Transform(({ value }: { value: unknown }) => normalizeTags(value))
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MaxLength(40, { each: true })
+  expertise?: string[];
 
   @IsOptional()
   @IsInt()
