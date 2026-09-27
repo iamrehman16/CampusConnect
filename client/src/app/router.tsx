@@ -6,6 +6,7 @@ import PublicRoute from "@/app/routes/PublicRoute";
 import RoleRoute from "@/app/routes/RoleRoute";
 import AppLayout from "@/shared/components/layout/AppLayout";
 import MainLayout from "@/shared/components/layout/MainLayout";
+import { RouteErrorPage } from "@/shared/components/feedback/PageErrorBoundary";
 import { UserRole } from "@/shared/types/enums";
 import SuspenseWrapper from "./SuspenseWrapper";
 
@@ -78,6 +79,7 @@ const router = createBrowserRouter([
   // ── Public routes (redirect if already authenticated) ─────────
   {
     element: <PublicRoute />,
+    errorElement: <RouteErrorPage />,
     children: [
       {
         path: ROUTES.AUTH,
@@ -88,6 +90,7 @@ const router = createBrowserRouter([
 
   {
     element: <OnboardingRoute />,
+    errorElement: <RouteErrorPage />,
     children: [
       {
         path: ROUTES.ONBOARDING,
@@ -103,6 +106,7 @@ const router = createBrowserRouter([
   // ── Protected routes (require authentication) ─────────────────
   {
     element: <ProtectedRoute />,
+    errorElement: <RouteErrorPage />,
     children: [
       {
         element: <AppLayout />,

@@ -12,6 +12,7 @@ import { getRouteConfig } from "@/app/routeConfig";
 import { useChatPresenceSync } from "@/features/chat/hooks/useChatPresenceSync";
 import { useNotificationSync } from "@/features/notifications/hooks/useNotificationSync";
 import { useChatUnreadSync } from "@/features/chat/hooks/useChatUnreadSync";
+import { PageErrorBoundary } from "@/shared/components/feedback/PageErrorBoundary";
 
 /**
  * Application shell (BACKLOG.md D5).
@@ -37,7 +38,9 @@ export default function AppLayout() {
         <Box sx={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
           <DesktopTopBar />
           <Box component="main" sx={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
-            <Outlet />
+            <PageErrorBoundary resetKey={pathname}>
+              <Outlet />
+            </PageErrorBoundary>
           </Box>
         </Box>
       </Box>
@@ -58,7 +61,9 @@ export default function AppLayout() {
           bgcolor: "surface.canvas",
         }}
       >
-        <Outlet />
+        <PageErrorBoundary resetKey={pathname}>
+          <Outlet />
+        </PageErrorBoundary>
       </Box>
       {showBottomNav && <BottomNav />}
     </>
