@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { userService } from "../services/user.services";
 
-const MIN_LENGTH = 6; // matches the server's ChangePasswordDto / RegisterUserDto
+const MIN_LENGTH = 8; // same rule as the sign-up and sign-in forms
 
 /**
  * Change password (BACKLOG.md G5). The server clears the refresh token on
