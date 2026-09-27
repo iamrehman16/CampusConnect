@@ -33,22 +33,19 @@ export function CreatePost() {
     <Card
       sx={{
         p: 2,
-        mb: 3,
-        position: 'sticky',
-        top: 0,
-        zIndex: 10,
         borderColor: expanded ? 'border.strong' : 'border.default',
         transition: 'border-color 0.2s ease',
       }}
     >
       <form onSubmit={handleSubmit}>
         <Stack direction="row" spacing={2} alignItems="flex-start">
-          <UserAvatar name={user.name} avatar={user.avatar} size={40} />
+          <UserAvatar name={user.name} avatar={user.avatar} size={36} />
           <Box sx={{ flexGrow: 1 }}>
             {expanded && (
               <TextField
                 fullWidth
-                placeholder="Post Title"
+                placeholder="Title — what's it about?"
+                autoFocus
                 variant="outlined"
                 size="small"
                 value={title}
@@ -60,13 +57,13 @@ export function CreatePost() {
             )}
             <TextField
               fullWidth
-              placeholder="Share with community..."
+              placeholder={expanded ? "Add details, context or what you've tried" : "Start a discussion…"}
               variant="outlined"
               size="small"
               multiline={expanded}
               minRows={expanded ? 3 : 1}
               value={content}
-              onClick={() => setExpanded(true)}
+              onFocus={() => setExpanded(true)}
               onChange={(e) => setContent(e.target.value)}
               disabled={isPending}
               required={expanded}

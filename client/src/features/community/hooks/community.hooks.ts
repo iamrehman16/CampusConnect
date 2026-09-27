@@ -30,6 +30,13 @@ export const usePosts = () =>
       lastPage.page < lastPage.totalPage ? lastPage.page + 1 : undefined,
   });
 
+export const useTopContributors = (limit = 5) =>
+  useQuery({
+    queryKey: communityKeys.topContributors(),
+    queryFn: () => communityService.getTopContributors(limit),
+    staleTime: 1000 * 60 * 5,
+  });
+
 export const useComments = (postId: string) =>
   useInfiniteQuery({
     queryKey: communityKeys.comments(postId),

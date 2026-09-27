@@ -2,6 +2,7 @@
 export const communityKeys = {
   all: ["posts"] as const,
   stats:()=>[...communityKeys.all,'stats'],
+  topContributors: () => [...communityKeys.all, "top-contributors"] as const,
   lists: () => [...communityKeys.all, "list"] as const,
   list: (params: object) => [...communityKeys.lists(), params] as const,
   mine: () => [...communityKeys.lists(), "mine"] as const,

@@ -272,7 +272,7 @@ export function CommunityWidget() {
             leading={<UserAvatar name={p.author.name} avatar={p.author.avatar} size={32} />}
             title={p.title}
             secondary={`${p.author.name} · ${p.commentCount} ${p.commentCount === 1 ? "reply" : "replies"}`}
-            onClick={() => navigate(ROUTES.COMMUNITY)}
+            onClick={() => navigate(`${ROUTES.COMMUNITY}?post=${p._id}`)}
           />
         ))
       )}

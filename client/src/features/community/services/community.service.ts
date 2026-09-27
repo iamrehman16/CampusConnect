@@ -8,6 +8,7 @@ import type {
   CreatePostDto,
   Post,
   PostStats,
+  TopContributor,
   UpdateCommentDto,
   UpdatePostDto,
 } from "../types/community.dto";
@@ -83,6 +84,13 @@ export class CommunityService {
 
   async toggleUpvote(postId: string): Promise<Post> {
     const { data } = await api.post<Post>(`/posts/${postId}/upvote`);
+    return data;
+  }
+
+  async getTopContributors(limit: number): Promise<TopContributor[]> {
+    const { data } = await api.get<TopContributor[]>("/users/top-contributors", {
+      params: { limit },
+    });
     return data;
   }
 

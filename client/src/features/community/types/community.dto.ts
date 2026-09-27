@@ -1,3 +1,5 @@
+import type { ReputationTier } from "@/features/reputation/types/reputation.types";
+
 
 // Populated `{ _id, name, avatar }` — email is deliberately not sent to
 // other users; ownership checks compare `_id` (see utils/permissions.ts).
@@ -58,4 +60,12 @@ export interface UpdateCommentDto{
 export interface PostStats{
     total: number; //total posts
     recent: number; //last seven days
+}
+/** GET /users/top-contributors — Community rail. */
+export interface TopContributor {
+  id: string;
+  name: string;
+  avatar?: string;
+  tier: ReputationTier;
+  contributionScore: number;
 }
