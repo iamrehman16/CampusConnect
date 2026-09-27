@@ -484,6 +484,22 @@ Bugs found and fixed along the way (each its own commit):
 - Sign in / sign up as focused forms (room for F3's Google button).
 - Onboarding as a short stepper with progress; skippable optional steps.
 
+**D10 status: IN PROGRESS (2026-09-27).** Done:
+- The landing page (`/auth`) uses real product screenshots instead of
+  the unDraw art.
+- `/login` and `/signup` are focused single-card pages.
+
+**Remaining:**
+- **Sign-in race (found, not fixed).** `AuthProvider.login()` fires
+  `fetchProfile()` without awaiting it, and `useLogin`/`useRegister`
+  navigate immediately. `ProtectedRoute` then sees no user and bounces
+  to the landing page until the profile loads (and stays there if the
+  load is slow). Proposed fix: make `login` async, set `isLoading`
+  meanwhile, and await it before navigating.
+- Review and restyle the onboarding stepper.
+- A throwaway account, `d10.check@example.com`, sits in the demo DB
+  (created to view onboarding). Delete it, or re-run the seed.
+
 ---
 
 ## Epic E — Contributors, mentorship & the messenger (remaining: E11–E16)
