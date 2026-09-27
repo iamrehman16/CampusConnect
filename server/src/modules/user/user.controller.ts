@@ -17,6 +17,7 @@ import { UserQueryDto } from './dto/user-query.dto';
 import { Role } from '../auth/decorators/role.decorator';
 import { Roles } from './enums/user-role.enum';
 import { MentorQueryDto } from './dto/mentor-query.dto';
+import { TopContributorsQueryDto } from './dto/top-contributors-query.dto';
 import { ParseMongoIdPipe } from '../../common/pipes/is-mongo-id.pipe';
 
 @Controller('users')
@@ -45,6 +46,12 @@ export class UserController {
   @Get('mentors')
   findMentors(@Req() req: { user: CurrentUser }, @Query() dto: MentorQueryDto) {
     return this.userService.findMentors(dto, req.user.id);
+  }
+
+  /** Community rail: highest-reputation members (public fields only). */
+  @Get('top-contributors')
+  findTopContributors(@Query() dto: TopContributorsQueryDto) {
+    return this.userService.findTopContributors(dto.limit ?? 5);
   }
 
   @Patch('profile')

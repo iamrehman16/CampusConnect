@@ -233,3 +233,46 @@ describe('UserService#findPublicProfile', () => {
     );
   });
 });
+
+describe('UserService#findTopContributors', () => {
+  it('returns active members with reputation, highest first, as public rows', async () => {
+    const id = new Types.ObjectId();
+    const chain = {
+      sort: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest
+        .fn()
+        .mockResolvedValue([
+          { _id: id, name: 'Hamza', tier: 'trusted', contributionScore: 70 },
+        ]),
+    };
+    const find = jest.fn().mockReturnValue(chain);
+    const service = new UserService(
+      { find } as unknown as Model<User>,
+      {} as PaginationService,
+    );
+
+    const rows = await service.findTopContributors(5);
+
+    expect(find).toHaveBeenCalledWith({
+      contributionScore: { $gt: 0 },
+      accountStatus: { $ne: 'Suspended' },
+    });
+    expect(chain.sort).toHaveBeenCalledWith({ contributionScore: -1, _id: 1 });
+    expect(chain.limit).toHaveBeenCalledWith(5);
+    expect(chain.select).toHaveBeenCalledWith(
+      'name avatar tier contributionScore',
+    );
+    expect(rows).toEqual([
+      {
+        id: id.toString(),
+        name: 'Hamza',
+        avatar: undefined,
+        tier: 'trusted',
+        contributionScore: 70,
+      },
+    ]);
+  });
+});

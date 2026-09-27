@@ -39,6 +39,7 @@ import { MentorSortBuilder } from './queries/build-mentor-sort';
 const MENTOR_PUBLIC_FIELDS =
   'name avatar department semester role tier contributionScore expertise mentorBio mentorTopics maxActiveMentees activeMenteeCount';
 import { CompleteOnboardingDto } from './dto/complete-onboarding.dto';
+import { TopContributorDto } from './dto/top-contributor.dto';
 
 // Fields any member may see on another member's profile. Deliberately
 // excludes email, accountStatus and isOnboarded.
@@ -148,6 +149,28 @@ export class UserService {
       throw new NotFoundException(`User with id ${userId} not found`);
     }
     return user.toObject();
+  }
+
+  /** Highest-reputation active members, for Community's rail. */
+  async findTopContributors(limit: number): Promise<TopContributorDto[]> {
+    const users = await this.userModel
+      .find({
+        contributionScore: { $gt: 0 },
+        accountStatus: { $ne: UserStatus.SUSPENDED },
+      })
+      .sort({ contributionScore: -1, _id: 1 })
+      .limit(limit)
+      .select('name avatar tier contributionScore')
+      .lean()
+      .exec();
+
+    return users.map((u) => ({
+      id: u._id.toString(),
+      name: u.name ?? '',
+      avatar: u.avatar,
+      tier: u.tier,
+      contributionScore: u.contributionScore,
+    }));
   }
 
   /**
