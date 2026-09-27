@@ -1,10 +1,9 @@
-import type { User } from "@/shared/types/auth.types";
+import type { PublicUser, User } from "@/shared/types/auth.types";
 import type { UserRole } from "@/shared/types/enums";
 import type { ReputationTier } from "@/features/reputation/types/reputation.types";
 
 export interface ProfileUserViewModel {
   id: string;
-  email: string;
   name: string;
   avatar?: string;
   academicInfo?: string;
@@ -33,18 +32,16 @@ export interface ProfileStats {
 }
 
 export const toProfileUserViewModel = (
-  user: User | null | undefined,
+  user: User | PublicUser | null | undefined,
 ): ProfileUserViewModel | null => {
   if (!user) {
     return null;
   }
 
-  const fallbackName = user.email.split("@")[0] || "User";
 
   return {
     id: user._id,
-    email: user.email,
-    name: user.name?.trim() || fallbackName,
+    name: user.name?.trim() || "Unnamed member",
     avatar: user.avatar,
     academicInfo: user.academicInfo,
     expertise: Array.isArray(user.expertise)

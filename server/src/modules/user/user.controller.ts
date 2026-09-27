@@ -17,6 +17,7 @@ import { UserQueryDto } from './dto/user-query.dto';
 import { Role } from '../auth/decorators/role.decorator';
 import { Roles } from './enums/user-role.enum';
 import { MentorQueryDto } from './dto/mentor-query.dto';
+import { ParseMongoIdPipe } from '../../common/pipes/is-mongo-id.pipe';
 
 @Controller('users')
 export class UserController {
@@ -54,8 +55,9 @@ export class UserController {
     return this.userService.updateProfile(req.user.id, dto);
   }
 
+  /** Another member's profile: public fields only (no email). */
   @Get('profile/:id')
-  getUserProfile(@Param('id') id: string) {
-    return this.userService.findOne(id);
+  getUserProfile(@Param('id', ParseMongoIdPipe) id: string) {
+    return this.userService.findPublicProfile(id);
   }
 }

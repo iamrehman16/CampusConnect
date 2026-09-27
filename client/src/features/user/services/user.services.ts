@@ -1,4 +1,4 @@
-import type { User } from "@/shared/types/auth.types";
+import type { PublicUser, User } from "@/shared/types/auth.types";
 import type { UpdateUserDto } from "../types/user.dto";
 import api from "@/shared/api/axios.instance";
 
@@ -13,8 +13,8 @@ export class UserService {
     return data;
   }
 
-  async getUserProfile(id: string): Promise<User> {
-    const { data } = await api.get<User>(`/users/profile/${id}`);
+  async getUserProfile(id: string): Promise<PublicUser> {
+    const { data } = await api.get<PublicUser>(`/users/profile/${id}`);
     return data;
   }
 }

@@ -40,6 +40,10 @@ const MENTOR_PUBLIC_FIELDS =
   'name avatar department semester role tier contributionScore expertise mentorBio mentorTopics maxActiveMentees activeMenteeCount';
 import { CompleteOnboardingDto } from './dto/complete-onboarding.dto';
 
+// Fields any member may see on another member's profile. Deliberately
+// excludes email, accountStatus and isOnboarded.
+const PROFILE_PUBLIC_FIELDS = `${MENTOR_PUBLIC_FIELDS} academicInfo interests isOpenToMentor lastSeenAt createdAt`;
+
 @Injectable()
 export class UserService {
   private readonly queryBuilder = new UserQueryBuilder();
@@ -144,6 +148,23 @@ export class UserService {
       throw new NotFoundException(`User with id ${userId} not found`);
     }
     return user.toObject();
+  }
+
+  /**
+   * Another member's profile. `findOne` returns the whole document
+   * (including email) and is only for the caller's own profile and
+   * internal use.
+   */
+  async findPublicProfile(userId: string) {
+    const user = await this.userModel
+      .findById(userId)
+      .select(PROFILE_PUBLIC_FIELDS)
+      .lean()
+      .exec();
+    if (!user) {
+      throw new NotFoundException(`User with id ${userId} not found`);
+    }
+    return user;
   }
 
   async findOneWithHashedRefreshToken(userId: string) {

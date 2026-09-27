@@ -29,6 +29,12 @@ export interface User {
 }
 
 /**
+ * Another member's profile (GET /api/users/profile/:id): public fields
+ * only — the server never sends their email or account state.
+ */
+export type PublicUser = Omit<User, "email" | "isOnboarded" | "accountStatus">;
+
+/**
  * Token pair response from /api/auth/login and /api/auth/refresh.
  */
 export interface AuthTokens {

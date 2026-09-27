@@ -196,3 +196,40 @@ describe('UserService mentee slots', () => {
     );
   });
 });
+
+describe('UserService#findPublicProfile', () => {
+  // Regression: public profiles used findOne, which returned the email.
+  it('selects public fields only, never email or account status', async () => {
+    const exec = jest.fn().mockResolvedValue({ name: 'Hamza' });
+    const lean = jest.fn().mockReturnValue({ exec });
+    const select = jest.fn().mockReturnValue({ lean });
+    const findById = jest.fn().mockReturnValue({ select });
+    const service = new UserService(
+      { findById } as unknown as Model<User>,
+      {} as PaginationService,
+    );
+
+    await service.findPublicProfile('u1');
+
+    const fields = (select.mock.calls[0] as [string])[0].split(/\s+/);
+    expect(fields).toEqual(expect.arrayContaining(['name', 'avatar', 'tier']));
+    expect(fields).not.toContain('email');
+    expect(fields).not.toContain('accountStatus');
+    expect(fields).not.toContain('isOnboarded');
+  });
+
+  it('404s for an unknown user', async () => {
+    const exec = jest.fn().mockResolvedValue(null);
+    const findById = jest.fn().mockReturnValue({
+      select: () => ({ lean: () => ({ exec }) }),
+    });
+    const service = new UserService(
+      { findById } as unknown as Model<User>,
+      {} as PaginationService,
+    );
+
+    await expect(service.findPublicProfile('nope')).rejects.toThrow(
+      'User with id nope not found',
+    );
+  });
+});
