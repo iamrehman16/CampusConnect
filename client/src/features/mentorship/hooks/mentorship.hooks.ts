@@ -43,9 +43,20 @@ export const useMentorships = (
       lastPage.page < lastPage.totalPage ? lastPage.page + 1 : undefined,
   });
 
+// Tolerates the `{}` that browsers persisted before this fix, until the
+// next fetch replaces it.
+const byMentorId = (list: Mentorship[] | unknown) =>
+  new Map<string, Mentorship>(
+    (Array.isArray(list) ? (list as Mentorship[]) : []).map((m) => [m.mentor.id, m]),
+  );
+
 /**
  * The current user's open (pending/active) requests as a mentee, keyed by
  * mentor id — lets mentor cards show "Request sent" instead of a dead button.
+ *
+ * The cache holds the plain array and `select` builds the Map on read: the
+ * query cache is persisted to IndexedDB as JSON, where a cached Map came
+ * back as `{}` after a reload and `.get` crashed every mentor card.
  */
 export const useMyOpenMentorships = () =>
   useQuery({
@@ -57,8 +68,9 @@ export const useMyOpenMentorships = () =>
         page: 1,
         limit: 100,
       });
-      return new Map<string, Mentorship>(page.data.map((m) => [m.mentor.id, m]));
+      return page.data;
     },
+    select: byMentorId,
     staleTime: 1000 * 60,
   });
 
