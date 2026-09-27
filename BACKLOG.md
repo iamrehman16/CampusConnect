@@ -136,7 +136,7 @@ asleep. Dormancy on inactivity is a known Qdrant Cloud behavior
 
 ---
 
-### G5 — Password change without the current password (security, open)
+### G5 — Password change without the current password (security) — DONE 2026-09-27
 **Found:** 2026-09-27 while fixing the profile email leak.
 `PATCH /users/profile` accepts `password` and bcrypt-hashes it straight
 into the user document. There's no current-password check, and the
