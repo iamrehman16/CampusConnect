@@ -1,202 +1,118 @@
-import React, { useState } from "react";
-import { Box, Button, Container, Tab, Tabs, Typography } from "@mui/material";
+import React from "react";
+import { Box, Button, Card, Link, Stack, Tab, Tabs, Typography } from "@mui/material";
+import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowBack } from "@/shared/icons";
-import { useNavigate, useParams } from "react-router-dom";
-import { ApprovalStatus } from "@/shared/types/enums";
-import { PageContainer } from '@/shared/components/PageContainer';
-
-import { useUserProfile } from "../hooks/profile-hooks";
+import { PageContainer } from "@/shared/components/PageContainer";
+import { ROUTES } from "@/shared/constants/routes";
+import { ApprovalStatus, UserRole } from "@/shared/types/enums";
+import { useAuth } from "@/shared/hooks/useAuth";
 import { usePostsByUser } from "@/features/community/hooks/community.hooks";
 import { useResourcesByUser } from "@/features/resources/hooks/resource.hooks";
-
-import ProfileHero from "../components/ProfileHero";
 import { RequestMentorshipButton } from "@/features/mentorship/components/RequestMentorshipButton";
+import ProfileHero from "../components/ProfileHero";
 import ProfilePostsTab from "../components/ProfilePostsTab";
 import ProfileResourcesTab from "../components/ProfileResourcesTab";
+import { useUserProfile } from "../hooks/profile-hooks";
 import { toProfileUserViewModel } from "../types/profile.types";
 
-// ─── Tab panel wrapper ────────────────────────────────────────────────────────
-const TabPanel = ({
-  children,
-  value,
-  index,
-}: {
-  children: React.ReactNode;
-  value: number;
-  index: number;
-}) => (
-  <Box
-    role="tabpanel"
-    hidden={value !== index}
-    sx={{ pt: 3, display: value === index ? "block" : "none" }}
-  >
-    {value === index && children}
-  </Box>
-);
+type ProfileTab = "posts" | "resources";
 
-// ─── Component ────────────────────────────────────────────────────────────────
+/** Someone else's profile (BACKLOG.md D9): same header as your own. */
 const PublicProfilePage: React.FC = () => {
-  const { userId } = useParams<{ userId: string }>();
-  const profileUserId = userId ?? "";
+  const { userId = "" } = useParams<{ userId: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState(0);
+  const { user: me } = useAuth();
+  const [params, setParams] = useSearchParams();
 
-  // ── Data hooks ──────────────────────────────────────────────────────────────
-  const { data: profile, isLoading: profileLoading } =
-    useUserProfile(profileUserId);
+  const { data: profile, isLoading, isError } = useUserProfile(userId);
+  const posts = usePostsByUser(userId);
+  const resources = useResourcesByUser(userId, { status: ApprovalStatus.APPROVED });
+  const user = toProfileUserViewModel(profile);
 
-  const {
-    data: postsData,
-    isLoading: postsLoading,
-    isFetchingNextPage: postsFetchingNext,
-    hasNextPage: postsHasNext,
-    fetchNextPage: postsFetchNext,
-  } = usePostsByUser(profileUserId);
+  if (me && userId === me._id) return <Navigate to={ROUTES.PROFILE} replace />;
 
-  // Public view: only approved resources
-  const {
-    data: resourcesData,
-    isLoading: resourcesLoading,
-    isFetchingNextPage: resourcesFetchingNext,
-    hasNextPage: resourcesHasNext,
-    fetchNextPage: resourcesFetchNext,
-  } = useResourcesByUser(profileUserId, { status: ApprovalStatus.APPROVED });
-  const profileView = toProfileUserViewModel(profile);
+  const resourceCount = resources.data?.pages[0]?.total ?? 0;
+  const uploads = user?.role === UserRole.CONTRIBUTOR || user?.role === UserRole.ADMIN || resourceCount > 0;
+  const tab: ProfileTab = uploads && params.get("tab") === "resources" ? "resources" : "posts";
 
-  // ── Stats (approved resources only for public view) ─────────────────────────
-  const allResources = resourcesData?.pages.flatMap((p) => p.data) ?? [];
-  const stats = {
-    totalPosts:
-      postsData?.pages[0]?.total ??
-      postsData?.pages.flatMap((p) => p.data).length ??
-      0,
-    approvedResources: resourcesData?.pages[0]?.total ?? allResources.length,
-    pendingResources: 0,
-    rejectedResources: 0,
-  };
-
-  if (!userId) {
+  if (isError) {
     return (
-      <PageContainer>
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "60vh",
-            color: "text.secondary",
-          }}
-        >
-          <Typography>User not found.</Typography>
-        </Box>
+      <PageContainer width="narrow">
+        <Card sx={{ py: 8, textAlign: "center" }}>
+          <Typography variant="subtitle1" fontWeight={600}>
+            This profile isn't available
+          </Typography>
+          <Button variant="outlined" sx={{ mt: 2 }} onClick={() => navigate(ROUTES.MENTORS)}>
+            Browse mentors
+          </Button>
+        </Card>
       </PageContainer>
     );
   }
 
   return (
-    <PageContainer>
-      <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
-        <Container maxWidth="md" disableGutters>
-        {/* Back button */}
-        <Box sx={{ px: { xs: 2, sm: 0 }, py: { xs: 1.5, sm: 2 } }}>
-          <Button
-            startIcon={<ArrowBack />}
-            onClick={() => navigate(-1)}
-            size="small"
-            sx={{
-              textTransform: "none",
-              color: "text.secondary",
-              fontWeight: 500,
-              "&:hover": { color: "text.primary" },
-            }}
-          >
-            Back
-          </Button>
-        </Box>
+    <PageContainer width="narrow">
+      <Link
+        component="button"
+        onClick={() => navigate(-1)}
+        underline="hover"
+        color="text.secondary"
+        variant="body2"
+        sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, mb: 2 }}
+      >
+        <ArrowBack sx={{ fontSize: 16 }} /> Back
+      </Link>
 
-        {/* ── Hero ─────────────────────────────────────────────────────── */}
+      <Stack spacing={3}>
         <ProfileHero
-          user={profileView}
-          stats={stats}
-          isLoading={profileLoading}
+          user={user}
+          isLoading={isLoading}
+          stats={{
+            posts: posts.data?.pages[0]?.total ?? 0,
+            resources: uploads ? resourceCount : undefined,
+          }}
           actions={
-            profileView?.isOpenToMentor ? (
+            user?.isOpenToMentor ? (
               <RequestMentorshipButton
-                mentorId={profileView.id}
-                mentorName={profileView.name}
-                slotsLeft={Math.max(
-                  0,
-                  profileView.maxActiveMentees - profileView.activeMenteeCount,
-                )}
-                defaultTopic={profileView.mentorTopics[0]}
+                mentorId={user.id}
+                mentorName={user.name}
+                slotsLeft={Math.max(0, user.maxActiveMentees - user.activeMenteeCount)}
+                defaultTopic={user.mentorTopics[0]}
               />
             ) : undefined
           }
         />
 
-        {/* ── Tabs ─────────────────────────────────────────────────────── */}
-        <Box sx={{ mt: { xs: 0, sm: 2 } }}>
-          <Box
-            sx={{
-              borderBottom: '1px solid',
-              borderColor: 'divider',
-              px: { xs: 2, sm: 0 },
-            }}
+        <Box>
+          <Tabs
+            value={tab}
+            onChange={(_, v: ProfileTab) => setParams(v === "posts" ? {} : { tab: v }, { replace: true })}
+            sx={{ borderBottom: "1px solid", borderColor: "divider", mb: 3 }}
           >
-            <Tabs
-              value={activeTab}
-              onChange={(_, v) => setActiveTab(v)}
-              textColor="primary"
-              indicatorColor="primary"
-              sx={{
-                "& .MuiTab-root": {
-                  textTransform: "none",
-                  fontWeight: 500,
-                  fontSize: "0.875rem",
-                  color: "text.secondary",
-                  minHeight: 48,
-                  "&.Mui-selected": {
-                    fontWeight: 700,
-                  },
-                },
-                "& .MuiTabs-indicator": {
-                  height: 2,
-                  borderRadius: "2px 2px 0 0",
-                },
-              }}
-            >
-              <Tab label="Posts" />
-              <Tab label="Resources" />
-            </Tabs>
-          </Box>
+            <Tab value="posts" label="Posts" />
+            {uploads && <Tab value="resources" label="Resources" />}
+          </Tabs>
 
-          <Box sx={{ px: { xs: 2, sm: 0 } }}>
-            {/* Posts tab */}
-            <TabPanel value={activeTab} index={0}>
-              <ProfilePostsTab
-                pages={postsData?.pages}
-                isLoading={postsLoading}
-                isFetchingNextPage={postsFetchingNext}
-                hasNextPage={postsHasNext}
-                fetchNextPage={postsFetchNext}
-              />
-            </TabPanel>
-
-            {/* Resources tab — approved only, no filter chips */}
-            <TabPanel value={activeTab} index={1}>
-              <ProfileResourcesTab
-                pages={resourcesData?.pages}
-                isLoading={resourcesLoading}
-                isFetchingNextPage={resourcesFetchingNext}
-                hasNextPage={resourcesHasNext}
-                fetchNextPage={resourcesFetchNext}
-                publicView
-              />
-            </TabPanel>
-          </Box>
+          {tab === "posts" ? (
+            <ProfilePostsTab
+              pages={posts.data?.pages}
+              isLoading={posts.isLoading}
+              isFetchingNextPage={posts.isFetchingNextPage}
+              hasNextPage={posts.hasNextPage}
+              fetchNextPage={posts.fetchNextPage}
+            />
+          ) : (
+            <ProfileResourcesTab
+              pages={resources.data?.pages}
+              isLoading={resources.isLoading}
+              isFetchingNextPage={resources.isFetchingNextPage}
+              hasNextPage={resources.hasNextPage}
+              fetchNextPage={resources.fetchNextPage}
+              publicView
+            />
+          )}
         </Box>
-      </Container>
-      </Box>
+      </Stack>
     </PageContainer>
   );
 };

@@ -27,10 +27,9 @@ export const DEFAULT_MAX_ACTIVE_MENTEES = 3;
 export const MAX_MENTOR_TOPICS = 10;
 
 export interface ProfileStats {
-  totalPosts: number;
-  approvedResources: number;
-  pendingResources: number;
-  rejectedResources: number;
+  posts: number;
+  /** Approved resources; omitted for people who don't upload. */
+  resources?: number;
 }
 
 export const toProfileUserViewModel = (

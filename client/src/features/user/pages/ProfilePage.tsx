@@ -1,255 +1,127 @@
 import React, { useState } from "react";
-import {
-  Box,
-  Button,
-  Container,
-  Tab,
-  Tabs,
-} from "@mui/material";
+import { Box, Button, Stack, Tab, Tabs } from "@mui/material";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { Edit } from "@/shared/icons";
-import { PageContainer } from '@/shared/components/PageContainer';
-import ProfileAvatarDialog from "../components/ProfileAvatarDialog";
-
-import { useMyProfile, useUpdateProfile } from "../hooks/profile-hooks";
-import { useOwnPosts } from "@/features/community/hooks/community.hooks";
-import {
-  useDeleteResource,
-  useMyResources,
-} from "@/features/resources/hooks/resource.hooks";
+import { PageContainer } from "@/shared/components/PageContainer";
+import { ROUTES } from "@/shared/constants/routes";
 import { ApprovalStatus, UserRole } from "@/shared/types/enums";
+import { useOwnPosts } from "@/features/community/hooks/community.hooks";
+import { useDeleteResource, useMyResources } from "@/features/resources/hooks/resource.hooks";
 import type { Resource } from "@/features/resources/types/resource.dto";
 import { EditResourceModal } from "@/features/resources/components/EditResourceModal";
-
-import ProfileHero from "../components/ProfileHero";
 import { ContributorApplicationCard } from "@/features/contributor-application/components/ContributorApplicationCard";
+import ProfileAvatarDialog from "../components/ProfileAvatarDialog";
+import ProfileHero from "../components/ProfileHero";
 import ProfilePostsTab from "../components/ProfilePostsTab";
 import ProfileResourcesTab from "../components/ProfileResourcesTab";
-import ProfileSettingsTab from "../components/ProfileSettingsTab";
+import { useMyProfile, useUpdateProfile } from "../hooks/profile-hooks";
 import { toProfileUserViewModel } from "../types/profile.types";
-import { useSearchParams } from "react-router-dom";
 
-const PROFILE_TABS = ["posts", "resources", "settings"] as const;
-type ProfileTab = (typeof PROFILE_TABS)[number];
+type ProfileTab = "posts" | "resources";
 
-// ─── Tab panel wrapper ────────────────────────────────────────────────────────
-const TabPanel = ({
-  children,
-  value,
-  index,
-}: {
-  children: React.ReactNode;
-  value: number;
-  index: number;
-}) => (
-  <Box
-    role="tabpanel"
-    hidden={value !== index}
-    sx={{ pt: 3, display: value === index ? "block" : "none" }}
-  >
-    {value === index && children}
-  </Box>
-);
-
-// ─── Component ────────────────────────────────────────────────────────────────
+/** Your own profile (BACKLOG.md D9). Editing lives on the Settings page. */
 const ProfilePage: React.FC = () => {
-  // Tab lives in the URL so the account menu's "Settings" (/profile?tab=settings)
-  // can deep-link, including when Profile is already open.
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const tabIndex = PROFILE_TABS.indexOf(params.get("tab") as ProfileTab);
-  const activeTab = tabIndex === -1 ? 0 : tabIndex;
-  const setActiveTab = (i: number) =>
-    setParams(i === 0 ? {} : { tab: PROFILE_TABS[i] }, { replace: true });
-  const [resourceFilter, setResourceFilter] = useState<ApprovalStatus | "all">(
-    "all",
-  );
+  const [resourceFilter, setResourceFilter] = useState<ApprovalStatus | "all">("all");
   const [editTarget, setEditTarget] = useState<Resource | null>(null);
   const [avatarDialogOpen, setAvatarDialogOpen] = useState(false);
 
-  // ── Data hooks ──────────────────────────────────────────────────────────────
   const { data: profile, isLoading: profileLoading } = useMyProfile();
+  const posts = useOwnPosts();
 
-  const {
-    data: postsData,
-    isLoading: postsLoading,
-    isFetchingNextPage: postsFetchingNext,
-    hasNextPage: postsHasNext,
-    fetchNextPage: postsFetchNext,
-  } = useOwnPosts();
-
-  const resourceParams = resourceFilter === "all" ? {} : { status: resourceFilter };
   // Only uploaders have resources; /resources/my is Contributor/Admin only.
-  const canUpload =
-    profile?.role === UserRole.CONTRIBUTOR || profile?.role === UserRole.ADMIN;
-  const uploaderOnly = { enabled: canUpload };
+  const canUpload = profile?.role === UserRole.CONTRIBUTOR || profile?.role === UserRole.ADMIN;
+  const resources = useMyResources(
+    resourceFilter === "all" ? {} : { status: resourceFilter },
+    { enabled: canUpload },
+  );
+  const approved = useMyResources({ status: ApprovalStatus.APPROVED }, { enabled: canUpload });
 
-  const {
-    data: resourcesData,
-    isLoading: resourcesLoading,
-    isFetchingNextPage: resourcesFetchingNext,
-    hasNextPage: resourcesHasNext,
-    fetchNextPage: resourcesFetchNext,
-  } = useMyResources(resourceParams, uploaderOnly);
-  const { data: approvedResourcesData } = useMyResources({ status: ApprovalStatus.APPROVED }, uploaderOnly);
-  const { data: pendingResourcesData } = useMyResources({ status: ApprovalStatus.PENDING }, uploaderOnly);
-  const { data: rejectedResourcesData } = useMyResources({ status: ApprovalStatus.REJECTED }, uploaderOnly);
-
-  const { mutate: updateProfile, isPending: isSaving } = useUpdateProfile();
+  const { mutate: updateProfile } = useUpdateProfile();
   const { mutate: deleteResource } = useDeleteResource();
-  const profileView = toProfileUserViewModel(profile);
+  const user = toProfileUserViewModel(profile);
 
-  // ── Derived stats ───────────────────────────────────────────────────────────
+  // Pre-D9 links (account menu, bookmarks) pointed at a Settings tab here.
+  if (params.get("tab") === "settings") {
+    return <Navigate to={ROUTES.SETTINGS} replace />;
+  }
+  const tab: ProfileTab = canUpload && params.get("tab") === "resources" ? "resources" : "posts";
+
   const stats = {
-    totalPosts:
-      postsData?.pages[0]?.total ??
-      postsData?.pages.flatMap((page) => page.data).length ??
-      0,
-    approvedResources: approvedResourcesData?.pages[0]?.total ?? 0,
-    pendingResources: pendingResourcesData?.pages[0]?.total ?? 0,
-    rejectedResources: rejectedResourcesData?.pages[0]?.total ?? 0,
-  };
-
-  const handleDeleteResource = (resource: Resource) => {
-    if (window.confirm(`Delete "${resource.title}"?`)) {
-      deleteResource(resource._id);
-    }
-  };
-
-  const handleAvatarSelect = (avatar: string) => {
-    setAvatarDialogOpen(false);
-    updateProfile({ avatar });
+    posts: posts.data?.pages[0]?.total ?? 0,
+    resources: canUpload ? (approved.data?.pages[0]?.total ?? 0) : undefined,
   };
 
   return (
-    <PageContainer
-      sx={{
-        '&::-webkit-scrollbar': { display: 'none' },
-        scrollbarWidth: 'none',
-        msOverflowStyle: 'none',
-      }}
-    >
-      <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
-      <Container maxWidth="md" disableGutters>
-        {/* ── Hero ─────────────────────────────────────────────────────── */}
+    <PageContainer width="narrow">
+      <Stack spacing={3}>
         <ProfileHero
-          user={profileView}
+          user={user}
           stats={stats}
           isLoading={profileLoading}
           onAvatarClick={() => setAvatarDialogOpen(true)}
           actions={
-            // Single action: the avatar's own camera badge already opens
-            // ProfileAvatarDialog, so a second "Change Avatar" CTA was a
-            // duplicate that outranked Edit Profile.
             <Button
               variant="outlined"
-              color="primary"
               startIcon={<Edit />}
-              size="small"
-              onClick={() => setActiveTab(2)}
-              sx={{
-                textTransform: "none",
-                fontWeight: 600,
-              }}
+              onClick={() => navigate(ROUTES.SETTINGS)}
+              fullWidth
             >
-              Edit Profile
+              Edit profile
             </Button>
           }
         />
 
         <ContributorApplicationCard />
 
-        {/* ── Tabs ─────────────────────────────────────────────────────── */}
-        <Box
-          sx={{
-            px: { xs: 0, sm: 0 },
-            mt: { xs: 0, sm: 2 },
-          }}
-        >
-          <Box
-            sx={{
-              borderBottom: '1px solid',
-              borderColor: 'divider',
-              px: { xs: 2, sm: 0 },
-            }}
+        <Box>
+          <Tabs
+            value={tab}
+            onChange={(_, v: ProfileTab) => setParams(v === "posts" ? {} : { tab: v }, { replace: true })}
+            sx={{ borderBottom: "1px solid", borderColor: "divider", mb: 3 }}
           >
-            <Tabs
-              value={activeTab}
-              onChange={(_, v) => setActiveTab(v)}
-              textColor="primary"
-              indicatorColor="primary"
-              sx={{
-                "& .MuiTab-root": {
-                  textTransform: "none",
-                  fontWeight: 500,
-                  fontSize: "0.875rem",
-                  color: "text.secondary",
-                  minHeight: 48,
-                  "&.Mui-selected": {
-                    fontWeight: 700,
-                  },
-                },
-                "& .MuiTabs-indicator": {
-                  height: 2,
-                  borderRadius: "2px 2px 0 0",
-                },
+            <Tab value="posts" label="Posts" />
+            {canUpload && <Tab value="resources" label="Resources" />}
+          </Tabs>
+
+          {tab === "posts" ? (
+            <ProfilePostsTab
+              pages={posts.data?.pages}
+              isLoading={posts.isLoading}
+              isFetchingNextPage={posts.isFetchingNextPage}
+              hasNextPage={posts.hasNextPage}
+              fetchNextPage={posts.fetchNextPage}
+            />
+          ) : (
+            <ProfileResourcesTab
+              pages={resources.data?.pages}
+              isLoading={resources.isLoading}
+              isFetchingNextPage={resources.isFetchingNextPage}
+              hasNextPage={resources.hasNextPage}
+              fetchNextPage={resources.fetchNextPage}
+              publicView={false}
+              statusFilter={resourceFilter}
+              onStatusFilterChange={setResourceFilter}
+              onEditResource={setEditTarget}
+              onDeleteResource={(r) => {
+                if (window.confirm(`Delete "${r.title}"?`)) deleteResource(r._id);
               }}
-            >
-              <Tab label="Posts" />
-              <Tab label="Resources" />
-              <Tab label="Settings" />
-            </Tabs>
-          </Box>
-
-          <Box sx={{ px: { xs: 2, sm: 0 } }}>
-            {/* Posts tab */}
-            <TabPanel value={activeTab} index={0}>
-              <ProfilePostsTab
-                pages={postsData?.pages}
-                isLoading={postsLoading}
-                isFetchingNextPage={postsFetchingNext}
-                hasNextPage={postsHasNext}
-                fetchNextPage={postsFetchNext}
-              />
-            </TabPanel>
-
-            {/* Resources tab */}
-            <TabPanel value={activeTab} index={1}>
-              <ProfileResourcesTab
-                pages={resourcesData?.pages}
-                isLoading={resourcesLoading}
-                isFetchingNextPage={resourcesFetchingNext}
-                hasNextPage={resourcesHasNext}
-                fetchNextPage={resourcesFetchNext}
-                publicView={false}
-                statusFilter={resourceFilter}
-                onStatusFilterChange={setResourceFilter}
-                onEditResource={setEditTarget}
-                onDeleteResource={handleDeleteResource}
-              />
-            </TabPanel>
-
-            {/* Settings tab */}
-            <TabPanel value={activeTab} index={2}>
-              <ProfileSettingsTab
-                user={profileView}
-                onSave={updateProfile}
-                isSaving={isSaving}
-              />
-            </TabPanel>
-          </Box>
+            />
+          )}
         </Box>
-      </Container>
+      </Stack>
+
       <ProfileAvatarDialog
         open={avatarDialogOpen}
-        selectedAvatar={profileView?.avatar}
+        selectedAvatar={user?.avatar}
         onClose={() => setAvatarDialogOpen(false)}
-        onSelect={handleAvatarSelect}
+        onSelect={(avatar) => {
+          setAvatarDialogOpen(false);
+          updateProfile({ avatar });
+        }}
       />
-      <EditResourceModal
-        open={Boolean(editTarget)}
-        resource={editTarget}
-        onClose={() => setEditTarget(null)}
-      />
-    </Box>
+      <EditResourceModal open={Boolean(editTarget)} resource={editTarget} onClose={() => setEditTarget(null)} />
     </PageContainer>
   );
 };

@@ -22,7 +22,7 @@ export const ROUTES = {
   /** Legacy — redirect to MENTORS / MY_MENTORS / MENTORING. */
   CONTRIBUTORS: "/contributors",
   MENTORSHIP: "/mentorship",
-  SETTINGS: "/profile?tab=settings",
+  SETTINGS: "/settings",
   ONBOARDING: "/onboarding",
   FAQ:"/faq"
 } as const;

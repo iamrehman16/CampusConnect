@@ -52,6 +52,7 @@ const MentorDirectoryPage = lazy(
 );
 
 const ProfilePage = lazy(() => import("@/features/user/pages/ProfilePage"));
+const SettingsPage = lazy(() => import("@/features/user/pages/SettingsPage"));
 const PublicProfilePage = lazy(
   () => import("@/features/user/pages/PublicProfilePage"),
 );
@@ -186,9 +187,16 @@ const router = createBrowserRouter([
             path: ROUTES.PROFILE,
             element: (
               <SuspenseWrapper>
-                <MainLayout>
-                  <ProfilePage />
-                </MainLayout>
+                <ProfilePage />
+              </SuspenseWrapper>
+            ),
+          },
+
+          {
+            path: ROUTES.SETTINGS,
+            element: (
+              <SuspenseWrapper>
+                <SettingsPage />
               </SuspenseWrapper>
             ),
           },
@@ -197,9 +205,7 @@ const router = createBrowserRouter([
             path: ROUTES.PUBLIC_PROFILE,
             element: (
               <SuspenseWrapper>
-                <MainLayout>
-                  <PublicProfilePage />
-                </MainLayout>
+                <PublicProfilePage />
               </SuspenseWrapper>
             ),
           },

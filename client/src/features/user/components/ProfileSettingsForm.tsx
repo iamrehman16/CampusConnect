@@ -3,9 +3,9 @@ import {
   Autocomplete,
   Box,
   Button,
+  Card,
   Chip,
   CircularProgress,
-  Divider,
   FormControlLabel,
   MenuItem,
   Stack,
@@ -13,7 +13,6 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { alpha, type Theme } from "@mui/material/styles";
 import { Save } from "@/shared/icons";
 import type { UpdateUserDto } from "../types/user.dto";
 import {
@@ -22,40 +21,36 @@ import {
   type ProfileUserViewModel,
 } from "../types/profile.types";
 
-interface ProfileSettingsTabProps {
+interface ProfileSettingsFormProps {
   user: ProfileUserViewModel | null;
   onSave: (dto: UpdateUserDto) => void;
   isSaving: boolean;
+  /** Rendered at the top of the Profile section (avatar picker). */
+  avatarSlot?: React.ReactNode;
 }
 
 const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8];
 const CAPACITIES = Array.from({ length: 10 }, (_, i) => i + 1);
 
+/** Mirrors the server's ArrayMaxSize on expertise. */
+const MAX_SKILLS = 20;
+
+const cleanTags = (values: string[], max: number) =>
+  Array.from(new Set(values.map((v) => v.trim()).filter(Boolean))).slice(0, max);
+
 const sameTopics = (a: string[], b: string[]) =>
   a.length === b.length && a.every((t, i) => t === b[i]);
 
-// BACKLOG.md D2 — was hardcoded to the old primary (#6C63FF) and a bare
-// white-overlay background; now themed so it tracks the current
-// primary/mode instead of drifting from the palette on the next rebrand.
-const fieldSx = (theme: Theme) => ({
-  "& .MuiOutlinedInput-root": {
-    background: alpha(theme.palette.text.primary, 0.03),
-    "& fieldset": { borderColor: alpha(theme.palette.text.primary, 0.1) },
-    "&:hover fieldset": { borderColor: alpha(theme.palette.primary.main, 0.4) },
-    "&.Mui-focused fieldset": { borderColor: theme.palette.primary.main },
-  },
-  "& .MuiInputLabel-root.Mui-focused": { color: theme.palette.primary.main },
-});
-
-const ProfileSettingsTab: React.FC<ProfileSettingsTabProps> = ({
+const ProfileSettingsForm: React.FC<ProfileSettingsFormProps> = ({
   user,
   onSave,
   isSaving,
+  avatarSlot,
 }) => {
   const [form, setForm] = useState({
     name: user?.name ?? "",
     academicInfo: user?.academicInfo ?? "",
-    expertise: user?.expertise ?? "",
+    expertise: user?.expertiseTags ?? ([] as string[]),
     semester: user?.semester ?? "",
     isOpenToMentor: user?.isOpenToMentor ?? false,
     mentorBio: user?.mentorBio ?? "",
@@ -72,7 +67,7 @@ const ProfileSettingsTab: React.FC<ProfileSettingsTabProps> = ({
     setForm({
       name: user.name ?? "",
       academicInfo: user.academicInfo ?? "",
-      expertise: user.expertise ?? "",
+      expertise: user.expertiseTags ?? [],
       semester: user.semester ?? "",
       isOpenToMentor: user.isOpenToMentor,
       mentorBio: user.mentorBio ?? "",
@@ -84,7 +79,7 @@ const ProfileSettingsTab: React.FC<ProfileSettingsTabProps> = ({
   const isDirty =
     form.name !== (user?.name ?? "") ||
     form.academicInfo !== (user?.academicInfo ?? "") ||
-    form.expertise !== (user?.expertise ?? "") ||
+    !sameTopics(form.expertise, user?.expertiseTags ?? []) ||
     Number(form.semester) !== (user?.semester ?? 0) ||
     form.isOpenToMentor !== (user?.isOpenToMentor ?? false) ||
     form.mentorBio !== (user?.mentorBio ?? "") ||
@@ -104,8 +99,8 @@ const ProfileSettingsTab: React.FC<ProfileSettingsTabProps> = ({
     if (form.academicInfo !== (user?.academicInfo ?? "")) {
       dto.academicInfo = form.academicInfo.trim();
     }
-    if (form.expertise !== (user?.expertise ?? "")) {
-      dto.expertise = form.expertise.trim();
+    if (!sameTopics(form.expertise, user?.expertiseTags ?? [])) {
+      dto.expertise = form.expertise;
     }
     if (form.semester) dto.semester = Number(form.semester);
     if (form.isOpenToMentor !== (user?.isOpenToMentor ?? false)) {
@@ -127,195 +122,191 @@ const ProfileSettingsTab: React.FC<ProfileSettingsTabProps> = ({
   };
 
   return (
-    <Box>
-      <Typography
-        variant="subtitle2"
-        color="text.secondary"
-        sx={{ mb: 2.5, textTransform: "uppercase", letterSpacing: "0.08em", fontSize: "0.7rem" }}
-      >
-        Personal Information
-      </Typography>
-
-      <Stack spacing={2.5}>
-        <TextField
-          label="Display Name"
-          value={form.name}
-          onChange={handleChange("name")}
-          fullWidth
-          size="small"
-          sx={fieldSx}
-          inputProps={{ maxLength: 60 }}
+    <Stack spacing={3}>
+      <Card sx={{ p: { xs: 2, sm: 3 } }}>
+        <SectionTitle
+          title="Profile"
+          subtitle="Shown on your profile, posts and the mentor directory."
         />
-
-        <TextField
-          label="Academic Information"
-          value={form.academicInfo}
-          onChange={handleChange("academicInfo")}
-          fullWidth
-          size="small"
-          sx={fieldSx}
-          inputProps={{ maxLength: 120 }}
-          helperText={`${form.academicInfo.length}/120`}
-          FormHelperTextProps={{ sx: { textAlign: "right", mr: 0 } }}
-        />
-
-        <TextField
-          label="Expertise"
-          value={form.expertise}
-          onChange={handleChange("expertise")}
-          fullWidth
-          multiline
-          rows={3}
-          size="small"
-          sx={fieldSx}
-          inputProps={{ maxLength: 300 }}
-          helperText={`${form.expertise.length}/300`}
-          FormHelperTextProps={{ sx: { textAlign: "right", mr: 0 } }}
-        />
-
-        <TextField
-          select
-          label="Semester"
-          value={form.semester}
-          onChange={handleChange("semester")}
-          fullWidth
-          size="small"
-          sx={fieldSx}
-        >
-          <MenuItem value="">
-            <em>Not specified</em>
-          </MenuItem>
-          {SEMESTERS.map((s) => (
-            <MenuItem key={s} value={s}>
-              Semester {s}
-            </MenuItem>
-          ))}
-        </TextField>
-      </Stack>
-
-      <Divider sx={{ my: 3, borderColor: "divider" }} />
-
-      <Typography
-        variant="subtitle2"
-        color="text.secondary"
-        sx={{ mb: 1, textTransform: "uppercase", letterSpacing: "0.08em", fontSize: "0.7rem" }}
-      >
-        Mentoring
-      </Typography>
-
-      <FormControlLabel
-        control={
-          <Switch
-            checked={form.isOpenToMentor}
-            onChange={(e) =>
-              setForm((prev) => ({ ...prev, isOpenToMentor: e.target.checked }))
-            }
-          />
-        }
-        label="I'm open to mentoring other students"
-        sx={{ mb: 1 }}
-      />
-
-      {form.isOpenToMentor && (
-        <Stack spacing={2.5} sx={{ mt: 1 }}>
+        {avatarSlot}
+        <Stack spacing={2.5}>
           <TextField
-            label="What can you help with?"
-            value={form.mentorBio}
-            onChange={handleChange("mentorBio")}
+            label="Display name"
+            value={form.name}
+            onChange={handleChange("name")}
             fullWidth
-            multiline
-            rows={3}
             size="small"
-            sx={fieldSx}
-            inputProps={{ maxLength: 500 }}
-            helperText={`${form.mentorBio.length}/500`}
-            FormHelperTextProps={{ sx: { textAlign: "right", mr: 0 } }}
+            required
+            error={!form.name.trim()}
+            helperText={!form.name.trim() ? "Your name can't be empty" : undefined}
+            slotProps={{ htmlInput: { maxLength: 60 } }}
           />
-
+          <Box sx={{ display: "grid", gap: 2.5, gridTemplateColumns: { xs: "1fr", sm: "2fr 1fr" } }}>
+            <TextField
+              label="Programme"
+              placeholder="e.g. BS Computer Science"
+              value={form.academicInfo}
+              onChange={handleChange("academicInfo")}
+              fullWidth
+              size="small"
+              slotProps={{ htmlInput: { maxLength: 120 } }}
+            />
+            <TextField
+              select
+              label="Semester"
+              value={form.semester}
+              onChange={handleChange("semester")}
+              fullWidth
+              size="small"
+            >
+              <MenuItem value="">
+                <em>Not specified</em>
+              </MenuItem>
+              {SEMESTERS.map((s) => (
+                <MenuItem key={s} value={s}>
+                  Semester {s}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Box>
           <Autocomplete
             multiple
             freeSolo
             options={[] as string[]}
-            value={form.mentorTopics}
+            value={form.expertise}
             onChange={(_, value) =>
-              setForm((prev) => ({
-                ...prev,
-                mentorTopics: Array.from(
-                  new Set(value.map((v) => v.trim()).filter(Boolean)),
-                ).slice(0, MAX_MENTOR_TOPICS),
-              }))
+              setForm((prev) => ({ ...prev, expertise: cleanTags(value, MAX_SKILLS) }))
             }
             renderTags={(value, getTagProps) =>
-              value.map((topic, index) => {
+              value.map((skill, index) => {
                 const { key, ...tagProps } = getTagProps({ index });
-                return <Chip key={key} label={topic} size="small" {...tagProps} />;
+                return <Chip key={key} label={skill} size="small" {...tagProps} />;
               })
             }
             renderInput={(params) => (
               <TextField
                 {...params}
-                label="Topics you mentor on"
-                placeholder="Type a subject or course and press Enter"
+                label="Skills"
+                placeholder="Type a skill and press Enter"
                 size="small"
-                sx={fieldSx}
-                helperText={`Up to ${MAX_MENTOR_TOPICS} topics · ${form.mentorTopics.length} added`}
               />
             )}
           />
-
-          <TextField
-            select
-            label="Maximum mentees at a time"
-            value={form.maxActiveMentees}
-            onChange={(e) =>
-              setForm((prev) => ({
-                ...prev,
-                maxActiveMentees: Number(e.target.value),
-              }))
-            }
-            fullWidth
-            size="small"
-            sx={fieldSx}
-          >
-            {CAPACITIES.map((n) => (
-              <MenuItem key={n} value={n}>
-                {n}
-              </MenuItem>
-            ))}
-          </TextField>
         </Stack>
-      )}
+      </Card>
 
-      <Divider sx={{ my: 3, borderColor: "divider" }} />
+      <Card sx={{ p: { xs: 2, sm: 3 } }}>
+        <SectionTitle
+          title="Mentoring"
+          subtitle="Juniors can find you in the mentor directory and send you requests."
+        />
+        <FormControlLabel
+          control={
+            <Switch
+              checked={form.isOpenToMentor}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, isOpenToMentor: e.target.checked }))
+              }
+            />
+          }
+          label="I'm open to mentoring other students"
+        />
 
-      <Stack direction="row" justifyContent="flex-end">
+        {form.isOpenToMentor && (
+          <Stack spacing={2.5} sx={{ mt: 2 }}>
+            <TextField
+              label="What can you help with?"
+              value={form.mentorBio}
+              onChange={handleChange("mentorBio")}
+              fullWidth
+              multiline
+              minRows={3}
+              size="small"
+              slotProps={{ htmlInput: { maxLength: 500 } }}
+              helperText={`${form.mentorBio.length}/500`}
+            />
+
+            <Autocomplete
+              multiple
+              freeSolo
+              options={[] as string[]}
+              value={form.mentorTopics}
+              onChange={(_, value) =>
+                setForm((prev) => ({
+                  ...prev,
+                  mentorTopics: cleanTags(value, MAX_MENTOR_TOPICS),
+                }))
+              }
+              renderTags={(value, getTagProps) =>
+                value.map((topic, index) => {
+                  const { key, ...tagProps } = getTagProps({ index });
+                  return <Chip key={key} label={topic} size="small" {...tagProps} />;
+                })
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Topics you mentor on"
+                  placeholder="Type a subject or course and press Enter"
+                  size="small"
+                  helperText={`Up to ${MAX_MENTOR_TOPICS} topics · ${form.mentorTopics.length} added`}
+                />
+              )}
+            />
+
+            <TextField
+              select
+              label="Maximum mentees at a time"
+              value={form.maxActiveMentees}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  maxActiveMentees: Number(e.target.value),
+                }))
+              }
+              size="small"
+              sx={{ maxWidth: 240 }}
+            >
+              {CAPACITIES.map((n) => (
+                <MenuItem key={n} value={n}>
+                  {n}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Stack>
+        )}
+      </Card>
+
+      <Stack direction="row" justifyContent="flex-end" alignItems="center" gap={2}>
+        {isDirty && (
+          <Typography variant="caption" color="text.tertiary">
+            Unsaved changes
+          </Typography>
+        )}
         <Button
           variant="contained"
-          startIcon={
-            isSaving ? (
-              <CircularProgress size={16} sx={{ color: "inherit" }} />
-            ) : (
-              <Save />
-            )
-          }
+          startIcon={isSaving ? <CircularProgress size={16} sx={{ color: "inherit" }} /> : <Save />}
           onClick={handleSubmit}
           disabled={!isDirty || isSaving || !form.name.trim()}
-          sx={{
-            // Gradient/shadow come from the theme's containedPrimary
-            // override — no need to duplicate them (and risk drifting
-            // from the palette) here.
-            px: 3,
-            "&:disabled": {
-              background: (theme) => alpha(theme.palette.text.primary, 0.07),
-              color: (theme) => alpha(theme.palette.text.primary, 0.3),
-            },
-          }}
         >
-          {isSaving ? "Saving…" : "Save Changes"}
+          {isSaving ? "Saving…" : "Save changes"}
         </Button>
       </Stack>
-    </Box>
+    </Stack>
   );
 };
 
-export default ProfileSettingsTab;
+function SectionTitle({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <Box sx={{ mb: 2.5 }}>
+      <Typography variant="subtitle1" fontWeight={600}>
+        {title}
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
+        {subtitle}
+      </Typography>
+    </Box>
+  );
+}
+
+export default ProfileSettingsForm;

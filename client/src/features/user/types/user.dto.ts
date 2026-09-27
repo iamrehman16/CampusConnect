@@ -9,7 +9,7 @@ export interface UpdateUserRoleDto{
 export interface UpdateUserDto{
     name?:string;
     academicInfo?:string;
-    expertise?:string | string[];
+    expertise?:string[];
     semester?:number;
     avatar?:string;
     password?:string;

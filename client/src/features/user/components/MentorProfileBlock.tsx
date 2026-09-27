@@ -46,7 +46,6 @@ export function MentorProfileBlock({ user, justify = "flex-start" }: Props) {
           variant="body2"
           sx={{
             mt: 0.75,
-            textAlign: { xs: "center", sm: "left" },
             whiteSpace: "pre-wrap",
           }}
         >

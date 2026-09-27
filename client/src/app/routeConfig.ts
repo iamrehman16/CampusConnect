@@ -8,6 +8,8 @@ const resources = ROUTES.RESOURCES;
 const resourceDetail = ROUTES.RESOURCE_DETAIL;
 const community = ROUTES.COMMUNITY;
 const profile = ROUTES.PROFILE;
+const publicProfile = ROUTES.PUBLIC_PROFILE;
+const settings = ROUTES.SETTINGS;
 const chats = ROUTES.CHAT;
 const mentors = ROUTES.MENTORS;
 const myMentors = ROUTES.MY_MENTORS;
@@ -61,6 +63,16 @@ const routeConfig: Record<string, RouteConfig> = {
   },
   [profile]: {
     title: "Profile",
+    topBarMode: "standard",
+    showBottomNav: true,
+  },
+  [publicProfile]: {
+    title: "Profile",
+    topBarMode: "standard",
+    showBottomNav: true,
+  },
+  [settings]: {
+    title: "Settings",
     topBarMode: "standard",
     showBottomNav: true,
   },
