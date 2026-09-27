@@ -13,6 +13,11 @@ export class UserService {
     return data;
   }
 
+  /** BACKLOG.md G5 — the server signs out other sessions on success. */
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await api.post("/users/password", { currentPassword, newPassword });
+  }
+
   async getUserProfile(id: string): Promise<PublicUser> {
     const { data } = await api.get<PublicUser>(`/users/profile/${id}`);
     return data;

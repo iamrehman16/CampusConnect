@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Button, Skeleton, Stack, Typography } from "@mui/material";
+import { Box, Button, Skeleton, Stack, Typography } from "@mui/material";
 import { PageContainer } from "@/shared/components/PageContainer";
 import { PageHeader } from "@/shared/components/PageHeader";
 import UserAvatar from "@/shared/components/UserAvatar";
 import ProfileAvatarDialog from "../components/ProfileAvatarDialog";
 import ProfileSettingsForm from "../components/ProfileSettingsForm";
+import { ChangePasswordCard } from "../components/ChangePasswordCard";
 import { useMyProfile, useUpdateProfile } from "../hooks/profile-hooks";
 import { toProfileUserViewModel } from "../types/profile.types";
 
@@ -21,7 +22,7 @@ export default function SettingsPage() {
 
   return (
     <PageContainer width="narrow">
-      <PageHeader title="Settings" subtitle="Your profile details and mentoring preferences." />
+      <PageHeader title="Settings" subtitle="Your profile, mentoring preferences and password." />
       {isLoading || !user ? (
         <Stack spacing={3}>
           <Skeleton variant="rounded" height={320} />
@@ -52,6 +53,9 @@ export default function SettingsPage() {
           }
         />
       )}
+      <Box sx={{ mt: 3 }}>
+        <ChangePasswordCard />
+      </Box>
       <ProfileAvatarDialog
         open={avatarOpen}
         selectedAvatar={user?.avatar}

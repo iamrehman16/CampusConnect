@@ -12,7 +12,6 @@ export interface UpdateUserDto{
     expertise?:string[];
     semester?:number;
     avatar?:string;
-    password?:string;
     isOpenToMentor?:boolean;
     mentorBio?:string;
     mentorTopics?:string[];
