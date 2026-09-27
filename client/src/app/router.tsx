@@ -11,7 +11,9 @@ import { UserRole } from "@/shared/types/enums";
 import SuspenseWrapper from "./SuspenseWrapper";
 
 // ── Eager-loaded (first paint) ──────────────────────────────────────
-import AuthPage from "@/features/auth/pages/AuthPage";
+import LandingPage from "@/features/auth/pages/LandingPage";
+import LoginPage from "@/features/auth/pages/LoginPage";
+import SignupPage from "@/features/auth/pages/SignupPage";
 import DashboardPage from "@/features/dashboard/pages/DashboardPage";
 import OnboardingRoute from "./routes/OnboardingRoute";
 import MentorsLayout, {
@@ -83,8 +85,10 @@ const router = createBrowserRouter([
     children: [
       {
         path: ROUTES.AUTH,
-        element: <AuthPage />,
+        element: <LandingPage />,
       },
+      { path: ROUTES.LOGIN, element: <LoginPage /> },
+      { path: ROUTES.SIGNUP, element: <SignupPage /> },
     ],
   },
 

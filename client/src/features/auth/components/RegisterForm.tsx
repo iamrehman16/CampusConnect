@@ -11,11 +11,8 @@ import { useRegister } from '../hooks/useRegister';
 import { extractErrorMessage } from '@/shared/api/api.errors';
 import type { RegisterRequest } from '../types/auth.dto';
 
-interface RegisterFormProps {
-  onSuccess: () => void;
-}
-
-export default function RegisterForm({ onSuccess }: RegisterFormProps) {
+/** Signs the user in on success and continues to onboarding (useRegister). */
+export default function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const {
     register,
@@ -26,9 +23,7 @@ export default function RegisterForm({ onSuccess }: RegisterFormProps) {
 
   const onSubmit = (data: RegisterRequest & { confirmPassword: string }) => {
     const { confirmPassword: _, ...dto } = data;
-    registerMutation.mutate(dto, {
-      onSuccess: () => onSuccess(),
-    });
+    registerMutation.mutate(dto);
   };
 
   return (

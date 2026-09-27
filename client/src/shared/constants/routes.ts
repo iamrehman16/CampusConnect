@@ -3,7 +3,10 @@
  * Always import from here — never hardcode paths in components.
  */
 export const ROUTES = {
+  /** Public landing (unauthenticated users are sent here). */
   AUTH: "/auth",
+  LOGIN: "/login",
+  SIGNUP: "/signup",
   HOME: "/",
   RESOURCES: "/resources",
   RESOURCE_DETAIL: "/resources/:id",
