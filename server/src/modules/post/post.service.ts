@@ -254,7 +254,7 @@ export class PostService {
         build: () => ({ postId: new Types.ObjectId(postId), isDeleted: false }),
       },
       { build: () => ({ createdAt: 1 }) },
-      { path: 'author', select: 'name' },
+      { path: 'author', select: 'name avatar' },
     );
   }
 
