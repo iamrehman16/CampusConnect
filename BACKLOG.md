@@ -136,6 +136,21 @@ asleep. Dormancy on inactivity is a known Qdrant Cloud behavior
 
 ---
 
+### G5 — Password change without the current password (security, open)
+**Found:** 2026-09-27 while fixing the profile email leak.
+`PATCH /users/profile` accepts `password` and bcrypt-hashes it straight
+into the user document. There's no current-password check, and the
+declared `newPassword` field is unused. Anyone holding a live session
+(an unlocked laptop, a stolen access token) can change the password and
+take over the account.
+**Acceptance criteria:**
+- `password` is removed from `UpdateUserProfileDto`.
+- A dedicated `POST /users/password` takes `{ currentPassword,
+  newPassword }`, verifies the current password, and invalidates the
+  refresh token.
+- There are specs for a wrong current password, a successful change and
+  refresh-token rotation.
+
 ## Epic H — Demo readiness (H1 DONE; H2/H3 in Phase 7)
 
 ### H1 — Demo database + repeatable seed script
@@ -206,7 +221,7 @@ and errors that say what happened and offer a retry.
 
 ---
 
-## Epic D — Design system & UI overhaul (Phases 2–3) — D4–D8 DONE
+## Epic D — Design system & UI overhaul (Phases 2–3) — D4–D9 DONE
 
 ### Audit (2026-09-24, screenshots of every page, desktop + mobile, light)
 
@@ -426,6 +441,38 @@ will re-ingest it.
   Resources / Mentoring; settings move to the Settings page from D5.
 - Community: feed column + useful right rail (trending tags / top
   contributors from real data), composer per D4.
+
+**D9 status: DONE (2026-09-27).**
+- **Mentors:** search + sort, with the other filters in a popover
+  (count badge, removable chips); cards have one primary action and the
+  name/avatar link to the profile.
+- **Profile:** one header for own and public profiles with stats as a
+  quiet line; Settings moved to `/settings` (the old `?tab=settings`
+  redirects).
+- **Community:** standard page frame, a rail from real data (Top
+  contributors via new `GET /users/top-contributors`, Active
+  discussions), and flat post cards; `?post=<id>` deep links open that
+  post's replies.
+
+Deviations, both deliberate:
+- **No "Mentoring" profile tab.** Mentor details sit in the profile
+  header, where a visitor decides whether to request, and managing
+  mentees already lives under Mentors → Mentoring.
+- **No "trending tags".** Posts have no tags, so the rail shows the
+  most-replied posts instead.
+
+Bugs found and fixed along the way (each its own commit):
+- **Public profiles leaked other members' email** (plus `accountStatus`
+  and `isOnboarded`) via `GET /users/profile/:id`. It now uses a public
+  projection.
+- **Settings saved skills as one merged tag.** The DTO took a string, so
+  "Python, Java" was stored as a single `["Python, Java"]` tag. It now
+  takes `string[]` and the form uses a chip input.
+- **Comments never showed avatars.** The author populate had `name` only.
+- **/mentors crashed on reload** because a `Map` was cached in the
+  IndexedDB-persisted query cache and came back as `{}`.
+- **Any page crash showed React Router's developer error screen.** It's
+  now a recoverable error panel inside the shell.
 
 ### D10 — Landing + auth + onboarding
 **Effort:** 5
