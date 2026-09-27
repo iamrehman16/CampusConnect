@@ -1,13 +1,5 @@
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  Stack,
-  Typography,
-} from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { Box, ButtonBase, Card, CardContent, Chip, Link, Stack, Typography } from "@mui/material";
+import { Link as RouterLink } from "react-router-dom";
 import { RequestMentorshipButton } from "@/features/mentorship/components/RequestMentorshipButton";
 import { TierChip } from "@/features/reputation/components/TierChip";
 import { ROUTES } from "@/shared/constants/routes";
@@ -20,8 +12,13 @@ interface Props {
   mentor: MentorSummary;
 }
 
+/**
+ * Directory card (BACKLOG.md D9): who they are, what they help with,
+ * capacity, and one action. The name and avatar link to the profile,
+ * replacing a second "View profile" button.
+ */
 export function MentorCard({ mentor }: Props) {
-  const navigate = useNavigate();
+  const profilePath = ROUTES.PUBLIC_PROFILE.replace(":userId", mentor.id);
 
   // Mentoring topics are what they chose to advertise; fall back to general
   // expertise for mentors who haven't filled topics in.
@@ -37,18 +34,34 @@ export function MentorCard({ mentor }: Props) {
     .join(" · ");
 
   return (
-    <Card variant="outlined" sx={{ height: "100%" }}>
+    <Card
+      sx={{
+        height: "100%",
+        transition: (t) => t.transitions.create("border-color"),
+        "&:hover": { borderColor: "border.strong" },
+      }}
+    >
       <CardContent
         sx={{ display: "flex", flexDirection: "column", gap: 1.25, height: "100%" }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <UserAvatar name={mentor.name} avatar={mentor.avatar} size={48} />
+          <ButtonBase component={RouterLink} to={profilePath} aria-label={`${mentor.name} profile`} sx={{ borderRadius: "50%" }} tabIndex={-1}>
+            <UserAvatar name={mentor.name} avatar={mentor.avatar} size={48} />
+          </ButtonBase>
           <Box sx={{ minWidth: 0, flex: 1 }}>
             <Stack direction="row" alignItems="center" gap={0.75} flexWrap="wrap">
-              <Typography variant="subtitle2" fontWeight={700} noWrap>
+              <Link
+                component={RouterLink}
+                to={profilePath}
+                variant="subtitle2"
+                fontWeight={700}
+                color="text.primary"
+                underline="hover"
+                noWrap
+              >
                 {mentor.name || "Unnamed"}
-              </Typography>
-              <TierChip tier={mentor.tier} />
+              </Link>
+              <TierChip tier={mentor.tier} hideNewcomer />
             </Stack>
             {meta && (
               <Typography variant="caption" color="text.secondary" noWrap display="block">
@@ -83,12 +96,21 @@ export function MentorCard({ mentor }: Props) {
           </Stack>
         )}
 
-        <Typography variant="caption" color="text.secondary">
-          {mentor.slotsLeft > 0
-            ? `${mentor.slotsLeft} of ${mentor.maxActiveMentees} slots free`
-            : "No free slots"}{" "}
-          · {mentor.contributionScore} rep
-        </Typography>
+        <Stack direction="row" alignItems="center" gap={0.75}>
+          <Box
+            sx={{
+              width: 7,
+              height: 7,
+              borderRadius: "50%",
+              bgcolor: mentor.slotsLeft > 0 ? "success.main" : "text.disabled",
+            }}
+          />
+          <Typography variant="caption" color="text.secondary">
+            {mentor.slotsLeft > 0
+              ? `${mentor.slotsLeft} of ${mentor.maxActiveMentees} slots free`
+              : "No free slots right now"}
+          </Typography>
+        </Stack>
 
         <Box sx={{ display: "flex", gap: 1, mt: "auto", pt: 0.5 }}>
           <RequestMentorshipButton
@@ -97,14 +119,6 @@ export function MentorCard({ mentor }: Props) {
             slotsLeft={mentor.slotsLeft}
             defaultTopic={mentor.mentorTopics[0]}
           />
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={() => navigate(ROUTES.PUBLIC_PROFILE.replace(":userId", mentor.id))}
-            sx={{ textTransform: "none", fontWeight: 600 }}
-          >
-            View profile
-          </Button>
         </Box>
       </CardContent>
     </Card>

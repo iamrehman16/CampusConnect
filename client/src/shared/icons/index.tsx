@@ -181,6 +181,7 @@ export const EditOutlined = adapt(L.Pencil, "EditOutlined");
 export const Delete = adapt(L.Trash2, "Delete");
 export const Save = adapt(L.Save, "Save");
 export const Search = adapt(L.Search, "Search");
+export const Tune = adapt(L.SlidersHorizontal, "Tune");
 export const Send = adapt(L.SendHorizontal, "Send");
 export const Download = adapt(L.Download, "Download");
 export const CloudUpload = adapt(L.CloudUpload, "CloudUpload");
