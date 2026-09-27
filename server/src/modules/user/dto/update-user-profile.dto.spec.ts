@@ -96,3 +96,23 @@ describe('UpdateUserProfileDto — through the production ValidationPipe', () =>
     await expect(run({ avatar: 'x'.repeat(501) })).rejects.toThrow();
   });
 });
+
+describe('UpdateUserProfileDto — no password changes (G5)', () => {
+  const pipe = new ValidationPipe({
+    whitelist: true,
+    transform: true,
+    forbidNonWhitelisted: true,
+  });
+
+  it.each(['password', 'newPassword'])(
+    'rejects `%s` so it cannot bypass the current-password check',
+    async (field) => {
+      await expect(
+        pipe.transform(
+          { [field]: 'hijacked123' },
+          { type: 'body', metatype: UpdateUserProfileDto },
+        ),
+      ).rejects.toThrow();
+    },
+  );
+});

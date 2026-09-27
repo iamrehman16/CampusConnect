@@ -7,6 +7,8 @@ import {
   Req,
   Param,
   Query,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
@@ -17,6 +19,7 @@ import { UserQueryDto } from './dto/user-query.dto';
 import { Role } from '../auth/decorators/role.decorator';
 import { Roles } from './enums/user-role.enum';
 import { MentorQueryDto } from './dto/mentor-query.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { TopContributorsQueryDto } from './dto/top-contributors-query.dto';
 import { ParseMongoIdPipe } from '../../common/pipes/is-mongo-id.pipe';
 
@@ -52,6 +55,16 @@ export class UserController {
   @Get('top-contributors')
   findTopContributors(@Query() dto: TopContributorsQueryDto) {
     return this.userService.findTopContributors(dto.limit ?? 5);
+  }
+
+  /** Requires the current password; signs out other sessions (G5). */
+  @Post('password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  changePassword(
+    @Req() req: { user: CurrentUser },
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.userService.changePassword(req.user.id, dto);
   }
 
   @Patch('profile')

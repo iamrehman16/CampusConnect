@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -40,6 +41,7 @@ const MENTOR_PUBLIC_FIELDS =
   'name avatar department semester role tier contributionScore expertise mentorBio mentorTopics maxActiveMentees activeMenteeCount';
 import { CompleteOnboardingDto } from './dto/complete-onboarding.dto';
 import { TopContributorDto } from './dto/top-contributor.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 // Fields any member may see on another member's profile. Deliberately
 // excludes email, accountStatus and isOnboarded.
@@ -339,10 +341,6 @@ export class UserService {
   }
 
   async updateProfile(userId: string, dto: UpdateUserProfileDto) {
-    if (dto.password) {
-      dto.password = await bcrypt.hash(dto.password, 10);
-    }
-
     const updatedUser = await this.userModel
       .findByIdAndUpdate(userId, dto, { new: true })
       .exec();
@@ -360,6 +358,38 @@ export class UserService {
       throw new NotFoundException(`User with id ${id} not found`);
     }
     return deletedUser.toObject();
+  }
+
+  /**
+   * BACKLOG.md G5: requires the current password, and clears the stored
+   * refresh token so other sessions can't mint new access tokens.
+   */
+  async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
+    const user = await this.userModel
+      .findById(userId)
+      .select('+password')
+      .exec();
+    if (!user) {
+      throw new NotFoundException(`User with id ${userId} not found`);
+    }
+
+    const matches = await bcrypt.compare(dto.currentPassword, user.password);
+    if (!matches) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+    if (dto.currentPassword === dto.newPassword) {
+      throw new BadRequestException(
+        'New password must be different from the current one',
+      );
+    }
+
+    await this.userModel.updateOne(
+      { _id: userId },
+      {
+        password: await bcrypt.hash(dto.newPassword, 10),
+        hashedRefreshToken: null,
+      },
+    );
   }
 
   async updateRefreshToken(userId: string, hashedRefreshToken: string | null) {

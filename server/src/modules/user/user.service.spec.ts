@@ -276,3 +276,63 @@ describe('UserService#findTopContributors', () => {
     ]);
   });
 });
+
+describe('UserService#changePassword (G5)', () => {
+  async function build(currentPlain: string) {
+    const bcrypt = await import('bcrypt');
+    const stored = await bcrypt.hash(currentPlain, 4);
+    const exec = jest.fn().mockResolvedValue({ password: stored });
+    const select = jest.fn().mockReturnValue({ exec });
+    const findById = jest.fn().mockReturnValue({ select });
+    const updateOne = jest.fn().mockResolvedValue({});
+    const service = new UserService(
+      { findById, updateOne } as unknown as Model<User>,
+      {} as PaginationService,
+    );
+    return { service, updateOne, select, bcrypt };
+  }
+
+  it('rejects a wrong current password and writes nothing', async () => {
+    const { service, updateOne } = await build('right-one');
+
+    await expect(
+      service.changePassword('u1', {
+        currentPassword: 'wrong',
+        newPassword: 'new-secret',
+      }),
+    ).rejects.toThrow('Current password is incorrect');
+    expect(updateOne).not.toHaveBeenCalled();
+  });
+
+  it('rejects reusing the current password', async () => {
+    const { service } = await build('same-one');
+
+    await expect(
+      service.changePassword('u1', {
+        currentPassword: 'same-one',
+        newPassword: 'same-one',
+      }),
+    ).rejects.toThrow('must be different');
+  });
+
+  it('stores a hash of the new password and signs out other sessions', async () => {
+    const { service, updateOne, select, bcrypt } = await build('old-secret');
+
+    await service.changePassword('u1', {
+      currentPassword: 'old-secret',
+      newPassword: 'new-secret',
+    });
+
+    expect(select).toHaveBeenCalledWith('+password');
+    const [filter, update] = updateOne.mock.calls[0] as [
+      unknown,
+      { password: string; hashedRefreshToken: null },
+    ];
+    expect(filter).toEqual({ _id: 'u1' });
+    expect(update.hashedRefreshToken).toBeNull();
+    expect(update.password).not.toBe('new-secret');
+    await expect(bcrypt.compare('new-secret', update.password)).resolves.toBe(
+      true,
+    );
+  });
+});

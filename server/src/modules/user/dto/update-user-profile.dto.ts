@@ -9,7 +9,6 @@ import {
   Max,
   MaxLength,
   Min,
-  MinLength,
 } from 'class-validator';
 import { normalizeTags } from '../../../common/utils/normalize-tags';
 
@@ -18,13 +17,9 @@ export class UpdateUserProfileDto {
   @IsString()
   name?: string;
 
-  @IsOptional()
-  @MinLength(6)
-  password?: string;
-
-  @IsOptional()
-  @MinLength(6)
-  newPassword?: string;
+  // No password fields: this endpoint used to accept `password` and write
+  // it without checking the current one (BACKLOG.md G5). Password changes
+  // go through POST /users/password (ChangePasswordDto).
 
   @IsOptional()
   @IsString()
