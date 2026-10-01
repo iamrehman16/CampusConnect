@@ -11,6 +11,8 @@ import { WsJwtGuard } from './guards/websocket.jwt.guard';
 import { CommonModule } from '../../common/common.module';
 import { PresenceService } from './presence.service';
 import { UserModule } from '../user/user.module';
+import { Resource, ResourceSchema } from '../resource/schemas/resource.schema';
+import { Post, PostSchema } from '../post/schemas/post.schema';
 import jwtConfig from '../auth/config/jwt.config';
 
 @Module({
@@ -21,6 +23,8 @@ import jwtConfig from '../auth/config/jwt.config';
     MongooseModule.forFeature([
       { name: Conversation.name, schema: ConversationSchema },
       { name: Message.name, schema: MessageSchema },
+      { name: Resource.name, schema: ResourceSchema },
+      { name: Post.name, schema: PostSchema },
     ]),
 
     CommonModule,

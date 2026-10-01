@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   Logger,
@@ -16,6 +17,13 @@ import { PaginationService } from '../../common/services/pagination.service';
 import { StartConversationDto } from './dto/start-conversation.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { GetMessagesDto } from './dto/get-message.dto';
+import { MessageKind } from './enums/message-kind.enum';
+import {
+  Resource,
+  ResourceDocument,
+} from '../resource/schemas/resource.schema';
+import { Post, PostDocument } from '../post/schemas/post.schema';
+import { ApprovalStatus } from '../resource/enums/approval-status.enum';
 
 // Public-safe participant fields only — email deliberately excluded.
 const PARTICIPANT_PUBLIC_FIELDS = 'name avatar role lastSeenAt';
@@ -30,6 +38,10 @@ export class ChatService implements OnModuleInit {
     @InjectModel(Message.name)
     private readonly messageModel: Model<MessageDocument>,
     private readonly paginationService: PaginationService,
+    @InjectModel(Resource.name)
+    private readonly resourceModel: Model<ResourceDocument>,
+    @InjectModel(Post.name)
+    private readonly postModel: Model<PostDocument>,
   ) {}
 
   async onModuleInit() {
@@ -266,8 +278,51 @@ export class ChatService implements OnModuleInit {
     }
   }
 
+  /**
+   * Builds the card snapshot for a context-bearing message from the DB (never
+   * from client input). Only items a participant could legitimately see are
+   * attachable: approved, non-deleted resources and non-deleted posts.
+   */
+  private async resolveContext(
+    kind: MessageKind,
+    contextId: string,
+  ): Promise<{ title: string; subtitle?: string }> {
+    const id = new Types.ObjectId(contextId);
+
+    if (kind === MessageKind.RESOURCE) {
+      const resource = await this.resourceModel
+        .findOne({
+          _id: id,
+          isDeleted: { $ne: true },
+          approvalStatus: ApprovalStatus.APPROVED,
+        })
+        .select('title course')
+        .lean()
+        .exec();
+      if (!resource) throw new BadRequestException('Resource not found');
+      return { title: resource.title, subtitle: resource.course };
+    }
+
+    const post = await this.postModel
+      .findOne({ _id: id, isDeleted: { $ne: true } })
+      .select('title')
+      .lean()
+      .exec();
+    if (!post) throw new BadRequestException('Post not found');
+    return { title: post.title };
+  }
+
   async createMessageIdempotent(dto: CreateMessageDto, senderId: string) {
     await this.verifyParticipant(dto.conversationId, senderId);
+
+    const kind = dto.kind ?? MessageKind.TEXT;
+    const hasContext = kind !== MessageKind.TEXT && !!dto.contextId;
+    if (kind !== MessageKind.TEXT && !dto.contextId) {
+      throw new BadRequestException('contextId is required for this message');
+    }
+    const context = hasContext
+      ? await this.resolveContext(kind, dto.contextId as string)
+      : null;
 
     try {
       const message = await this.messageModel.create({
@@ -275,6 +330,9 @@ export class ChatService implements OnModuleInit {
         sender: new Types.ObjectId(senderId),
         content: dto.content,
         clientId: dto.clientId,
+        kind,
+        contextId: hasContext ? new Types.ObjectId(dto.contextId) : null,
+        context,
       });
 
       await this.conversationModel.findByIdAndUpdate(dto.conversationId, {

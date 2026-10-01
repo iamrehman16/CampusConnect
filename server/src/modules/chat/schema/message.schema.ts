@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import { MessageKind } from '../enums/message-kind.enum';
 
 export type MessageDocument = Message & Document;
 
@@ -18,6 +19,25 @@ export class Message {
 
   @Prop({ type: String, required: true, trim: true, maxlength: 2000 })
   content: string;
+
+  @Prop({ type: String, enum: MessageKind, default: MessageKind.TEXT })
+  kind: MessageKind;
+
+  /** Resource/post this message is about; null for plain text. */
+  @Prop({ type: Types.ObjectId, default: null })
+  contextId: Types.ObjectId | null;
+
+  /**
+   * Server-built snapshot of the referenced item, so the card renders
+   * without a join and survives the item later being deleted. Never taken
+   * from the client.
+   */
+  @Prop({
+    type: { title: String, subtitle: String },
+    default: null,
+    _id: false,
+  })
+  context: { title: string; subtitle?: string } | null;
 
   @Prop({ type: Date, default: null })
   seenAt: Date | null;

@@ -1,7 +1,11 @@
 import { Model, Types } from 'mongoose';
+import { BadRequestException } from '@nestjs/common';
+import { MessageKind } from './enums/message-kind.enum';
 import { ChatService } from './chat.service';
 import { ConversationDocument } from './schema/conversation.schema';
 import { MessageDocument } from './schema/message.schema';
+import { ResourceDocument } from '../resource/schemas/resource.schema';
+import { PostDocument } from '../post/schemas/post.schema';
 import { PaginationService } from '../../common/services/pagination.service';
 
 type MockQuery = {
@@ -51,6 +55,8 @@ function buildChatService(conversationModel: Partial<MockConversationModel>) {
     conversationModel as unknown as Model<ConversationDocument>,
     {} as unknown as Model<MessageDocument>,
     {} as unknown as PaginationService,
+    {} as unknown as Model<ResourceDocument>,
+    {} as unknown as Model<PostDocument>,
   );
 }
 
@@ -234,11 +240,105 @@ describe('ChatService#getUserConversations — unreadCount', () => {
       conversationModel as unknown as Model<ConversationDocument>,
       { aggregate } as unknown as Model<MessageDocument>,
       {} as unknown as PaginationService,
+      {} as unknown as Model<ResourceDocument>,
+      {} as unknown as Model<PostDocument>,
     );
 
     const result = await chatService.getUserConversations(userId);
 
     expect(aggregate).toHaveBeenCalledTimes(1);
     expect(result.map((c) => c.unreadCount)).toEqual([3, 0]);
+  });
+});
+
+describe('ChatService#createMessageIdempotent — context messages', () => {
+  const senderId = new Types.ObjectId().toString();
+  const conversationId = new Types.ObjectId().toString();
+  const resourceId = new Types.ObjectId().toString();
+
+  function build(opts: { resource?: unknown; post?: unknown }) {
+    const created = { _id: new Types.ObjectId(), createdAt: new Date() };
+    const messageModel = {
+      create: jest.fn().mockResolvedValue({
+        ...created,
+        toObject: () => created,
+      }),
+    };
+    const conversationModel = {
+      findOne: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ _id: conversationId }),
+      }),
+      findByIdAndUpdate: jest.fn().mockResolvedValue(null),
+    };
+    const resourceModel = {
+      findOne: jest.fn().mockReturnValue(chainable(opts.resource ?? null)),
+    };
+    const postModel = {
+      findOne: jest.fn().mockReturnValue(chainable(opts.post ?? null)),
+    };
+    const service = new ChatService(
+      conversationModel as unknown as Model<ConversationDocument>,
+      messageModel as unknown as Model<MessageDocument>,
+      {} as unknown as PaginationService,
+      resourceModel as unknown as Model<ResourceDocument>,
+      postModel as unknown as Model<PostDocument>,
+    );
+    return { service, messageModel, resourceModel };
+  }
+
+  it('stores a server-built snapshot for a resource message, ignoring client data', async () => {
+    const { service, messageModel } = build({
+      resource: { title: 'DSA Notes', course: 'CS-201' },
+    });
+
+    await service.createMessageIdempotent(
+      {
+        conversationId,
+        content: 'Question about this',
+        clientId: 'c1',
+        kind: MessageKind.RESOURCE,
+        contextId: resourceId,
+      },
+      senderId,
+    );
+
+    expect(messageModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: MessageKind.RESOURCE,
+        context: { title: 'DSA Notes', subtitle: 'CS-201' },
+      }),
+    );
+  });
+
+  it('rejects a context message whose item is missing/unapproved', async () => {
+    const { service, messageModel } = build({});
+
+    await expect(
+      service.createMessageIdempotent(
+        {
+          conversationId,
+          content: 'x',
+          clientId: 'c2',
+          kind: MessageKind.RESOURCE,
+          contextId: resourceId,
+        },
+        senderId,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(messageModel.create).not.toHaveBeenCalled();
+  });
+
+  it('plain text messages need no context lookup', async () => {
+    const { service, messageModel, resourceModel } = build({});
+
+    await service.createMessageIdempotent(
+      { conversationId, content: 'hi', clientId: 'c3' },
+      senderId,
+    );
+
+    expect(resourceModel.findOne).not.toHaveBeenCalled();
+    expect(messageModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: MessageKind.TEXT, context: null }),
+    );
   });
 });
