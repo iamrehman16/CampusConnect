@@ -47,3 +47,6 @@ export const EXPERTISE_OPTIONS = [
 
 
 export const STEPS = ["Profile", "Academic", "Interests", "Avatar"];
+
+/** Steps the user may skip; the server accepts empty values for these. */
+export const OPTIONAL_STEPS: ReadonlySet<number> = new Set([2, 3]);

@@ -18,14 +18,13 @@ export function StepAvatar({ control }: StepAvatarProps) {
           Pick your Avatar
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          This is how you'll appear across CampusConnect.
+          Optional. This is how you'll appear across CampusConnect.
         </Typography>
       </Box>
 
       <Controller
         name="avatar"
         control={control}
-        rules={{ required: "Please pick an avatar" }}
         render={({ field, fieldState }) => (
           <Box>
             <Box

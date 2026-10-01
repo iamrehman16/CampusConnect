@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Box, Container, MobileStepper, useTheme } from "@mui/material";
+import { Box, Container, useTheme } from "@mui/material";
 import { useForm } from "react-hook-form";
 import { useCompleteOnboarding } from "../hooks/useCompleteOnboarding";
 import type { CompleteOnboardingRequest } from "../types/auth.dto";
@@ -7,10 +7,10 @@ import { useAuth } from "@/shared/hooks/useAuth";
 
 import {
   OnboardingHeader,
-  OnboardingStepper,
   OnboardingCard,
   OnboardingStepContent,
   OnboardingNavigation,
+  OPTIONAL_STEPS,
   STEPS,
 } from "../components/onboarding";
 
@@ -29,7 +29,7 @@ export default function OnboardingPage() {
   const { mutate: completeOnboarding, isPending } = useCompleteOnboarding();
   const [activeStep, setActiveStep] = useState(0);
 
-  const { control, handleSubmit, trigger } = useForm<FormValues>({
+  const { control, handleSubmit, trigger, resetField } = useForm<FormValues>({
     defaultValues: {
       displayName: user?.name ?? "",
       bio: "",
@@ -53,6 +53,19 @@ export default function OnboardingPage() {
   const handleNext = async () => {
     const valid = await trigger(STEP_FIELDS[activeStep]);
     if (valid) setActiveStep((s) => s + 1);
+  };
+
+  // Skipping discards anything half-entered on an optional step.
+  const handleSkip = () => {
+    if (!OPTIONAL_STEPS.has(activeStep)) return;
+    if (activeStep === 2) {
+      resetField("interests", { defaultValue: [] });
+      resetField("expertise", { defaultValue: [] });
+      resetField("isOpenToMentor", { defaultValue: false });
+    }
+    if (activeStep === 3) resetField("avatar", { defaultValue: "" });
+    if (activeStep === STEPS.length - 1) void handleSubmit(onSubmit)();
+    else setActiveStep((s) => s + 1);
   };
 
   const handleBack = () => setActiveStep((s) => s - 1);
@@ -81,9 +94,6 @@ export default function OnboardingPage() {
         {/* Header */}
         <OnboardingHeader activeStep={activeStep} />
 
-        {/* Stepper */}
-        <OnboardingStepper activeStep={activeStep} />
-
         {/* Card */}
         <OnboardingCard>
           <form onSubmit={handleSubmit(onSubmit)} noValidate>
@@ -99,27 +109,13 @@ export default function OnboardingPage() {
               activeStep={activeStep}
               onBack={handleBack}
               onNext={handleNext}
+              onSkip={handleSkip}
               onSubmit={handleSubmit(onSubmit)}
               isPending={isPending}
             />
           </form>
         </OnboardingCard>
 
-        {/* Mobile stepper dots (optional, for small screens) */}
-        <MobileStepper
-          variant="dots"
-          steps={STEPS.length}
-          position="static"
-          activeStep={activeStep}
-          nextButton={null}
-          backButton={null}
-          sx={{
-            background: "transparent",
-            justifyContent: "center",
-            mt: 2,
-            display: { sm: "none" },
-          }}
-        />
       </Container>
     </Box>
   );

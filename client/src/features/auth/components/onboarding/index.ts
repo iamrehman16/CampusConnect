@@ -6,7 +6,6 @@ export { OnboardingHeader } from "./OnboardingHeader";
 export { OnboardingNavigation } from "./OnboardingNavigation";
 export { OnboardingCard } from "./OnboardingCard";
 export { OnboardingStepContent } from "./OnboardingStepContent";
-export { OnboardingStepper } from "./OnboardingStepper";
 export {
   DEPARTMENTS,
   SEMESTERS,
@@ -15,4 +14,5 @@ export {
   AVATARS,
   AVATAR_IMAGES,
   STEPS,
+  OPTIONAL_STEPS,
 } from "./onboarding.constants";
