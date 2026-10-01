@@ -11,8 +11,8 @@ export function useRegister() {
 
   return useMutation({
     mutationFn: (data: RegisterRequest) => authService.register(data),
-    onSuccess: (tokens) => {
-      login(tokens);
+    onSuccess: async (tokens) => {
+      await login(tokens);
       navigate(ROUTES.ONBOARDING, { replace: true });
     },
   });

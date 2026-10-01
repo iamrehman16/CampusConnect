@@ -43,12 +43,18 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
   /**
    * Called after a successful login API response.
-   * Stores tokens and fetches the user profile.
+   * Stores tokens and resolves once the profile is loaded, so callers
+   * can navigate without ProtectedRoute seeing a missing user.
    */
   const login = useCallback(
-    (tokens: AuthTokens) => {
+    async (tokens: AuthTokens) => {
       tokenStorage.setTokens(tokens.accessToken, tokens.refreshToken);
-      fetchProfile();
+      setIsLoading(true);
+      try {
+        await fetchProfile();
+      } finally {
+        setIsLoading(false);
+      }
     },
     [fetchProfile],
   );
