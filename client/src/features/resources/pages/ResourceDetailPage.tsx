@@ -27,6 +27,10 @@ import { EditResourceModal } from "../components/EditResourceModal";
 import { ResourceRow } from "../components/ResourceRow";
 import { ApprovalStatus, UserRole } from "@/shared/types/enums";
 import { useAuth } from "@/shared/hooks/useAuth";
+import { AskAuthorButton } from "@/features/chat/components/AskAuthorButton";
+import { RequestMentorshipButton } from "@/features/mentorship/components/RequestMentorshipButton";
+import { useUserProfile } from "@/features/user/hooks/profile-hooks";
+import { toProfileUserViewModel } from "@/features/user/types/profile.types";
 import { ROUTES } from "@/shared/constants/routes";
 import resourceService from "../services/resource.service";
 import { formatRelativeTime } from "@/shared/utils/format";
@@ -108,6 +112,10 @@ export default function ResourceDetailPage() {
   const [previewFailed, setPreviewFailed] = useState(false);
 
   const { data: resource, isLoading, isError } = useResource(id!);
+  // Only used to offer "Request mentorship" when the author mentors.
+  const { data: authorProfile } = useUserProfile(resource?.uploadedBy._id ?? "");
+  const authorVm = toProfileUserViewModel(authorProfile);
+  const authorMentor = authorVm?.isOpenToMentor ? authorVm : undefined;
   const { mutate: deleteResource } = useDeleteResource();
 
   if (isLoading) {
@@ -301,6 +309,28 @@ export default function ResourceDetailPage() {
                 </Link>
               </Box>
             </Stack>
+            {isApproved && (
+              <Stack spacing={1} sx={{ mt: 1.5 }}>
+                <AskAuthorButton
+                  authorId={resource.uploadedBy._id}
+                  attachment={{
+                    kind: "resource",
+                    id: resource._id,
+                    title: resource.title,
+                    subtitle: resource.course,
+                  }}
+                  variant={authorMentor ? "outlined" : "contained"}
+                />
+                {authorMentor && (
+                  <RequestMentorshipButton
+                    mentorId={authorMentor.id}
+                    mentorName={authorMentor.name}
+                    slotsLeft={Math.max(0, authorMentor.maxActiveMentees - authorMentor.activeMenteeCount)}
+                    defaultTopic={resource.course}
+                  />
+                )}
+              </Stack>
+            )}
           </Card>
 
           <Card sx={{ px: 2, py: 1 }}>

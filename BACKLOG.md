@@ -554,6 +554,16 @@ resource or post. Context makes the conversation useful from message one.
   capacity it can offer "Request mentorship" (E10) instead of a plain DM.
 - Doesn't break idempotent `clientId` de-dup (CLAUDE.md §4).
 
+**E13 status: DONE (2026-10-01).** Server: `Message` gains `kind`
+(`text|resource|post`), `contextId` and a server-built `context` snapshot
+(title/subtitle), validated on send (approved resource / live post only);
+`clientId` de-dup untouched. Client: `MessageContextCard` renders the card
+(click-through to the item); "Ask the author" on resource detail and
+"Message author" on post cards open/reuse the DM with the item staged above
+the composer (router state, optional note). If the resource author is an
+open mentor with free slots, resource detail also shows "Request
+mentorship". Not verified in a browser (no DB in the dev container).
+
 ### E14 — Contributor attribution + AI "ask a human" handoff
 **Effort:** 5
 **Where:** `ai-chat.service.ts` `buildCitations()` + `Citation` type,

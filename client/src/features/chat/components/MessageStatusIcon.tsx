@@ -1,20 +1,18 @@
 import { IconButton, Tooltip, CircularProgress } from "@mui/material";
 import { CheckCircleOutline, ErrorOutline } from "@/shared/icons";
-import type { Message } from "../types/chat-dto";
+import type { Message, SendMessageInput } from "../types/chat-dto";
 
 interface Props {
   status: Message["_status"];
   clientId: string;
-  conversationId: string;
-  content: string;
-  retryMessage: (clientId: string, dto: { conversationId: string; content: string }) => void;
+  retryDto: SendMessageInput;
+  retryMessage: (clientId: string, dto: SendMessageInput) => void;
 }
 
 export function MessageStatusIcon({
   status,
   clientId,
-  conversationId,
-  content,
+  retryDto,
   retryMessage,
 }: Props) {
   if (status === "PENDING") {
@@ -32,7 +30,7 @@ export function MessageStatusIcon({
       <Tooltip title="Failed to send — tap to retry">
         <IconButton
           size="small"
-          onClick={() => retryMessage(clientId, { conversationId, content })}
+          onClick={() => retryMessage(clientId, retryDto)}
           aria-label="Retry sending"
           sx={{ p: 0, color: "inherit" }}
         >

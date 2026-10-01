@@ -1,11 +1,19 @@
 import { Box, IconButton, TextField } from "@mui/material";
-import { Send } from "@/shared/icons";
+import { Close, Send } from "@/shared/icons";
 import { useState, useCallback } from "react";
-import type { CreateMessageDto } from "../types/chat-dto";
+import type {
+  ChatAttachment,
+  MessageContext,
+  SendMessageInput,
+} from "../types/chat-dto";
+import { MessageContextCard } from "./MessageContextCard";
 
 interface Props {
   conversationId: string;
-  sendMessage: (dto: Omit<CreateMessageDto, "clientId">) => string;
+  sendMessage: (dto: SendMessageInput, context?: MessageContext) => string;
+  /** Item staged to go out with the next message (BACKLOG.md E13). */
+  attachment?: ChatAttachment | null;
+  onClearAttachment?: () => void;
   onTyping?: () => void;
   onStopTyping?: () => void;
 }
@@ -15,16 +23,38 @@ export function MessageInput({
   sendMessage,
   onTyping,
   onStopTyping,
+  attachment,
+  onClearAttachment,
 }: Props) {
   const [content, setContent] = useState("");
 
   const handleSend = useCallback(() => {
     const trimmed = content.trim();
-    if (!trimmed) return;
-    sendMessage({ conversationId, content: trimmed });
+    if (!trimmed && !attachment) return;
+    if (attachment) {
+      sendMessage(
+        {
+          conversationId,
+          content: trimmed || `Shared a ${attachment.kind}`,
+          kind: attachment.kind,
+          contextId: attachment.id,
+        },
+        { title: attachment.title, subtitle: attachment.subtitle },
+      );
+      onClearAttachment?.();
+    } else {
+      sendMessage({ conversationId, content: trimmed });
+    }
     setContent("");
     onStopTyping?.();
-  }, [content, conversationId, sendMessage, onStopTyping]);
+  }, [
+    content,
+    conversationId,
+    attachment,
+    sendMessage,
+    onStopTyping,
+    onClearAttachment,
+  ]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -33,10 +63,29 @@ export function MessageInput({
     }
   };
 
-  const canSend = content.trim().length > 0;
+  const canSend = content.trim().length > 0 || !!attachment;
 
   // Same single composer surface as Ask AI's ChatInput (BACKLOG.md D8).
   return (
+    <Box>
+      {attachment && (
+        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 0.5, mb: 1 }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <MessageContextCard
+              kind={attachment.kind}
+              contextId={attachment.id}
+              context={attachment}
+            />
+          </Box>
+          <IconButton
+            size="small"
+            onClick={onClearAttachment}
+            aria-label="Remove attachment"
+          >
+            <Close sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Box>
+      )}
     <Box
       sx={(t) => ({
         display: "flex",
@@ -60,7 +109,7 @@ export function MessageInput({
         fullWidth
         multiline
         maxRows={5}
-        placeholder="Write a message…"
+        placeholder={attachment ? "Add a note (optional)…" : "Write a message…"}
         value={content}
         onChange={(e) => {
           setContent(e.target.value);
@@ -90,6 +139,7 @@ export function MessageInput({
       >
         <Send sx={{ fontSize: 18 }} />
       </IconButton>
+    </Box>
     </Box>
   );
 }

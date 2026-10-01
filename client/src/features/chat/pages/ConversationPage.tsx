@@ -6,15 +6,15 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { ArrowBack } from "@/shared/icons";
-import { Navigate } from "react-router-dom";
-import { useNavigate, useParams } from "react-router-dom";
+import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useMediaQuery, useTheme } from "@mui/material";
 import { useChatSocket } from "../hooks/chat-socket-hooks";
 import { useConversationsQuery, useMessagesQuery } from "../hooks/chat-hooks";
 import { MessageFeed } from "../components/MessageFeed";
 import { MessageInput } from "../components/MessageInput";
 import { useAuth } from "@/shared/hooks/useAuth";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ChatAttachment } from "../types/chat-dto";
 import { useChatUIStore } from "../store/chat-ui.store";
 import { ROUTES } from "@/shared/constants/routes";
 import { useTypingIndicator } from "../hooks/useTypingIndicator";
@@ -29,6 +29,12 @@ export default function ConversationPage() {
       ? conversationId
       : undefined;
   const navigate = useNavigate();
+  const location = useLocation();
+  // Set by "Ask the author" (E13); lives in router state so it survives the
+  // navigation but not a refresh, which is fine for a draft.
+  const [attachment, setAttachment] = useState<ChatAttachment | null>(
+    () => (location.state as { attach?: ChatAttachment } | null)?.attach ?? null,
+  );
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
@@ -185,6 +191,8 @@ export default function ConversationPage() {
             sendMessage={sendMessage}
             onTyping={notifyTyping}
             onStopTyping={stopTyping}
+            attachment={attachment}
+            onClearAttachment={() => setAttachment(null)}
           />
         </Box>
       </Box>

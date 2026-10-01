@@ -17,6 +17,7 @@ import UserAvatar from '@/shared/components/UserAvatar';
 import { canEditPost } from '../utils/permissions';
 import { useUpdatePost, useDeletePost, useToggleUpvote } from '../hooks/community.hooks';
 import { CommentSection } from './CommentSection';
+import { AskAuthorButton } from '@/features/chat/components/AskAuthorButton';
 
 /** Posts longer than this are clamped with a "Show more". */
 const LONG_POST_CHARS = 420;
@@ -191,6 +192,13 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
         >
           {post.commentCount} {post.commentCount === 1 ? 'reply' : 'replies'}
         </Button>
+        <AskAuthorButton
+          authorId={post.author._id}
+          attachment={{ kind: 'post', id: post._id, title: post.title }}
+          label="Message author"
+          variant="text"
+          sx={actionSx}
+        />
       </Stack>
 
       <Collapse in={showComments} timeout="auto" unmountOnExit>

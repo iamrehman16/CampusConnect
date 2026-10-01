@@ -4,6 +4,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import type { ChatAttachment } from "../types/chat-dto";
 import { chatService } from "../services/chat-service";
 import { chatKeys } from "./chat-keys";
 import { useNavigate } from "react-router-dom";
@@ -69,9 +70,11 @@ export function useChatTrigger() {
   const { mutateAsync, isPending } = useFindOrCreateConversation();
 
   const trigger = useCallback(
-    async (participantId: string) => {
+    async (participantId: string, attach?: ChatAttachment) => {
       const conversation = await mutateAsync({ participantId });
-      navigate(`${ROUTES.CHAT}/${conversation.id}`);
+      navigate(`${ROUTES.CHAT}/${conversation.id}`, {
+        state: attach ? { attach } : undefined,
+      });
     },
     [mutateAsync, navigate],
   );

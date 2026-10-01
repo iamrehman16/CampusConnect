@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import { chatSocketService } from "../services/chat-socket.service";
 import { useChatSocketContext } from "@/shared/hooks/useChatSocketContext";
 import { chatCacheUpdaters } from "../utils/chat-cache.updaters";
-import type { CreateMessageDto, Message, DeleteMessageDto } from "../types/chat-dto";
+import type { Message, DeleteMessageDto, MessageContext, SendMessageInput } from "../types/chat-dto";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { chatEventHandlers } from "../utils/chatEventHandler";
 import { useChatUIStore } from "../store/chat-ui.store";
@@ -50,7 +50,7 @@ export function useChatSocket() {
   // ─── Shared Emission Logic ────────────────────────────────────────────────
 
   const performSend = useCallback(
-    (clientId: string, dto: Omit<CreateMessageDto, "clientId">) => {
+    (clientId: string, dto: SendMessageInput) => {
       try {
         chatSocketService.sendMessage({ ...dto, clientId }, (serverMessage: Message) => {
           clearSendTimeout(clientId);
@@ -113,7 +113,11 @@ export function useChatSocket() {
   // ─── Emitters ──────────────────────────────────────────────────────────────
 
   const sendMessage = useCallback(
-    (dto: Omit<CreateMessageDto, "clientId">): string => {
+    (
+      dto: SendMessageInput,
+      /** Card snapshot shown optimistically for context messages. */
+      context?: MessageContext,
+    ): string => {
       const clientId = uuidv4();
 
       cache.appendOptimistic({
@@ -122,6 +126,9 @@ export function useChatSocket() {
         conversationId: dto.conversationId,
         sender: currentUserId,
         content: dto.content,
+        kind: dto.kind,
+        contextId: dto.contextId ?? null,
+        context: context ?? null,
         seenAt: null,
         isDeleted: false,
         createdAt: new Date(),
@@ -136,7 +143,7 @@ export function useChatSocket() {
   );
 
   const retryMessage = useCallback(
-    (clientId: string, dto: Omit<CreateMessageDto, "clientId">): void => {
+    (clientId: string, dto: SendMessageInput): void => {
       cache.markPending(dto.conversationId, clientId);
       performSend(clientId, dto);
     },
