@@ -30,7 +30,7 @@ Work top to bottom:
 | 0 | Quick fixes & resilience | G1–G4 ✅ | Cheap, unblocks a stable dev/demo env |
 | 1 | Demo data | H1 ✅ | Redesigning against 4 resources and 1 mentor gives misleading screens |
 | 2 | Design foundation | D4, D5 (+D3 folded in) ✅ | Tokens + app shell every page redesign builds on |
-| 3 | Page redesigns | D6–D10 (D6, D7 ✅) | In demo-walkthrough order |
+| 3 | Page redesigns | D6–D10 ✅ | In demo-walkthrough order |
 | 4 | Integration features | E13, E14, E16 | The "resource → AI → human" story; safety before any public use |
 | 5 | Mentorship depth | E11, E12, E15 | Builds on E10 + reputation |
 | 6 | Google sign-in | F1–F3 | Independent; can slot in anywhere if needed |
@@ -221,7 +221,7 @@ and errors that say what happened and offer a retry.
 
 ---
 
-## Epic D — Design system & UI overhaul (Phases 2–3) — D4–D9 DONE
+## Epic D — Design system & UI overhaul (Phases 2–3) — D4–D10 DONE
 
 ### Audit (2026-09-24, screenshots of every page, desktop + mobile, light)
 
@@ -484,21 +484,18 @@ Bugs found and fixed along the way (each its own commit):
 - Sign in / sign up as focused forms (room for F3's Google button).
 - Onboarding as a short stepper with progress; skippable optional steps.
 
-**D10 status: IN PROGRESS (2026-09-27).** Done:
+**D10 status: DONE (2026-10-01).**
 - The landing page (`/auth`) uses real product screenshots instead of
   the unDraw art.
 - `/login` and `/signup` are focused single-card pages.
-
-**Remaining:**
-- **Sign-in race (found, not fixed).** `AuthProvider.login()` fires
-  `fetchProfile()` without awaiting it, and `useLogin`/`useRegister`
-  navigate immediately. `ProtectedRoute` then sees no user and bounces
-  to the landing page until the profile loads (and stays there if the
-  load is slow). Proposed fix: make `login` async, set `isLoading`
-  meanwhile, and await it before navigating.
-- Review and restyle the onboarding stepper.
-- A throwaway account, `d10.check@example.com`, sits in the demo DB
-  (created to view onboarding). Delete it, or re-run the seed.
+- **Sign-in race fixed.** `AuthProvider.login()` is async and holds
+  `isLoading` until the profile loads; `useLogin`/`useRegister` await it
+  before navigating.
+- **Onboarding restyled.** One labelled progress bar replaces the
+  stepper + counter + mobile dots; Interests and Avatar are skippable
+  (avatar no longer required — the server accepts an empty value).
+- **Manual leftover:** the throwaway account `d10.check@example.com` in
+  the demo DB still needs deleting (or re-run `npm run seed:demo`).
 
 ---
 
