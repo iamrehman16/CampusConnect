@@ -3,6 +3,8 @@ import { ChatService } from './chat.service';
 import { ConversationDocument } from './schema/conversation.schema';
 import { MessageDocument } from './schema/message.schema';
 import { PaginationService } from '../../common/services/pagination.service';
+import { MessageContextService } from './message-context.service';
+import { MessageKind } from './types/message-context';
 
 type MockQuery = {
   populate: jest.Mock;
@@ -51,6 +53,7 @@ function buildChatService(conversationModel: Partial<MockConversationModel>) {
     conversationModel as unknown as Model<ConversationDocument>,
     {} as unknown as Model<MessageDocument>,
     {} as unknown as PaginationService,
+    {} as unknown as MessageContextService,
   );
 }
 
@@ -234,11 +237,117 @@ describe('ChatService#getUserConversations — unreadCount', () => {
       conversationModel as unknown as Model<ConversationDocument>,
       { aggregate } as unknown as Model<MessageDocument>,
       {} as unknown as PaginationService,
+      {} as unknown as MessageContextService,
     );
 
     const result = await chatService.getUserConversations(userId);
 
     expect(aggregate).toHaveBeenCalledTimes(1);
     expect(result.map((c) => c.unreadCount)).toEqual([3, 0]);
+  });
+});
+
+describe('ChatService#createMessageIdempotent (E13 context)', () => {
+  const senderId = new Types.ObjectId().toString();
+  const conversationId = new Types.ObjectId().toString();
+
+  function build(opts: {
+    create: jest.Mock;
+    resolve?: jest.Mock;
+    findOne?: jest.Mock;
+  }) {
+    const conversationModel = {
+      findOne: jest.fn().mockReturnValue(chainable({ _id: conversationId })),
+      findByIdAndUpdate: jest.fn().mockResolvedValue(null),
+    };
+    const messageModel = {
+      create: opts.create,
+      findOne: opts.findOne ?? jest.fn(),
+    };
+    const resolve = opts.resolve ?? jest.fn();
+    const service = new ChatService(
+      conversationModel as unknown as Model<ConversationDocument>,
+      messageModel as unknown as Model<MessageDocument>,
+      {} as unknown as PaginationService,
+      { resolve } as unknown as MessageContextService,
+    );
+    return { service, resolve };
+  }
+
+  const created = (extra: object) => ({
+    _id: new Types.ObjectId(),
+    createdAt: new Date(),
+    toObject() {
+      return { ...extra };
+    },
+  });
+
+  it('stores the server-resolved context for a resource message', async () => {
+    const refId = new Types.ObjectId();
+    const context = { refId, title: 'DSA Notes', subtitle: 'CS-201 · DSA' };
+    const create = jest.fn().mockResolvedValue(created({}));
+    const { service, resolve } = build({
+      create,
+      resolve: jest.fn().mockResolvedValue(context),
+    });
+
+    await service.createMessageIdempotent(
+      {
+        conversationId,
+        content: 'Is chapter 3 complete?',
+        clientId: 'c1',
+        kind: MessageKind.RESOURCE,
+        contextId: refId.toString(),
+      },
+      senderId,
+    );
+
+    expect(resolve).toHaveBeenCalledWith(
+      MessageKind.RESOURCE,
+      refId.toString(),
+    );
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: MessageKind.RESOURCE, context }),
+    );
+  });
+
+  it('defaults to a plain text message without resolving anything', async () => {
+    const create = jest.fn().mockResolvedValue(created({}));
+    const { service, resolve } = build({ create });
+
+    await service.createMessageIdempotent(
+      { conversationId, content: 'hi', clientId: 'c2' },
+      senderId,
+    );
+
+    expect(resolve).not.toHaveBeenCalled();
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: MessageKind.TEXT, context: undefined }),
+    );
+  });
+
+  it('still returns the existing message on a duplicate clientId', async () => {
+    const existing = { _id: new Types.ObjectId(), clientId: 'c3' };
+    const { service } = build({
+      create: jest.fn().mockRejectedValue(duplicateKeyError('clientId')),
+      resolve: jest.fn().mockResolvedValue({
+        refId: new Types.ObjectId(),
+        title: 'T',
+      }),
+      findOne: jest.fn().mockReturnValue(chainable(existing)),
+    });
+
+    const result = await service.createMessageIdempotent(
+      {
+        conversationId,
+        content: 'again',
+        clientId: 'c3',
+        kind: MessageKind.POST,
+        contextId: new Types.ObjectId().toString(),
+      },
+      senderId,
+    );
+
+    expect(result).toBe(existing);
   });
 });

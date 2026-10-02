@@ -16,6 +16,8 @@ import { PaginationService } from '../../common/services/pagination.service';
 import { StartConversationDto } from './dto/start-conversation.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { GetMessagesDto } from './dto/get-message.dto';
+import { MessageContextService } from './message-context.service';
+import { MessageKind } from './types/message-context';
 
 // Public-safe participant fields only — email deliberately excluded.
 const PARTICIPANT_PUBLIC_FIELDS = 'name avatar role lastSeenAt';
@@ -30,6 +32,7 @@ export class ChatService implements OnModuleInit {
     @InjectModel(Message.name)
     private readonly messageModel: Model<MessageDocument>,
     private readonly paginationService: PaginationService,
+    private readonly messageContext: MessageContextService,
   ) {}
 
   async onModuleInit() {
@@ -269,12 +272,19 @@ export class ChatService implements OnModuleInit {
   async createMessageIdempotent(dto: CreateMessageDto, senderId: string) {
     await this.verifyParticipant(dto.conversationId, senderId);
 
+    const kind = dto.kind ?? MessageKind.TEXT;
+    const context = dto.contextId
+      ? await this.messageContext.resolve(kind, dto.contextId)
+      : undefined;
+
     try {
       const message = await this.messageModel.create({
         conversationId: new Types.ObjectId(dto.conversationId),
         sender: new Types.ObjectId(senderId),
         content: dto.content,
         clientId: dto.clientId,
+        kind,
+        context,
       });
 
       await this.conversationModel.findByIdAndUpdate(dto.conversationId, {
