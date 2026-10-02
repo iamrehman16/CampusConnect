@@ -17,6 +17,7 @@ import UserAvatar from '@/shared/components/UserAvatar';
 import { canEditPost } from '../utils/permissions';
 import { useUpdatePost, useDeletePost, useToggleUpvote } from '../hooks/community.hooks';
 import { CommentSection } from './CommentSection';
+import { useChatTrigger } from '@/features/chat/hooks/chat-hooks';
 
 /** Posts longer than this are clamped with a "Show more". */
 const LONG_POST_CHARS = 420;
@@ -39,8 +40,10 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
   const { mutate: updatePost, isPending: isUpdating } = useUpdatePost();
   const { mutate: deletePost } = useDeletePost();
   const { mutate: toggleUpvote } = useToggleUpvote();
+  const { trigger: startChat, isPending: startingChat } = useChatTrigger();
 
   const canEdit = canEditPost(user, post.author);
+  const canMessageAuthor = Boolean(user) && user?._id !== post.author._id;
   const isUpvoted = Boolean(user && post.upvotes.includes(user._id));
   const isLong = post.content.length > LONG_POST_CHARS;
   const profilePath = ROUTES.PUBLIC_PROFILE.replace(':userId', post.author._id);
@@ -191,6 +194,16 @@ export function PostCard({ post, defaultShowComments = false }: PostCardProps) {
         >
           {post.commentCount} {post.commentCount === 1 ? 'reply' : 'replies'}
         </Button>
+        {canMessageAuthor && (
+          <Button
+            size="small"
+            disabled={startingChat}
+            onClick={() => void startChat(post.author._id, { kind: 'post', contextId: post._id, title: post.title })}
+            sx={actionSx}
+          >
+            Ask the author
+          </Button>
+        )}
       </Stack>
 
       <Collapse in={showComments} timeout="auto" unmountOnExit>

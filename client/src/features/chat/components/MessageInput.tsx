@@ -1,11 +1,17 @@
-import { Box, IconButton, TextField } from "@mui/material";
+import { Box, Chip, IconButton, TextField } from "@mui/material";
 import { Send } from "@/shared/icons";
 import { useState, useCallback } from "react";
-import type { CreateMessageDto } from "../types/chat-dto";
+import type { ChatAttachment, MessageContext, SendMessageDto } from "../types/chat-dto";
 
 interface Props {
   conversationId: string;
-  sendMessage: (dto: Omit<CreateMessageDto, "clientId">) => string;
+  sendMessage: (
+    dto: SendMessageDto,
+    preview?: Pick<MessageContext, "title" | "subtitle">,
+  ) => string;
+  /** Item to attach to the next message (E13); cleared after sending. */
+  attachment?: ChatAttachment | null;
+  onClearAttachment?: () => void;
   onTyping?: () => void;
   onStopTyping?: () => void;
 }
@@ -13,6 +19,8 @@ interface Props {
 export function MessageInput({
   conversationId,
   sendMessage,
+  attachment,
+  onClearAttachment,
   onTyping,
   onStopTyping,
 }: Props) {
@@ -21,10 +29,23 @@ export function MessageInput({
   const handleSend = useCallback(() => {
     const trimmed = content.trim();
     if (!trimmed) return;
-    sendMessage({ conversationId, content: trimmed });
+    if (attachment) {
+      sendMessage(
+        {
+          conversationId,
+          content: trimmed,
+          kind: attachment.kind,
+          contextId: attachment.contextId,
+        },
+        { title: attachment.title, subtitle: attachment.subtitle },
+      );
+      onClearAttachment?.();
+    } else {
+      sendMessage({ conversationId, content: trimmed });
+    }
     setContent("");
     onStopTyping?.();
-  }, [content, conversationId, sendMessage, onStopTyping]);
+  }, [content, conversationId, sendMessage, attachment, onClearAttachment, onStopTyping]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -37,6 +58,15 @@ export function MessageInput({
 
   // Same single composer surface as Ask AI's ChatInput (BACKLOG.md D8).
   return (
+    <>
+    {attachment && (
+      <Chip
+        label={`About: ${attachment.title}`}
+        onDelete={onClearAttachment}
+        size="small"
+        sx={{ mb: 1, maxWidth: "100%" }}
+      />
+    )}
     <Box
       sx={(t) => ({
         display: "flex",
@@ -60,7 +90,7 @@ export function MessageInput({
         fullWidth
         multiline
         maxRows={5}
-        placeholder="Write a message…"
+        placeholder={attachment ? "Ask your question…" : "Write a message…"}
         value={content}
         onChange={(e) => {
           setContent(e.target.value);
@@ -91,5 +121,6 @@ export function MessageInput({
         <Send sx={{ fontSize: 18 }} />
       </IconButton>
     </Box>
+    </>
   );
 }

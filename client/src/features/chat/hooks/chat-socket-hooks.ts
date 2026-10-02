@@ -4,7 +4,12 @@ import { v4 as uuidv4 } from "uuid";
 import { chatSocketService } from "../services/chat-socket.service";
 import { useChatSocketContext } from "@/shared/hooks/useChatSocketContext";
 import { chatCacheUpdaters } from "../utils/chat-cache.updaters";
-import type { CreateMessageDto, Message, DeleteMessageDto } from "../types/chat-dto";
+import type {
+  DeleteMessageDto,
+  Message,
+  MessageContext,
+  SendMessageDto,
+} from "../types/chat-dto";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { chatEventHandlers } from "../utils/chatEventHandler";
 import { useChatUIStore } from "../store/chat-ui.store";
@@ -50,7 +55,7 @@ export function useChatSocket() {
   // ─── Shared Emission Logic ────────────────────────────────────────────────
 
   const performSend = useCallback(
-    (clientId: string, dto: Omit<CreateMessageDto, "clientId">) => {
+    (clientId: string, dto: SendMessageDto) => {
       try {
         chatSocketService.sendMessage({ ...dto, clientId }, (serverMessage: Message) => {
           clearSendTimeout(clientId);
@@ -113,7 +118,12 @@ export function useChatSocket() {
   // ─── Emitters ──────────────────────────────────────────────────────────────
 
   const sendMessage = useCallback(
-    (dto: Omit<CreateMessageDto, "clientId">): string => {
+    (
+      dto: SendMessageDto,
+      // Display-only snapshot for the optimistic card; the server resolves
+      // and stores its own copy.
+      preview?: Pick<MessageContext, "title" | "subtitle">,
+    ): string => {
       const clientId = uuidv4();
 
       cache.appendOptimistic({
@@ -122,6 +132,11 @@ export function useChatSocket() {
         conversationId: dto.conversationId,
         sender: currentUserId,
         content: dto.content,
+        kind: dto.kind,
+        context:
+          dto.kind && dto.kind !== "text" && dto.contextId && preview
+            ? { refId: dto.contextId, ...preview }
+            : undefined,
         seenAt: null,
         isDeleted: false,
         createdAt: new Date(),
@@ -136,7 +151,7 @@ export function useChatSocket() {
   );
 
   const retryMessage = useCallback(
-    (clientId: string, dto: Omit<CreateMessageDto, "clientId">): void => {
+    (clientId: string, dto: SendMessageDto): void => {
       cache.markPending(dto.conversationId, clientId);
       performSend(clientId, dto);
     },

@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { chatService } from "../services/chat-service";
 import { chatKeys } from "./chat-keys";
+import type { ChatAttachment } from "../types/chat-dto";
 import { useNavigate } from "react-router-dom";
 import { useCallback, useRef } from "react";
 import { ROUTES } from "@/shared/constants/routes";
@@ -69,9 +70,13 @@ export function useChatTrigger() {
   const { mutateAsync, isPending } = useFindOrCreateConversation();
 
   const trigger = useCallback(
-    async (participantId: string) => {
+    async (participantId: string, attachment?: ChatAttachment) => {
       const conversation = await mutateAsync({ participantId });
-      navigate(`${ROUTES.CHAT}/${conversation.id}`);
+      // The attachment rides along as router state; ConversationPage turns it
+      // into a composer chip (BACKLOG.md E13).
+      navigate(`${ROUTES.CHAT}/${conversation.id}`, {
+        state: attachment ? { attachment } : undefined,
+      });
     },
     [mutateAsync, navigate],
   );

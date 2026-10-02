@@ -17,6 +17,7 @@ import {
 import {
   ArrowBack,
   AutoAwesome,
+  ChatBubbleOutline,
   Delete as DeleteIcon,
   Download as DownloadIcon,
   Edit as EditIcon,
@@ -32,6 +33,7 @@ import resourceService from "../services/resource.service";
 import { formatRelativeTime } from "@/shared/utils/format";
 import { PageContainer } from "@/shared/components/PageContainer";
 import UserAvatar from "@/shared/components/UserAvatar";
+import { useChatTrigger } from "@/features/chat/hooks/chat-hooks";
 import { TierChip } from "@/features/reputation/components/TierChip";
 import type { Resource } from "../types/resource.dto";
 import {
@@ -102,6 +104,7 @@ function RelatedResources({ resource }: { resource: Resource }) {
 export default function ResourceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { trigger: startChat, isPending: startingChat } = useChatTrigger();
   const { user } = useAuth();
   const [editOpen, setEditOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -141,6 +144,14 @@ export default function ResourceDetailPage() {
     (user?.role === UserRole.CONTRIBUTOR && user._id === resource.uploadedBy._id);
   const isApproved = resource.approvalStatus === ApprovalStatus.APPROVED;
   const preview = previewFailed ? undefined : resourcePreviewUrl(resource.fileUrl, resource.fileType);
+
+  const askAuthor = () =>
+    void startChat(resource.uploadedBy._id, {
+      kind: "resource",
+      contextId: resource._id,
+      title: resource.title,
+      subtitle: `${resource.course} · ${resource.subject}`,
+    });
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -225,6 +236,11 @@ export default function ResourceDetailPage() {
               <Button variant="outlined" startIcon={<AutoAwesome />} onClick={askAi}>
                 Ask AI about this
               </Button>
+              {user?._id !== resource.uploadedBy._id && (
+                <Button variant="outlined" startIcon={<ChatBubbleOutline />} onClick={askAuthor} disabled={startingChat}>
+                  Ask the author
+                </Button>
+              )}
             </Stack>
           )}
 

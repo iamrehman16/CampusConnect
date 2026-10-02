@@ -6,15 +6,15 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { ArrowBack } from "@/shared/icons";
-import { Navigate } from "react-router-dom";
-import { useNavigate, useParams } from "react-router-dom";
+import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useMediaQuery, useTheme } from "@mui/material";
 import { useChatSocket } from "../hooks/chat-socket-hooks";
 import { useConversationsQuery, useMessagesQuery } from "../hooks/chat-hooks";
 import { MessageFeed } from "../components/MessageFeed";
 import { MessageInput } from "../components/MessageInput";
 import { useAuth } from "@/shared/hooks/useAuth";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ChatAttachment } from "../types/chat-dto";
 import { useChatUIStore } from "../store/chat-ui.store";
 import { ROUTES } from "@/shared/constants/routes";
 import { useTypingIndicator } from "../hooks/useTypingIndicator";
@@ -29,8 +29,25 @@ export default function ConversationPage() {
       ? conversationId
       : undefined;
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
+  // Set by useChatTrigger when arriving via "Ask the author" (E13). Seeded
+  // once from router state and tied to its conversation so it can't leak into
+  // another one if this page instance is reused.
+  const [pending, setPending] = useState<{
+    conversationId?: string;
+    attachment: ChatAttachment;
+  } | null>(() => {
+    const attachment = (location.state as { attachment?: ChatAttachment } | null)
+      ?.attachment;
+    return attachment ? { conversationId: activeConversationId, attachment } : null;
+  });
+  const attachment =
+    pending && pending.conversationId === activeConversationId
+      ? pending.attachment
+      : null;
 
   const { user } = useAuth();
   const { isConnected } = useChatSocketContext();
@@ -183,6 +200,8 @@ export default function ConversationPage() {
           <MessageInput
             conversationId={activeConversationId}
             sendMessage={sendMessage}
+            attachment={attachment}
+            onClearAttachment={() => setPending(null)}
             onTyping={notifyTyping}
             onStopTyping={stopTyping}
           />

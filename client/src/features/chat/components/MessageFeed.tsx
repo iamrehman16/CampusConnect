@@ -1,7 +1,7 @@
 import { Box, CircularProgress, Typography } from "@mui/material";
 import { Fragment, useEffect, useRef } from "react";
 import { format, isSameDay, isToday, isYesterday } from "date-fns";
-import type { Message } from "../types/chat-dto";
+import type { Message, SendMessageDto } from "../types/chat-dto";
 import { MessageBubble } from "./MessageBubble";
 
 function dayLabel(date: Date): string {
@@ -12,7 +12,7 @@ function dayLabel(date: Date): string {
 
 interface Props {
   messages: Message[];
-  retryMessage: (clientId: string, dto: { conversationId: string; content: string }) => void;
+  retryMessage: (clientId: string, dto: SendMessageDto) => void;
   fetchNextPage: () => void;
   hasNextPage: boolean;
   isFetchingNextPage: boolean;

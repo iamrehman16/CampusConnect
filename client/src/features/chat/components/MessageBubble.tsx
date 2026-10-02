@@ -1,12 +1,13 @@
 import { Box, Typography } from "@mui/material";
 import { useAuth } from "@/shared/hooks/useAuth";
-import type { Message } from "../types/chat-dto";
+import type { Message, SendMessageDto } from "../types/chat-dto";
 import { MessageStatusIcon } from "./MessageStatusIcon";
+import { MessageContextCard } from "./MessageContextCard";
 import { format } from "date-fns";
 
 interface Props {
   message: Message;
-  retryMessage: (clientId: string, dto: { conversationId: string; content: string }) => void;
+  retryMessage: (clientId: string, dto: SendMessageDto) => void;
   showSeenAt?: boolean;
 }
 
@@ -54,12 +55,17 @@ export function MessageBubble({
             This message was deleted
           </Typography>
         ) : (
-          <Typography
-            variant="body2"
-            sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", lineHeight: 1.5 }}
-          >
-            {message.content}
-          </Typography>
+          <>
+            {message.context && message.kind && message.kind !== "text" && (
+              <MessageContextCard kind={message.kind} context={message.context} isOwn={isOwn} />
+            )}
+            <Typography
+              variant="body2"
+              sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", lineHeight: 1.5 }}
+            >
+              {message.content}
+            </Typography>
+          </>
         )}
 
         <Box
@@ -83,6 +89,8 @@ export function MessageBubble({
               clientId={message.clientId}
               conversationId={message.conversationId}
               content={message.content}
+              kind={message.kind}
+              contextId={message.context?.refId}
               retryMessage={retryMessage}
             />
           )}
