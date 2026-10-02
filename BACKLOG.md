@@ -484,7 +484,7 @@ Bugs found and fixed along the way (each its own commit):
 - Sign in / sign up as focused forms (room for F3's Google button).
 - Onboarding as a short stepper with progress; skippable optional steps.
 
-**D10 status: DONE pending a visual check of onboarding (2026-10-02).** Done:
+**D10 status: DONE (2026-10-02).** Done:
 - The landing page (`/auth`) uses real product screenshots instead of
   the unDraw art.
 - `/login` and `/signup` are focused single-card pages.
@@ -494,7 +494,7 @@ Bugs found and fixed along the way (each its own commit):
   async: sets `isLoading`, awaits the profile fetch, and rejects on failure;
   `useLogin`/`useRegister` await it before navigating. `fetchProfile` now
   logs and rethrows; `refreshUser` is the non-throwing wrapper.
-- ~~Review and restyle the onboarding stepper.~~ **Done (2026-10-02):** segmented progress bar, canvas background + shared Card, "Skip for now" on the optional Interests step, emoji and hardcoded colours removed. Not yet checked visually in a browser.
+- ~~Review and restyle the onboarding stepper.~~ **Done (2026-10-02):** segmented progress bar, canvas background + shared Card, "Skip for now" on the optional Interests step, emoji and hardcoded colours removed. Checked in a browser 2026-10-02 (also fixed the "Welcome," greeting for unnamed new users).
 - ~~A throwaway account, `d10.check@example.com`, sits in the demo DB~~ deleted 2026-10-02.
 
 ---
@@ -558,8 +558,8 @@ resource or post. Context makes the conversation useful from message one.
 (`MessageContextService` resolves + snapshots; rejects missing/unapproved
 items), client context card in the bubble, composer attachment chip,
 "Ask the author" on resource detail and post cards (hidden for your own
-items), retry keeps the context. Verified against the demo DB over a real
-socket: card stored, `clientId` de-dup intact, dangling ref rejected.
+items), retry keeps the context. Verified in a browser and against the
+demo DB over a real socket: card stored, `clientId` de-dup intact, dangling ref rejected.
 **Remaining:** offer "Request mentorship" instead of a plain DM when the
 author is a mentor with capacity (needs mentor fields on the resource
 `uploadedBy` populate); posts link to `/community?post=<id>`, which is the
