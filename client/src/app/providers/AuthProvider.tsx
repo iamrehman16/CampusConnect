@@ -30,12 +30,23 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     try {
       const { data } = await api.get<User>("/users/profile");
       setUser(data);
-    } catch {
+    } catch (error) {
       // Token might be expired/invalid — clear everything
+      console.error("Failed to fetch profile; clearing session:", error);
       tokenStorage.clearTokens();
       setUser(null);
+      throw error;
     }
   }, []);
+
+  /** Non-throwing variant for background refreshes (failure already logged). */
+  const refreshUser = useCallback(async () => {
+    try {
+      await fetchProfile();
+    } catch {
+      // fetchProfile already logged and cleared the session.
+    }
+  }, [fetchProfile]);
 
   const setOnboarded = useCallback(() => {
     setUser((prev) => (prev ? { ...prev, isOnboarded: true } : prev));
@@ -43,12 +54,18 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
   /**
    * Called after a successful login API response.
-   * Stores tokens and fetches the user profile.
+   * Stores tokens and fetches the user profile. Resolves only once the
+   * profile is loaded (so callers can navigate safely); rejects if it fails.
    */
   const login = useCallback(
-    (tokens: AuthTokens) => {
+    async (tokens: AuthTokens) => {
       tokenStorage.setTokens(tokens.accessToken, tokens.refreshToken);
-      fetchProfile();
+      setIsLoading(true);
+      try {
+        await fetchProfile();
+      } finally {
+        setIsLoading(false);
+      }
     },
     [fetchProfile],
   );
@@ -79,10 +96,8 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
       try {
         await fetchProfile();
-      } catch (error) {
-        console.error("Auth initialization failed:", error);
-        tokenStorage.clearTokens();
-        setUser(null);
+      } catch {
+        // fetchProfile already logged and cleared the session.
       } finally {
         setIsLoading(false);
       }
@@ -100,7 +115,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
         login,
         logout,
         setOnboarded,
-        refreshUser: fetchProfile,
+        refreshUser,
       }}
     >
       {children}

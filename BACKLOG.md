@@ -490,12 +490,10 @@ Bugs found and fixed along the way (each its own commit):
 - `/login` and `/signup` are focused single-card pages.
 
 **Remaining:**
-- **Sign-in race (found, not fixed).** `AuthProvider.login()` fires
-  `fetchProfile()` without awaiting it, and `useLogin`/`useRegister`
-  navigate immediately. `ProtectedRoute` then sees no user and bounces
-  to the landing page until the profile loads (and stays there if the
-  load is slow). Proposed fix: make `login` async, set `isLoading`
-  meanwhile, and await it before navigating.
+- ~~Sign-in race~~ **Fixed (2026-10-02).** `AuthProvider.login` is now
+  async: sets `isLoading`, awaits the profile fetch, and rejects on failure;
+  `useLogin`/`useRegister` await it before navigating. `fetchProfile` now
+  logs and rethrows; `refreshUser` is the non-throwing wrapper.
 - Review and restyle the onboarding stepper.
 - A throwaway account, `d10.check@example.com`, sits in the demo DB
   (created to view onboarding). Delete it, or re-run the seed.

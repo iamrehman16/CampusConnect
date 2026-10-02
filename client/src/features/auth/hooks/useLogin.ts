@@ -15,8 +15,8 @@ export function useLogin() {
 
   return useMutation({
     mutationFn: (data: LoginRequest) => authService.login(data),
-    onSuccess: (tokens) => {
-      login(tokens);
+    onSuccess: async (tokens) => {
+      await login(tokens);
       navigate(ROUTES.HOME, { replace: true });
     },
   });
