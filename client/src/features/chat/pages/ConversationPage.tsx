@@ -49,6 +49,14 @@ export default function ConversationPage() {
       ? pending.attachment
       : null;
 
+  // Router state outlives a reload; drop it once read so the chip doesn't
+  // reappear (the value is already captured in `pending`).
+  useEffect(() => {
+    if ((location.state as { attachment?: ChatAttachment } | null)?.attachment) {
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.state, location.pathname, navigate]);
+
   const { user } = useAuth();
   const { isConnected } = useChatSocketContext();
   const { sendMessage, retryMessage, markSeen, joinConversation } =
