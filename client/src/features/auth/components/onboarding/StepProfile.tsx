@@ -9,11 +9,14 @@ interface StepProfileProps {
 }
 
 export function StepProfile({ control, userName }: StepProfileProps) {
+  // New sign-ups have no name yet, so this can be empty.
+  const firstName = userName.trim().split(" ")[0];
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
       <Box>
         <Typography variant="h5" fontWeight={700} gutterBottom>
-          Welcome, {userName.split(" ")[0]}
+          {firstName ? `Welcome, ${firstName}` : "Welcome"}
         </Typography>
         <Typography variant="body2" color="text.secondary">
           Let's set up your CampusConnect profile. This helps peers and mentors
