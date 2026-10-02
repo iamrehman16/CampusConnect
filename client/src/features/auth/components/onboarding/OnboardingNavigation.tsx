@@ -6,6 +6,8 @@ interface OnboardingNavigationProps {
   onBack: () => void;
   onNext: () => void;
   onSubmit: () => void;
+  /** Set when the current step is optional; advances without validating. */
+  onSkip?: () => void;
   isPending: boolean;
 }
 
@@ -14,6 +16,7 @@ export function OnboardingNavigation({
   onBack,
   onNext,
   onSubmit,
+  onSkip,
   isPending,
 }: OnboardingNavigationProps) {
   const theme = useTheme();
@@ -40,9 +43,16 @@ export function OnboardingNavigation({
       </Button>
 
       {!isLastStep ? (
-        <Button onClick={onNext} variant="contained">
-          Continue
-        </Button>
+        <Box sx={{ display: "flex", gap: 1 }}>
+          {onSkip && (
+            <Button onClick={onSkip} variant="text" color="inherit">
+              Skip for now
+            </Button>
+          )}
+          <Button onClick={onNext} variant="contained">
+            Continue
+          </Button>
+        </Box>
       ) : (
         <Button onClick={onSubmit} variant="contained" disabled={isPending}>
           {isPending ? "Setting up..." : "Get Started"}

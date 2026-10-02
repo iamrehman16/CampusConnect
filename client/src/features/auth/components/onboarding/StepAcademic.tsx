@@ -72,7 +72,7 @@ export function StepAcademic({ control }: StepAcademicProps) {
                     fontWeight: 600,
                     "&.Mui-selected": {
                       background: theme.palette.primary.main,
-                      color: "#fff",
+                      color: theme.palette.primary.contrastText,
                       borderColor: `${theme.palette.primary.main} !important`,
                     },
                   }}

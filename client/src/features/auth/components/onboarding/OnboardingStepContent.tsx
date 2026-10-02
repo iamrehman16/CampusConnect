@@ -18,7 +18,7 @@ export function OnboardingStepContent({
   userName,
 }: OnboardingStepContentProps) {
   return (
-    <Box sx={{ minHeight: 320 }}>
+    <Box sx={{ minHeight: { sm: 320 } }}>
       {activeStep === 0 && (
         <StepProfile control={control} userName={userName} />
       )}

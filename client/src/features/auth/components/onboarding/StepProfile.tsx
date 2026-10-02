@@ -13,7 +13,7 @@ export function StepProfile({ control, userName }: StepProfileProps) {
     <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
       <Box>
         <Typography variant="h5" fontWeight={700} gutterBottom>
-          Hey, {userName.split(" ")[0]} 👋
+          Welcome, {userName.split(" ")[0]}
         </Typography>
         <Typography variant="body2" color="text.secondary">
           Let's set up your CampusConnect profile. This helps peers and mentors

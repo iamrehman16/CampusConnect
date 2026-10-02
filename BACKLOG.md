@@ -494,7 +494,7 @@ Bugs found and fixed along the way (each its own commit):
   async: sets `isLoading`, awaits the profile fetch, and rejects on failure;
   `useLogin`/`useRegister` await it before navigating. `fetchProfile` now
   logs and rethrows; `refreshUser` is the non-throwing wrapper.
-- Review and restyle the onboarding stepper.
+- ~~Review and restyle the onboarding stepper.~~ **Done (2026-10-02):** segmented progress bar, canvas background + shared Card, "Skip for now" on the optional Interests step, emoji and hardcoded colours removed. Not yet checked visually in a browser.
 - A throwaway account, `d10.check@example.com`, sits in the demo DB
   (created to view onboarding). Delete it, or re-run the seed.
 

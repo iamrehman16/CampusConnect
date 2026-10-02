@@ -113,7 +113,6 @@ export function StepAvatar({ control }: StepAvatarProps) {
                 width: 40,
                 height: 22,
                 borderRadius: 11,
-                background: field.value ? "primary.main" : "action.disabled",
                 bgcolor: field.value ? "primary.main" : "action.disabled",
                 position: "relative",
                 flexShrink: 0,

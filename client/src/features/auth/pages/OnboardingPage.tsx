@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Box, Container, MobileStepper, useTheme } from "@mui/material";
+import { Box, Container } from "@mui/material";
 import { useForm } from "react-hook-form";
 import { useCompleteOnboarding } from "../hooks/useCompleteOnboarding";
 import type { CompleteOnboardingRequest } from "../types/auth.dto";
@@ -11,7 +11,6 @@ import {
   OnboardingCard,
   OnboardingStepContent,
   OnboardingNavigation,
-  STEPS,
 } from "../components/onboarding";
 
 // ── Types ────────────────────────────────────────────────────────────
@@ -21,10 +20,12 @@ export type FormValues = CompleteOnboardingRequest & {
   bio: string;
 };
 
+// Steps with no required fields (Interests & Expertise).
+const OPTIONAL_STEPS = new Set([2]);
+
 // ── Main Page ────────────────────────────────────────────────────────
 
 export default function OnboardingPage() {
-  const theme = useTheme();
   const { user } = useAuth();
   const { mutate: completeOnboarding, isPending } = useCompleteOnboarding();
   const [activeStep, setActiveStep] = useState(0);
@@ -55,6 +56,8 @@ export default function OnboardingPage() {
     if (valid) setActiveStep((s) => s + 1);
   };
 
+  const handleSkip = () => setActiveStep((s) => s + 1);
+
   const handleBack = () => setActiveStep((s) => s - 1);
 
   const onSubmit = (values: FormValues) => {
@@ -73,7 +76,7 @@ export default function OnboardingPage() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: theme.palette.background.default,
+        bgcolor: "surface.canvas",
         p: 2,
       }}
     >
@@ -100,26 +103,12 @@ export default function OnboardingPage() {
               onBack={handleBack}
               onNext={handleNext}
               onSubmit={handleSubmit(onSubmit)}
+              onSkip={OPTIONAL_STEPS.has(activeStep) ? handleSkip : undefined}
               isPending={isPending}
             />
           </form>
         </OnboardingCard>
 
-        {/* Mobile stepper dots (optional, for small screens) */}
-        <MobileStepper
-          variant="dots"
-          steps={STEPS.length}
-          position="static"
-          activeStep={activeStep}
-          nextButton={null}
-          backButton={null}
-          sx={{
-            background: "transparent",
-            justifyContent: "center",
-            mt: 2,
-            display: { sm: "none" },
-          }}
-        />
       </Container>
     </Box>
   );
