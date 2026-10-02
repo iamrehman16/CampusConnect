@@ -484,7 +484,7 @@ Bugs found and fixed along the way (each its own commit):
 - Sign in / sign up as focused forms (room for F3's Google button).
 - Onboarding as a short stepper with progress; skippable optional steps.
 
-**D10 status: IN PROGRESS (2026-09-27).** Done:
+**D10 status: DONE pending a visual check of onboarding (2026-10-02).** Done:
 - The landing page (`/auth`) uses real product screenshots instead of
   the unDraw art.
 - `/login` and `/signup` are focused single-card pages.
@@ -495,8 +495,7 @@ Bugs found and fixed along the way (each its own commit):
   `useLogin`/`useRegister` await it before navigating. `fetchProfile` now
   logs and rethrows; `refreshUser` is the non-throwing wrapper.
 - ~~Review and restyle the onboarding stepper.~~ **Done (2026-10-02):** segmented progress bar, canvas background + shared Card, "Skip for now" on the optional Interests step, emoji and hardcoded colours removed. Not yet checked visually in a browser.
-- A throwaway account, `d10.check@example.com`, sits in the demo DB
-  (created to view onboarding). Delete it, or re-run the seed.
+- ~~A throwaway account, `d10.check@example.com`, sits in the demo DB~~ deleted 2026-10-02.
 
 ---
 
