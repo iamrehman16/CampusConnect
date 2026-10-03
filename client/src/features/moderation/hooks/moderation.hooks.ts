@@ -1,11 +1,20 @@
 import { useCallback } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { moderationService } from "../services/moderation.service";
+import type { ReportResolution, ReportStatus } from "../types/moderation.dto";
 
 export const moderationKeys = {
   all: ["moderation"] as const,
   blocked: () => [...moderationKeys.all, "blocked"] as const,
+  reports: (status: ReportStatus) =>
+    [...moderationKeys.all, "reports", status] as const,
+  reportsAll: () => [...moderationKeys.all, "reports"] as const,
 };
 
 export const useBlockedUsers = () =>
@@ -66,3 +75,44 @@ export function useBlockToggle(userId: string | undefined, name: string) {
 
   return { isBlocked, toggle, isPending: block.isPending || unblock.isPending };
 }
+
+export const useCreateReport = () =>
+  useMutation({
+    mutationFn: moderationService.createReport,
+    onSuccess: () =>
+      toast.success("Report sent. A moderator will take a look."),
+  });
+
+const REPORTS_PAGE_LIMIT = 10;
+
+export const useAdminReports = (status: ReportStatus) =>
+  useInfiniteQuery({
+    queryKey: moderationKeys.reports(status),
+    queryFn: ({ pageParam }: { pageParam: number }) =>
+      moderationService.listReports({
+        page: pageParam,
+        limit: REPORTS_PAGE_LIMIT,
+        status,
+      }),
+    initialPageParam: 1 as number,
+    getNextPageParam: (last) =>
+      last.page < last.totalPage ? last.page + 1 : undefined,
+  });
+
+const RESOLVED_TOAST: Record<ReportResolution, string> = {
+  dismiss: "Report dismissed",
+  warn: "Warning sent",
+  suspend: "User suspended",
+};
+
+export const useResolveReport = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; action: ReportResolution; note?: string }) =>
+      moderationService.resolveReport(v.id, v.action, v.note),
+    onSuccess: (_report, { action }) => {
+      void queryClient.invalidateQueries({ queryKey: moderationKeys.reportsAll() });
+      toast.success(RESOLVED_TOAST[action]);
+    },
+  });
+};

@@ -180,6 +180,7 @@ export const Edit = adapt(L.Pencil, "Edit");
 export const EditOutlined = adapt(L.Pencil, "EditOutlined");
 export const Delete = adapt(L.Trash2, "Delete");
 export const Block = adapt(L.Ban, "Block");
+export const Flag = adapt(L.Flag, "Flag");
 export const Save = adapt(L.Save, "Save");
 export const Search = adapt(L.Search, "Search");
 export const Tune = adapt(L.SlidersHorizontal, "Tune");

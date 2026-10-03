@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { Box, Button, Card, Link, Stack, Tab, Tabs, Typography } from "@mui/material";
 import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowBack, Block as BlockIcon } from "@/shared/icons";
+import { ArrowBack, Block as BlockIcon, Flag as FlagIcon } from "@/shared/icons";
+import { ReportDialog } from "@/features/moderation/components/ReportDialog";
 import { KebabMenu } from "@/shared/components/KebabMenu";
 import { useBlockToggle } from "@/features/moderation/hooks/moderation.hooks";
 import { PageContainer } from "@/shared/components/PageContainer";
@@ -31,6 +32,7 @@ const PublicProfilePage: React.FC = () => {
     userId,
     profile?.name ?? "",
   );
+  const [reportOpen, setReportOpen] = useState(false);
   const posts = usePostsByUser(userId);
   const resources = useResourcesByUser(userId, { status: ApprovalStatus.APPROVED });
   const user = toProfileUserViewModel(profile);
@@ -69,6 +71,16 @@ const PublicProfilePage: React.FC = () => {
         <ArrowBack sx={{ fontSize: 16 }} /> Back
       </Link>
 
+      {reportOpen && (
+        <ReportDialog
+          open
+          onClose={() => setReportOpen(false)}
+          targetType="user"
+          targetId={userId}
+          subject={profile?.name?.trim() || "this user"}
+        />
+      )}
+
       <Stack spacing={3}>
         <ProfileHero
           user={user}
@@ -89,6 +101,12 @@ const PublicProfilePage: React.FC = () => {
               )}
               <KebabMenu
                 items={[
+                  {
+                    label: "Report user",
+                    icon: <FlagIcon fontSize="small" />,
+                    color: "error",
+                    onClick: () => setReportOpen(true),
+                  },
                   {
                     label: isBlocked ? "Unblock user" : "Block user",
                     icon: <BlockIcon fontSize="small" />,

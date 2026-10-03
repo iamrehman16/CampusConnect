@@ -1,8 +1,12 @@
+import { useState } from "react";
 import { Box, Typography } from "@mui/material";
 import { useAuth } from "@/shared/hooks/useAuth";
 import type { Message, SendMessageDto } from "../types/chat-dto";
 import { MessageStatusIcon } from "./MessageStatusIcon";
 import { MessageContextCard } from "./MessageContextCard";
+import { KebabMenu } from "@/shared/components/KebabMenu";
+import { Flag as FlagIcon } from "@/shared/icons";
+import { ReportDialog } from "@/features/moderation/components/ReportDialog";
 import { format } from "date-fns";
 
 interface Props {
@@ -17,8 +21,11 @@ export function MessageBubble({
   showSeenAt = false,
 }: Props) {
   const { user } = useAuth();
+  const [reportOpen, setReportOpen] = useState(false);
   const isOwn = message.sender === user?._id;
   const timestampColor = isOwn ? "rgba(255,255,255,0.8)" : "text.tertiary";
+  // Only received, persisted (real id), undeleted messages can be reported.
+  const canReport = !isOwn && !message.isDeleted && Boolean(message.id);
   const seenAt = message.seenAt ? format(new Date(message.seenAt), "HH:mm") : null;
 
   return (
@@ -31,6 +38,15 @@ export function MessageBubble({
         alignSelf: isOwn ? "flex-end" : "flex-start",
       }}
     >
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 0.25,
+          maxWidth: "100%",
+          "&:hover .report-menu, &:focus-within .report-menu": { opacity: 1 },
+        }}
+      >
       <Box
         sx={{
           px: 1.5,
@@ -96,6 +112,30 @@ export function MessageBubble({
           )}
         </Box>
       </Box>
+        {canReport && (
+          <Box className="report-menu" sx={{ opacity: { xs: 1, md: 0 }, transition: "opacity 0.15s" }}>
+            <KebabMenu
+              items={[
+                {
+                  label: "Report message",
+                  icon: <FlagIcon fontSize="small" />,
+                  color: "error",
+                  onClick: () => setReportOpen(true),
+                },
+              ]}
+            />
+          </Box>
+        )}
+      </Box>
+      {reportOpen && (
+        <ReportDialog
+          open
+          onClose={() => setReportOpen(false)}
+          targetType="message"
+          targetId={message.id}
+          subject="this message"
+        />
+      )}
 
       {isOwn && message._status === "FAILED" && (
         <Typography variant="caption" color="error.main" sx={{ mt: 0.25, px: 0.5 }}>

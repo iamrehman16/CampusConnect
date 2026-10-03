@@ -22,7 +22,8 @@ import { PresenceStatus } from "../components/PresenceStatus";
 import UserAvatar from "@/shared/components/UserAvatar";
 import { useChatSocketContext } from "@/shared/hooks/useChatSocketContext";
 import { KebabMenu } from "@/shared/components/KebabMenu";
-import { Block as BlockIcon } from "@/shared/icons";
+import { Block as BlockIcon, Flag as FlagIcon } from "@/shared/icons";
+import { ReportDialog } from "@/features/moderation/components/ReportDialog";
 import { useBlockToggle } from "@/features/moderation/hooks/moderation.hooks";
 import { Button } from "@mui/material";
 
@@ -90,6 +91,8 @@ export default function ConversationPage() {
     toggle: toggleBlock,
     isPending: blockPending,
   } = useBlockToggle(otherParticipant?.id, otherParticipant?.name ?? "");
+
+  const [reportOpen, setReportOpen] = useState(false);
 
   const hasUnread = (conversation?.unreadCount ?? 0) > 0;
 
@@ -203,6 +206,12 @@ export default function ConversationPage() {
           <KebabMenu
             items={[
               {
+                label: "Report conversation",
+                icon: <FlagIcon fontSize="small" />,
+                color: "error",
+                onClick: () => setReportOpen(true),
+              },
+              {
                 label: isBlocked ? "Unblock user" : "Block user",
                 icon: <BlockIcon fontSize="small" />,
                 color: isBlocked ? "inherit" : "error",
@@ -213,6 +222,16 @@ export default function ConversationPage() {
           />
         )}
       </Box>
+
+      {reportOpen && (
+        <ReportDialog
+          open
+          onClose={() => setReportOpen(false)}
+          targetType="conversation"
+          targetId={activeConversationId}
+          subject={otherParticipant?.name?.trim() || "this conversation"}
+        />
+      )}
 
       {/* Feed */}
       <Box sx={{ flex: 1, minHeight: 0 }}>

@@ -31,7 +31,7 @@ Work top to bottom:
 | 1 | Demo data | H1 ✅ | Redesigning against 4 resources and 1 mentor gives misleading screens |
 | 2 | Design foundation | D4, D5 (+D3 folded in) ✅ | Tokens + app shell every page redesign builds on |
 | 3 | Page redesigns | D6–D10 (D6, D7 ✅) | In demo-walkthrough order |
-| 4 | Integration features | E13 ✅, E14 ✅, E16 | The "resource → AI → human" story; safety before any public use |
+| 4 | Integration features | E13 ✅, E14 ✅, E16 ✅ | The "resource → AI → human" story; safety before any public use |
 | 5 | Mentorship depth | **E12, E11, E15** | Builds on E10 + reputation. **E12 moved first (2026-10-03):** E14's mentor matcher is an interim stand-in for it, and "Recommended for you" is more demo-visible than E11's ratings |
 | 6 | Google sign-in | F1–F3 | Independent; can slot in anywhere if needed |
 | 7 | Demo polish | H2, H3 | States, walkthrough, final pass |
@@ -707,9 +707,10 @@ contact easier) is an abuse vector; needed before any wider rollout.
 - Reported message content is retained for review even if the sender
   soft-deletes it.
 
-**E16 status: IN PROGRESS (2026-10-03).** Order of work: (1) enforce
-suspension, (2) block + enforcement, (3) block UI, (4) reports + admin queue,
-(5) report UI + admin tab. Each is its own commit.
+**E16 status: DONE (2026-10-03).** Five commits: (1) enforce suspension,
+(2) block + enforcement, (3) block UI, (4) reports + admin queue, (5) report
+UI + admin tab. All three acceptance criteria verified live (API) and in a
+browser on the demo DB.
 
 **Found before starting (root cause):** `UserStatus.SUSPENDED` existed and an
 admin could set it, but nothing in `auth/` ever read `accountStatus` — the JWT
@@ -801,6 +802,27 @@ already-open chat socket keeps working until the next HTTP call or reconnect
   account; easy to add later as a notification if wanted.
 - **Not done:** reports have no audit trail beyond `resolvedBy/At/Note`;
   nothing stops an admin acting on a report about themselves.
+
+**Decisions — report UI + admin tab (commit 5), verified in a browser:**
+- **Report entry points:** a "Report message" menu on received bubbles (shown
+  on hover, always visible on touch), "Report conversation" in the chat
+  header menu, "Report user" on a public profile — one shared `ReportDialog`
+  (fixed reason list + optional 500-char details). Own messages, deleted
+  messages and unsaved (optimistic) messages can't be reported from the UI.
+- **Admin "Reports" tab** shows an open-count badge, filters by status, and
+  each card shows reporter, reason, details and the retained evidence with the
+  reported person's lines highlighted. Warn needs no confirmation; Suspend
+  asks for one.
+- **Found along the way (separate commit):** the admin Overview panel had
+  `display: flex` in `sx`, which overrides the `hidden` attribute, so it never
+  hid and every other tab rendered underneath it. Pre-existing; fixed in its
+  own commit rather than folded into this feature.
+- **Not done / follow-ups:** reporting from a community post or comment (only
+  chat + profile for now); the reporter isn't notified of the outcome; no
+  rate limit on reports per user (the one-open-per-target index only stops
+  exact duplicates); a suspended user sees the server's "account has been
+  suspended" message at sign-in but an already-signed-in client just gets
+  signed out without explanation.
 
 
 ---
