@@ -7,6 +7,7 @@ import { ModerationModule } from '../moderation/moderation.module';
 import { Mentorship, MentorshipSchema } from './schema/mentorship.schema';
 import { MentorshipService } from './mentorship.service';
 import { MentorshipController } from './mentorship.controller';
+import { MentorRecommendationService } from './mentor-recommendation.service';
 
 @Module({
   imports: [
@@ -19,6 +20,6 @@ import { MentorshipController } from './mentorship.controller';
     ModerationModule,
   ],
   controllers: [MentorshipController],
-  providers: [MentorshipService],
+  providers: [MentorshipService, MentorRecommendationService],
 })
 export class MentorshipModule {}

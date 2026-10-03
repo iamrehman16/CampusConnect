@@ -78,4 +78,24 @@ describe('BlockService', () => {
     expect(filter.blocker.toString()).toBe(a);
     expect(filter.blocked.toString()).toBe(b);
   });
+
+  it('blockedIdsFor returns the other party in both directions', async () => {
+    const me = a;
+    const iBlocked = new Types.ObjectId();
+    const blockedMe = new Types.ObjectId();
+    const find = jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue([
+        { blocker: new Types.ObjectId(me), blocked: iBlocked },
+        { blocker: blockedMe, blocked: new Types.ObjectId(me) },
+      ]),
+    });
+
+    const ids = await build({ find }).blockedIdsFor(me);
+
+    expect([...ids].sort()).toEqual(
+      [iBlocked.toString(), blockedMe.toString()].sort(),
+    );
+  });
 });

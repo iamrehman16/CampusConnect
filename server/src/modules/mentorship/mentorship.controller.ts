@@ -9,6 +9,8 @@ import {
   Req,
 } from '@nestjs/common';
 import { MentorshipService } from './mentorship.service';
+import { MentorRecommendationService } from './mentor-recommendation.service';
+import { RecommendedMentorsQueryDto } from './dto/recommended-mentors-query.dto';
 import { CreateMentorshipDto } from './dto/create-mentorship.dto';
 import { DeclineMentorshipDto } from './dto/decline-mentorship.dto';
 import { MentorshipQueryDto } from './dto/mentorship-query.dto';
@@ -17,7 +19,10 @@ import { ParseMongoIdPipe } from '../../common/pipes/is-mongo-id.pipe';
 
 @Controller('mentorships')
 export class MentorshipController {
-  constructor(private readonly service: MentorshipService) {}
+  constructor(
+    private readonly service: MentorshipService,
+    private readonly recommendations: MentorRecommendationService,
+  ) {}
 
   @Post()
   request(@Req() req: { user: CurrentUser }, @Body() dto: CreateMentorshipDto) {
@@ -27,6 +32,15 @@ export class MentorshipController {
   @Get()
   list(@Req() req: { user: CurrentUser }, @Query() query: MentorshipQueryDto) {
     return this.service.list(req.user.id, query);
+  }
+
+  /** "Recommended for you" mentors for the caller (BACKLOG.md E12). */
+  @Get('recommended-mentors')
+  recommendedMentors(
+    @Req() req: { user: CurrentUser },
+    @Query() query: RecommendedMentorsQueryDto,
+  ) {
+    return this.recommendations.recommend(req.user.id, query.limit);
   }
 
   /** Requests waiting for the caller (as a mentor) — for nav badges. */

@@ -536,6 +536,48 @@ onboarding and never used — free signal for matching.
   sort in E9.
 - Graceful cold start when a student has no interests set.
 
+**E12 status: IN PROGRESS (2026-10-03).** Server done; client (Home widget +
+directory "For you") remaining.
+
+**Decisions (and why):**
+- **One pure scorer file, `user/mentor-matching.ts`, holds both matchers.**
+  E14's contextual matcher (`rankMentors`: what an AI answer was about) moved
+  here from `ai/` and sits next to the new profile-based one
+  (`recommendMentors`), as E14's notes planned. They answer different
+  questions, so they stay two functions rather than one blended score.
+- **Scoring is documented in the file header and unit-tested** (363 server
+  tests green): +4 per mentor label overlapping an interest (cap 12), +3 same
+  department, +2 mentor further along. Seniority is a *bonus only* — it never
+  qualifies a mentor alone, otherwise every senior matches every student.
+  Capacity is a precondition, reputation breaks ties, then id (deterministic).
+- **Overlap ignores generic words** (`data`, `systems`, `development`,
+  `engineering`, …). Without that, "Data Science" matched "Data Structures"
+  and "Operating Systems" matched "Database Systems". Cost: "Web Development"
+  no longer matches "Backend Development" — fewer false matches over more
+  recall, since a wrong "for you" is worse than a missing one.
+- **No rating signal yet** — the criterion lists rating, but that's E11. When
+  E11 lands, add it as one more term in `scoreForProfile`.
+- **Cold start is honest, not faked.** If nothing matches (or the student has
+  set no interests/department) the endpoint returns top contributors with
+  `personalized: false` and the reason "Top contributor", so the UI can say
+  "Popular mentors" instead of "For you". A department alone is enough to
+  personalize.
+- **Exclusions need other modules' data, so the service lives in
+  `mentorship/`:** mentors you already have a pending/active mentorship with
+  (recommending your own mentor is noise) and anyone blocked either way
+  (`BlockService.blockedIdsFor`). Endpoint: `GET /mentorships/recommended-mentors?limit=`
+  (1–12, default 3) — not the `users/mentors/recommended` path the criterion
+  sketched, to avoid a route clash with `users/:id` and to keep it next to
+  the data it needs.
+- **Same scale shortcut as E14:** the first 100 open mentors with free slots
+  are scored in-process. Move into the query when the pool outgrows that.
+- **E14's "Ask a human" doesn't yet exclude blocked/already-mentoring
+  mentors** (it only uses the contextual matcher). Small follow-up.
+- **Found and fixed separately:** the public stats' `availableMentors`
+  counted `role = contributor` users rather than mentors; it now counts active,
+  open-to-mentor members with a free slot (`2ffac4f`).
+
+
 ---
 ### Integration (roadmap Phase 4)
 

@@ -13,7 +13,7 @@ import {
 import { UserService } from '../../user/user.service';
 import { MentorQueryDto } from '../../user/dto/mentor-query.dto';
 import { MentorSuggestionDto } from '../dto/mentor-suggestion.dto';
-import { MatchTerms, rankMentors } from '../mentor-matching';
+import { MatchTerms, rankMentors } from '../../user/mentor-matching';
 
 /** At most this many mentors are suggested (BACKLOG.md E14). */
 const SUGGESTION_LIMIT = 3;

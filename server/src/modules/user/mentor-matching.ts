@@ -1,12 +1,13 @@
-import { MentorSummaryDto } from '../user/dto/mentor-summary.dto';
+import { MentorSummaryDto } from './dto/mentor-summary.dto';
 
 /**
  * What an answer was about, used to pick mentors for the "Ask a human"
  * handoff (BACKLOG.md E14). Subjects/courses come from the cited resources;
  * the question text is the fallback when nothing was retrieved.
  *
- * Interim matcher: E12 (recommended mentors) will replace this with a shared
- * scorer — keep it pure so it can be swapped or reused without moving code.
+ * Two pure scorers live here, both unit-tested, no ML:
+ *   - `rankMentors`      — contextual: what an AI answer was about (E14)
+ *   - `recommendMentors` — profile-based: who a student should meet (E12)
  */
 export interface MatchTerms {
   subjects: string[];
@@ -149,4 +150,147 @@ export function rankMentors(
         a.mentor.id.localeCompare(b.mentor.id),
     )
     .slice(0, limit);
+}
+
+// ─── Profile-based recommendation (BACKLOG.md E12) ──────────────────────────
+
+/** The mentee-side signals collected at onboarding. */
+export interface MenteeProfile {
+  interests: string[];
+  department?: string;
+  semester?: number;
+}
+
+/**
+ * Scoring, in one place so it is easy to explain and to change:
+ *
+ *   +4  per mentor topic/expertise label that overlaps one of the student's
+ *       interests (capped at 12). Overlap = same phrase, one contains the
+ *       other, or a shared non-generic word ("development" or "systems"
+ *       alone is too generic to count).
+ *   +3  same department.
+ *   +2  mentor is further along (semester greater) — a BONUS only: it never
+ *       qualifies a mentor on its own, or every senior would match everyone.
+ *
+ * Capacity is a precondition (callers pass only mentors with a free slot),
+ * reputation breaks ties, and there is no rating signal yet (that is E11).
+ * A mentor with 0 from topic + department is not recommended on seniority.
+ */
+const INTEREST_OVERLAP = 4;
+const INTEREST_CAP = 12;
+const SAME_DEPARTMENT = 3;
+const SENIOR_BONUS = 2;
+
+/** Words too common in course/topic names to mean two labels are the same subject. */
+const GENERIC_WORDS = new Set([
+  'data',
+  'development',
+  'systems',
+  'design',
+  'engineering',
+  'science',
+  'introduction',
+  'basics',
+  'fundamentals',
+  'advanced',
+  'applied',
+  'computer',
+]);
+
+function distinctiveWords(text: string): string[] {
+  return wordsOf(text).filter((w) => !GENERIC_WORDS.has(w));
+}
+
+function labelsOverlap(a: string, b: string): boolean {
+  const x = norm(a);
+  const y = norm(b);
+  if (!x || !y) return false;
+  if (x === y || x.includes(y) || y.includes(x)) return true;
+  const yWords = new Set(distinctiveWords(y));
+  return distinctiveWords(x).some((w) => yWords.has(w));
+}
+
+export interface RecommendedMentor {
+  mentor: MentorSummaryDto;
+  score: number;
+  /** Short, human-readable reasons shown in the UI. */
+  reasons: string[];
+}
+
+export function scoreForProfile(
+  mentor: MentorSummaryDto,
+  mentee: MenteeProfile,
+): RecommendedMentor {
+  const labels = [...mentor.mentorTopics, ...mentor.expertise];
+  const matchedLabels = labels.filter((label) =>
+    mentee.interests.some((interest) => labelsOverlap(label, interest)),
+  );
+  const topicScore = Math.min(
+    matchedLabels.length * INTEREST_OVERLAP,
+    INTEREST_CAP,
+  );
+
+  const sameDepartment =
+    !!mentee.department &&
+    !!mentor.department &&
+    norm(mentee.department) === norm(mentor.department);
+  const departmentScore = sameDepartment ? SAME_DEPARTMENT : 0;
+
+  const qualifying = topicScore + departmentScore;
+  const isSenior =
+    qualifying > 0 &&
+    !!mentee.semester &&
+    !!mentor.semester &&
+    mentor.semester > mentee.semester;
+  const seniorScore = isSenior ? SENIOR_BONUS : 0;
+
+  const reasons: string[] = [];
+  if (matchedLabels.length > 0) {
+    reasons.push(`Helps with ${matchedLabels.slice(0, 2).join(', ')}`);
+  }
+  if (sameDepartment) reasons.push('Same department');
+  if (isSenior) reasons.push(`Senior (semester ${mentor.semester})`);
+
+  return { mentor, score: qualifying + seniorScore, reasons };
+}
+
+export interface RecommendationResult {
+  mentors: RecommendedMentor[];
+  /**
+   * False when nothing matched the student's profile (or they've set no
+   * interests / department yet) and these are the most reputable available
+   * mentors instead — the UI says so instead of claiming it's "for you".
+   */
+  personalized: boolean;
+}
+
+const byReputation = (a: MentorSummaryDto, b: MentorSummaryDto) =>
+  b.contributionScore - a.contributionScore || a.id.localeCompare(b.id);
+
+/** Best `limit` mentors for a student; falls back gracefully on a cold start. */
+export function recommendMentors(
+  mentors: MentorSummaryDto[],
+  mentee: MenteeProfile,
+  limit: number,
+): RecommendationResult {
+  const matched = mentors
+    .map((m) => scoreForProfile(m, mentee))
+    .filter((r) => r.score > 0)
+    .sort((a, b) => b.score - a.score || byReputation(a.mentor, b.mentor));
+
+  if (matched.length > 0) {
+    return { mentors: matched.slice(0, limit), personalized: true };
+  }
+
+  return {
+    mentors: [...mentors]
+      .sort(byReputation)
+      .slice(0, limit)
+      .map((mentor) => ({
+        mentor,
+        score: 0,
+        reasons: ['Top contributor'],
+      })),
+    personalized: false,
+  };
 }

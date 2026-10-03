@@ -85,6 +85,21 @@ export class BlockService {
     );
   }
 
+  /** Everyone the user has blocked or who has blocked them, as id strings. */
+  async blockedIdsFor(userId: string): Promise<Set<string>> {
+    const me = new Types.ObjectId(userId);
+    const rows = await this.blockModel
+      .find({ $or: [{ blocker: me }, { blocked: me }] })
+      .select('blocker blocked')
+      .lean()
+      .exec();
+    return new Set(
+      rows.map((r) =>
+        r.blocker.equals(me) ? r.blocked.toString() : r.blocker.toString(),
+      ),
+    );
+  }
+
   /** True when either user has blocked the other. */
   async isBlockedEitherWay(a: string, b: string): Promise<boolean> {
     const [x, y] = [new Types.ObjectId(a), new Types.ObjectId(b)];

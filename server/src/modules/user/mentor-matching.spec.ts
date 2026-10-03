@@ -1,6 +1,11 @@
-import { MentorSummaryDto } from '../user/dto/mentor-summary.dto';
+import { MentorSummaryDto } from './dto/mentor-summary.dto';
 import { ReputationTier } from '../reputation/tiers';
-import { rankMentors, scoreMentor } from './mentor-matching';
+import {
+  rankMentors,
+  recommendMentors,
+  scoreForProfile,
+  scoreMentor,
+} from './mentor-matching';
 
 function mentor(
   id: string,
@@ -114,5 +119,148 @@ describe('rankMentors', () => {
 
   it('returns nothing when no mentor overlaps', () => {
     expect(rankMentors([mentor('x', ['Painting'])], terms, 3)).toEqual([]);
+  });
+});
+
+describe('scoreForProfile (E12)', () => {
+  const m = (extra: Partial<MentorSummaryDto> = {}) =>
+    mentor('m', ['Data Structures'], extra);
+
+  it('scores an interest overlap and explains it', () => {
+    const r = scoreForProfile(m(), { interests: ['Data Structures'] });
+
+    expect(r.score).toBe(4);
+    expect(r.reasons).toEqual(['Helps with Data Structures']);
+  });
+
+  it('matches on a shared distinctive word but not on a generic one', () => {
+    const real = scoreForProfile(mentor('a', ['Machine Learning']), {
+      interests: ['Learning'],
+    });
+    const generic = scoreForProfile(mentor('b', ['Operating Systems']), {
+      interests: ['Database Systems'],
+    });
+
+    expect(real.score).toBeGreaterThan(0);
+    expect(generic.score).toBe(0); // "systems" alone is too generic
+  });
+
+  it('caps the interest score so one mentor with many topics cannot dominate', () => {
+    const r = scoreForProfile(
+      mentor('a', ['Graphs', 'Trees', 'Sorting', 'Hashing', 'Heaps']),
+      { interests: ['Graphs', 'Trees', 'Sorting', 'Hashing', 'Heaps'] },
+    );
+
+    expect(r.score).toBe(12);
+  });
+
+  it('adds department and a seniority bonus on top of a real match', () => {
+    const r = scoreForProfile(
+      m({ department: 'Computer Science', semester: 8 }),
+      {
+        interests: ['Data Structures'],
+        department: 'computer science',
+        semester: 4,
+      },
+    );
+
+    expect(r.score).toBe(4 + 3 + 2);
+    expect(r.reasons).toEqual([
+      'Helps with Data Structures',
+      'Same department',
+      'Senior (semester 8)',
+    ]);
+  });
+
+  it('never qualifies a mentor on seniority alone', () => {
+    const r = scoreForProfile(mentor('a', ['Painting'], { semester: 8 }), {
+      interests: ['Data Structures'],
+      semester: 2,
+    });
+
+    expect(r.score).toBe(0);
+  });
+
+  it("doesn't give a bonus to a mentor who is not further along", () => {
+    const r = scoreForProfile(m({ semester: 3 }), {
+      interests: ['Data Structures'],
+      semester: 5,
+    });
+
+    expect(r.score).toBe(4);
+  });
+});
+
+describe('recommendMentors (E12)', () => {
+  const pool = [
+    mentor('ds', ['Data Structures'], { contributionScore: 10 }),
+    mentor('db', ['Database Systems'], { contributionScore: 90 }),
+    mentor('art', ['Painting'], { contributionScore: 500 }),
+  ];
+
+  it('ranks by profile match and flags the result as personalized', () => {
+    const r = recommendMentors(pool, { interests: ['Data Structures'] }, 3);
+
+    expect(r.personalized).toBe(true);
+    expect(r.mentors.map((x) => x.mentor.id)).toEqual(['ds']);
+  });
+
+  it('breaks equal scores by reputation, then id', () => {
+    const r = recommendMentors(
+      [
+        mentor('b', ['Graphs'], { contributionScore: 5 }),
+        mentor('a', ['Graphs'], { contributionScore: 5 }),
+        mentor('c', ['Graphs'], { contributionScore: 50 }),
+      ],
+      { interests: ['Graphs'] },
+      3,
+    );
+
+    expect(r.mentors.map((x) => x.mentor.id)).toEqual(['c', 'a', 'b']);
+  });
+
+  it('cold start: no interests -> top contributors, honestly labelled', () => {
+    const r = recommendMentors(pool, { interests: [] }, 2);
+
+    expect(r.personalized).toBe(false);
+    expect(r.mentors.map((x) => x.mentor.id)).toEqual(['art', 'db']);
+    expect(r.mentors[0].reasons).toEqual(['Top contributor']);
+  });
+
+  it('cold start also applies when interests exist but nothing matches', () => {
+    const r = recommendMentors(pool, { interests: ['Underwater Basketry'] }, 1);
+
+    expect(r.personalized).toBe(false);
+  });
+
+  it('a department alone is enough to personalize when interests are unset', () => {
+    const r = recommendMentors(
+      [mentor('cs', ['Painting'], { department: 'CS' })],
+      { interests: [], department: 'CS' },
+      3,
+    );
+
+    expect(r.personalized).toBe(true);
+    expect(r.mentors[0].reasons).toEqual(['Same department']);
+  });
+
+  it('returns an empty list when there are no mentors at all', () => {
+    expect(recommendMentors([], { interests: ['x'] }, 3)).toEqual({
+      mentors: [],
+      personalized: false,
+    });
+  });
+
+  it('is deterministic: the same input gives the same order', () => {
+    const a = recommendMentors(pool, { interests: ['Data Structures'] }, 3);
+    const b = recommendMentors(
+      [...pool].reverse(),
+      { interests: ['Data Structures'] },
+      3,
+    );
+
+    expect(a.mentors.map((x) => x.mentor.id)).toEqual(
+      b.mentors.map((x) => x.mentor.id),
+    );
   });
 });
