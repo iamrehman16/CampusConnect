@@ -102,6 +102,18 @@ can't reach either dashboard), then `CLAUDE.md` §8
 - Deployed `/auth/google/callback` and a hard refresh on `/login` load (no 404).
 - Sign-in, Google sign-in, an upload and an AI answer verified on the deployed app.
 
+**Found while going live (2026-10-03):**
+- Vercel's `VITE_API_BASE_URL` still had a `/api` suffix from the old code, so every call
+  went to `/api/api/...` (login included). **The client contract is: the server origin
+  only, no `/api`** (axios, the AI stream and the Google button each append it). Fixed in
+  Vercel production and preview, then redeployed.
+- Render `FRONTEND_URL` does not match the Vercel origin: the CORS preflight from
+  `campus-connect-client-two.vercel.app` gets no `Access-Control-Allow-Origin`, so the
+  browser blocks every API call. Must be `https://campus-connect-client-two.vercel.app`.
+- Render has no `CLIENT_ID` / `CLIENT_SECRET`, so `/api/auth/google` answers 503.
+- Wrong-password login for an unknown email returns 404 ("User not found") instead of
+  401, which also tells an attacker which emails have accounts (follow-up, not scheduled).
+
 ### I2 — Environment contract and `render.yaml`
 **Effort:** 3
 **Where:** `render.yaml` (repo root), `server/.env.example`, `client/.env.example`, docs
