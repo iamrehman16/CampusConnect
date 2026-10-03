@@ -755,6 +755,22 @@ already-open chat socket keeps working until the next HTTP call or reconnect
   on DI setup (A12). `npx jest src/modules` is currently 41/41 suites, 324
   tests, green — the note and the advisory `test` CI job are due for review.
 
+**Decisions — block UI (commit 3), verified in a browser:**
+- **Where you can block:** the chat header menu and the public profile menu,
+  both through one `useBlockToggle` hook so they confirm, toast and refresh
+  identically. Blocking asks for confirmation (`window.confirm`, the pattern
+  already used for deleting a post); unblocking doesn't.
+- **A way back that doesn't need the person's page:** Settings has a
+  "Blocked users" card listing everyone you've blocked with an Unblock button,
+  because a block from a chat header would otherwise be hard to find again.
+- **The composer is replaced, not disabled,** when you've blocked the person:
+  a banner says so and offers Unblock. This only covers blocks *you* made —
+  the client never learns that someone blocked you (see the neutral-message
+  decision above), so from that side a send just fails like any other failed
+  send. Accepted trade-off for not leaking who blocked whom.
+- **Mentorship while blocked** surfaces the server's "You can't contact this
+  user" through the app-wide mutation error toast; no special UI.
+
 
 ---
 

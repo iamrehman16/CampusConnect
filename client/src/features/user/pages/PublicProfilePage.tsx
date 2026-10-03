@@ -1,7 +1,9 @@
 import React from "react";
 import { Box, Button, Card, Link, Stack, Tab, Tabs, Typography } from "@mui/material";
 import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowBack } from "@/shared/icons";
+import { ArrowBack, Block as BlockIcon } from "@/shared/icons";
+import { KebabMenu } from "@/shared/components/KebabMenu";
+import { useBlockToggle } from "@/features/moderation/hooks/moderation.hooks";
 import { PageContainer } from "@/shared/components/PageContainer";
 import { ROUTES } from "@/shared/constants/routes";
 import { ApprovalStatus, UserRole } from "@/shared/types/enums";
@@ -25,6 +27,10 @@ const PublicProfilePage: React.FC = () => {
   const [params, setParams] = useSearchParams();
 
   const { data: profile, isLoading, isError } = useUserProfile(userId);
+  const { isBlocked, toggle: toggleBlock, isPending: blockPending } = useBlockToggle(
+    userId,
+    profile?.name ?? "",
+  );
   const posts = usePostsByUser(userId);
   const resources = useResourcesByUser(userId, { status: ApprovalStatus.APPROVED });
   const user = toProfileUserViewModel(profile);
@@ -72,14 +78,27 @@ const PublicProfilePage: React.FC = () => {
             resources: uploads ? resourceCount : undefined,
           }}
           actions={
-            user?.isOpenToMentor ? (
-              <RequestMentorshipButton
-                mentorId={user.id}
-                mentorName={user.name}
-                slotsLeft={Math.max(0, user.maxActiveMentees - user.activeMenteeCount)}
-                defaultTopic={user.mentorTopics[0]}
+            <Stack direction="row" alignItems="center" gap={0.5}>
+              {user?.isOpenToMentor && (
+                <RequestMentorshipButton
+                  mentorId={user.id}
+                  mentorName={user.name}
+                  slotsLeft={Math.max(0, user.maxActiveMentees - user.activeMenteeCount)}
+                  defaultTopic={user.mentorTopics[0]}
+                />
+              )}
+              <KebabMenu
+                items={[
+                  {
+                    label: isBlocked ? "Unblock user" : "Block user",
+                    icon: <BlockIcon fontSize="small" />,
+                    color: isBlocked ? "inherit" : "error",
+                    disabled: blockPending,
+                    onClick: toggleBlock,
+                  },
+                ]}
               />
-            ) : undefined
+            </Stack>
           }
         />
 

@@ -21,6 +21,10 @@ import { useTypingIndicator } from "../hooks/useTypingIndicator";
 import { PresenceStatus } from "../components/PresenceStatus";
 import UserAvatar from "@/shared/components/UserAvatar";
 import { useChatSocketContext } from "@/shared/hooks/useChatSocketContext";
+import { KebabMenu } from "@/shared/components/KebabMenu";
+import { Block as BlockIcon } from "@/shared/icons";
+import { useBlockToggle } from "@/features/moderation/hooks/moderation.hooks";
+import { Button } from "@mui/material";
 
 export default function ConversationPage() {
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -80,6 +84,12 @@ export default function ConversationPage() {
   const otherParticipant = conversation?.participants.find(
     (p) => p.id !== user?._id,
   );
+
+  const {
+    isBlocked,
+    toggle: toggleBlock,
+    isPending: blockPending,
+  } = useBlockToggle(otherParticipant?.id, otherParticipant?.name ?? "");
 
   const hasUnread = (conversation?.unreadCount ?? 0) > 0;
 
@@ -188,6 +198,20 @@ export default function ConversationPage() {
             <PresenceStatus participant={otherParticipant} isTyping={isPeerTyping} />
           </Box>
         </ButtonBase>
+        <Box sx={{ flex: 1 }} />
+        {otherParticipant && (
+          <KebabMenu
+            items={[
+              {
+                label: isBlocked ? "Unblock user" : "Block user",
+                icon: <BlockIcon fontSize="small" />,
+                color: isBlocked ? "inherit" : "error",
+                disabled: blockPending,
+                onClick: toggleBlock,
+              },
+            ]}
+          />
+        )}
       </Box>
 
       {/* Feed */}
@@ -205,6 +229,29 @@ export default function ConversationPage() {
       {/* Input */}
       <Box sx={{ flexShrink: 0, px: { xs: 1.5, md: 3 }, pt: 1, pb: { xs: 1.5, md: 2 } }}>
         <Box sx={{ maxWidth: 760, mx: "auto" }}>
+          {isBlocked ? (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 1.5,
+                px: 2,
+                py: 1.25,
+                borderRadius: (t) => `${t.radius.lg}px`,
+                border: "1px solid",
+                borderColor: "border.default",
+                bgcolor: "surface.card",
+              }}
+            >
+              <Typography variant="body2" color="text.secondary">
+                You blocked {otherParticipant?.name?.trim() || "this user"}. Unblock to message them.
+              </Typography>
+              <Button size="small" variant="outlined" onClick={toggleBlock} disabled={blockPending}>
+                Unblock
+              </Button>
+            </Box>
+          ) : (
           <MessageInput
             conversationId={activeConversationId}
             sendMessage={sendMessage}
@@ -213,6 +260,7 @@ export default function ConversationPage() {
             onTyping={notifyTyping}
             onStopTyping={stopTyping}
           />
+          )}
         </Box>
       </Box>
     </Box>
