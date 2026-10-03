@@ -707,6 +707,24 @@ contact easier) is an abuse vector; needed before any wider rollout.
 - Reported message content is retained for review even if the sender
   soft-deletes it.
 
+**E16 status: IN PROGRESS (2026-10-03).** Order of work: (1) enforce
+suspension, (2) block + enforcement, (3) block UI, (4) reports + admin queue,
+(5) report UI + admin tab. Each is its own commit.
+
+**Found before starting (root cause):** `UserStatus.SUSPENDED` existed and an
+admin could set it, but nothing in `auth/` ever read `accountStatus` — the JWT
+strategy, login and refresh all ignored it, so a "suspended" user kept full
+access. The criterion's "suspend (reusing `UserStatus`)" would have been a
+label with no effect.
+**Fixed (commit 1):** suspension is checked on every request
+(`validateJwtUser`, which already reloads the user, so it bites immediately
+instead of at token expiry), on sign-in (after the password check, so it isn't
+revealed to someone who doesn't know the password) and on refresh; setting
+`SUSPENDED` also clears the stored refresh token. Not yet covered: an
+already-open chat socket keeps working until the next HTTP call or reconnect
+— the message-send gate in commit 2 closes that for messaging.
+
+
 ---
 
 ## Epic F — Google OAuth authentication

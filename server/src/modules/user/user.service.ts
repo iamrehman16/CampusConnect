@@ -329,8 +329,14 @@ export class UserService {
   }
 
   async updateStatus(id: string, accountStatus: UserStatus) {
+    // Suspending also revokes the refresh token so the session can't be
+    // renewed; access tokens die on the next request (validateJwtUser).
+    const update =
+      accountStatus === UserStatus.SUSPENDED
+        ? { accountStatus, hashedRefreshToken: null }
+        : { accountStatus };
     const updatedUser = await this.userModel
-      .findByIdAndUpdate(id, { accountStatus }, { new: true })
+      .findByIdAndUpdate(id, update, { new: true })
       .exec();
 
     if (!updatedUser) {

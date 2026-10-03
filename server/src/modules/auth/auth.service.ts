@@ -1,3 +1,4 @@
+import { UserStatus } from '../user/enums/user-status.enum';
 import { Injectable, UnauthorizedException, Inject } from '@nestjs/common';
 import { UserService } from '../user/user.service';
 import { RegisterDto } from './dto/register.dto';
@@ -44,6 +45,10 @@ export class AuthService {
     const isPasswordMatch = await compare(password, user.password);
     if (!isPasswordMatch)
       throw new UnauthorizedException('Invalid Credentials');
+    // After the password check, so suspension isn't revealed to someone who
+    // doesn't know the password.
+    if (user.accountStatus === UserStatus.SUSPENDED)
+      throw new UnauthorizedException('This account has been suspended');
 
     return { id: user._id.toString() };
   }
@@ -73,6 +78,8 @@ export class AuthService {
     const user = await this.userService.findOneWithHashedRefreshToken(userId);
     if (!user || !user.hashedRefreshToken)
       throw new UnauthorizedException('Invalid Refresh Token!');
+    if (user.accountStatus === UserStatus.SUSPENDED)
+      throw new UnauthorizedException('This account has been suspended');
 
     const isMatch = await argon2.verify(user.hashedRefreshToken, refreshToken);
     if (!isMatch)
@@ -89,6 +96,10 @@ export class AuthService {
   async validateJwtUser(userId: string) {
     const user = await this.userService.findOne(userId);
     if (!user) throw new UnauthorizedException('User not found');
+    // Checked on every request (the JWT strategy reloads the user), so a
+    // suspension takes effect immediately rather than when the token expires.
+    if (user.accountStatus === UserStatus.SUSPENDED)
+      throw new UnauthorizedException('This account has been suspended');
     const currentUser: CurrentUser = {
       id: user._id.toString(),
       role: user.role,
