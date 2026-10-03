@@ -97,6 +97,14 @@ export class User {
   @Prop({ default: 0, min: 0 })
   mentorRatingCount?: number;
 
+  /**
+   * Opt-out for the public leaderboard and the Community rail (BACKLOG.md
+   * E15). Absent means visible, so existing accounts need no migration;
+   * only an explicit `false` hides someone.
+   */
+  @Prop({ type: Boolean, default: true })
+  showOnLeaderboard?: boolean;
+
   @Prop({ required: false })
   avatar?: string;
 

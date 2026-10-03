@@ -263,6 +263,7 @@ describe('UserService#findTopContributors', () => {
     expect(find).toHaveBeenCalledWith({
       contributionScore: { $gt: 0 },
       accountStatus: { $ne: 'Suspended' },
+      showOnLeaderboard: { $ne: false },
     });
     expect(chain.sort).toHaveBeenCalledWith({ contributionScore: -1, _id: 1 });
     expect(chain.limit).toHaveBeenCalledWith(5);
@@ -359,5 +360,48 @@ describe('ratingSummary (E11)', () => {
       ratingCount: 3,
     });
     expect(ratingSummary(5, 1)).toEqual({ ratingAverage: 5, ratingCount: 1 });
+  });
+});
+
+describe('UserService leaderboard visibility (E15)', () => {
+  const find = (rows: unknown[]) =>
+    jest.fn().mockReturnValue({
+      sort: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn().mockResolvedValue(rows),
+    });
+  const service = (model: unknown) =>
+    new UserService(model as Model<User>, {} as PaginationService);
+
+  it('top contributors exclude suspended accounts and anyone who opted out', async () => {
+    const f = find([]);
+
+    await service({ find: f }).findTopContributors(5);
+
+    const [filter] = f.mock.calls[0] as [Record<string, unknown>];
+    expect(filter.showOnLeaderboard).toEqual({ $ne: false });
+    expect(filter.accountStatus).toEqual({ $ne: 'Suspended' });
+  });
+
+  it('absent means visible: only an explicit false hides someone', async () => {
+    const f = find([]);
+
+    await service({ find: f }).findLeaderboardCandidates([
+      new Types.ObjectId().toString(),
+    ]);
+
+    const [filter] = f.mock.calls[0] as [Record<string, unknown>];
+    expect(filter.showOnLeaderboard).toEqual({ $ne: false });
+  });
+
+  it('does not query at all for an empty id list', async () => {
+    const f = find([]);
+
+    expect(await service({ find: f }).findLeaderboardCandidates([])).toEqual(
+      [],
+    );
+    expect(f).not.toHaveBeenCalled();
   });
 });

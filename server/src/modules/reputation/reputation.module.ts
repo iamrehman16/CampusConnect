@@ -9,6 +9,7 @@ import {
 import { Resource, ResourceSchema } from '../resource/schemas/resource.schema';
 import { Post, PostSchema } from '../post/schemas/post.schema';
 import { ReputationService } from './reputation.service';
+import { LeaderboardService } from './leaderboard.service';
 import { ReputationListener } from './reputation.listener';
 import { ReputationController } from './reputation.controller';
 import { ReputationAdminController } from './reputation-admin.controller';
@@ -24,7 +25,7 @@ import { ReputationAdminController } from './reputation-admin.controller';
     UserModule,
   ],
   controllers: [ReputationController, ReputationAdminController],
-  providers: [ReputationService, ReputationListener],
+  providers: [ReputationService, ReputationListener, LeaderboardService],
   exports: [ReputationService],
 })
 export class ReputationModule {}

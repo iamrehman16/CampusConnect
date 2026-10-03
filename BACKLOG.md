@@ -834,6 +834,31 @@ commit):**
    (or `@Prop({ type: SchemaTypes.ObjectId })`) plus a per-collection check
    and migration, like this one.
 
+**Decisions — leaderboard + opt-out (commit 2), verified live:**
+- **`GET /reputation/leaderboard?period=month|all&limit=` (default month, 10,
+  max 50),** public to signed-in members. **All time reuses the existing
+  top-contributors query** (lifetime `contributionScore`), per the criterion;
+  **this month ranks by net ledger points since the start of the UTC month**,
+  and only net-positive earners appear.
+- **Opt-out is `showOnLeaderboard` on the user; absent means visible,** so
+  existing accounts need no migration and only an explicit `false` hides
+  someone. It's settable through the normal profile update. It is respected by
+  **both** boards **and the Community "Top contributors" rail** (same query),
+  and suspended accounts never appear. Verified: Hamza opted out → vanished
+  from the board and the rail → opted back in → returned.
+- **Opting out hides you from rankings only** — your score, tier and profile
+  are unchanged and still visible elsewhere; the setting says so.
+- **Month board over-fetches 4× then filters,** so hidden people don't leave
+  it short, and ranks are re-numbered with no gaps. Ties break by user id so
+  the order is stable.
+- **Both periods rank anyone who earns reputation (students get upvote
+  points too), not only the Contributor role** — "top contributors" means
+  contributions, not a role.
+- **Known:** the board is rebuilt per request (one indexed aggregate); fine
+  at this scale, cache if it becomes hot. On this demo DB this month's board is
+  empty because the seeded ledger predates the month — the UI has an empty
+  state for it.
+
 
 ---
 ### Safety (roadmap Phase 4)

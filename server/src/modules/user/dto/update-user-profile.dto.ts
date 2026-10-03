@@ -52,6 +52,11 @@ export class UpdateUserProfileDto {
   @IsBoolean()
   isOpenToMentor?: boolean;
 
+  /** Show me on the public leaderboard (E15). */
+  @IsOptional()
+  @IsBoolean()
+  showOnLeaderboard?: boolean;
+
   @IsOptional()
   @IsString()
   @MaxLength(500)

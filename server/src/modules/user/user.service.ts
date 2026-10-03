@@ -172,9 +172,36 @@ export class UserService {
       .find({
         contributionScore: { $gt: 0 },
         accountStatus: { $ne: UserStatus.SUSPENDED },
+        showOnLeaderboard: { $ne: false },
       })
       .sort({ contributionScore: -1, _id: 1 })
       .limit(limit)
+      .select('name avatar tier contributionScore')
+      .lean()
+      .exec();
+
+    return users.map((u) => ({
+      id: u._id.toString(),
+      name: u.name ?? '',
+      avatar: u.avatar,
+      tier: u.tier,
+      contributionScore: u.contributionScore,
+    }));
+  }
+
+  /**
+   * Of these ids, the users who may appear on the leaderboard (active and not
+   * opted out), with the public fields it shows. Order is NOT preserved —
+   * callers re-order by their own ranking.
+   */
+  async findLeaderboardCandidates(ids: string[]): Promise<TopContributorDto[]> {
+    if (ids.length === 0) return [];
+    const users = await this.userModel
+      .find({
+        _id: { $in: ids.map((id) => new Types.ObjectId(id)) },
+        accountStatus: { $ne: UserStatus.SUSPENDED },
+        showOnLeaderboard: { $ne: false },
+      })
       .select('name avatar tier contributionScore')
       .lean()
       .exec();
