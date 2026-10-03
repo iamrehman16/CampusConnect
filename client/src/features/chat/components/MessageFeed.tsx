@@ -71,6 +71,12 @@ export function MessageFeed({
           </Typography>
         )}
 
+        {messages.length === 0 && (
+          <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 4 }}>
+            No messages yet. Say hello!
+          </Typography>
+        )}
+
         {messages.map((message, i) => {
           const prev = messages[i - 1];
           const created = new Date(message.createdAt);

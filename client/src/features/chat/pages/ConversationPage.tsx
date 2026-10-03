@@ -25,7 +25,8 @@ import { KebabMenu } from "@/shared/components/KebabMenu";
 import { Block as BlockIcon, Flag as FlagIcon } from "@/shared/icons";
 import { ReportDialog } from "@/features/moderation/components/ReportDialog";
 import { useBlockToggle } from "@/features/moderation/hooks/moderation.hooks";
-import { Button } from "@mui/material";
+import { Button, Skeleton, Stack } from "@mui/material";
+import InlineError from "@/shared/components/feedback/InlineError";
 
 export default function ConversationPage() {
   const { conversationId } = useParams<{ conversationId: string }>();
@@ -96,8 +97,15 @@ export default function ConversationPage() {
 
   const hasUnread = (conversation?.unreadCount ?? 0) > 0;
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useMessagesQuery(activeConversationId ?? "");
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: messagesLoading,
+    isError: messagesError,
+    refetch: refetchMessages,
+  } = useMessagesQuery(activeConversationId ?? "");
   const messages = useMemo(
     () =>
       data?.pages
@@ -235,14 +243,31 @@ export default function ConversationPage() {
 
       {/* Feed */}
       <Box sx={{ flex: 1, minHeight: 0 }}>
-        <MessageFeed
-          messages={messages}
-          retryMessage={retryMessage}
-          fetchNextPage={fetchNextPage}
-          hasNextPage={!!hasNextPage}
-          isFetchingNextPage={isFetchingNextPage}
-          currentUserId={user?._id}
-        />
+        {messagesLoading ? (
+          <Stack spacing={1.5} sx={{ maxWidth: 760, mx: "auto", px: { xs: 1.5, md: 3 }, py: 3 }}>
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton
+                key={i}
+                variant="rounded"
+                height={40}
+                sx={{ width: i % 2 ? "55%" : "70%", alignSelf: i % 2 ? "flex-end" : "flex-start" }}
+              />
+            ))}
+          </Stack>
+        ) : messagesError && !data ? (
+          <Box sx={{ px: 3, py: 4, maxWidth: 760, mx: "auto" }}>
+            <InlineError message="Couldn't load this conversation." onRetry={refetchMessages} />
+          </Box>
+        ) : (
+          <MessageFeed
+            messages={messages}
+            retryMessage={retryMessage}
+            fetchNextPage={fetchNextPage}
+            hasNextPage={!!hasNextPage}
+            isFetchingNextPage={isFetchingNextPage}
+            currentUserId={user?._id}
+          />
+        )}
       </Box>
 
       {/* Input */}

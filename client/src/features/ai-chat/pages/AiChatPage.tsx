@@ -13,6 +13,7 @@ import { AiChatMessageList } from "../components/AiChatMessageList";
 import { ChatInput } from "../components/ChatInput";
 import { ThreadSidebar } from "../components/ThreadSidebar";
 import { ROUTES } from "@/shared/constants/routes";
+import InlineError from "@/shared/components/feedback/InlineError";
 
 export default function AiChatPage() {
   const navigate = useNavigate();
@@ -37,8 +38,12 @@ export default function AiChatPage() {
   // BACKLOG.md B8 — for an existing thread with nothing cached locally yet
   // (fresh browser/device), useConversation fetches full history from the
   // server; `data` is undefined until that resolves.
-  const { data: messages, isLoading: isHistoryLoading } =
-    useConversation(conversationId);
+  const {
+    data: messages,
+    isLoading: isHistoryLoading,
+    isError: isHistoryError,
+    refetch: refetchHistory,
+  } = useConversation(conversationId);
 
   const onThreadResolved = useCallback(
     (newConversationId: string) => {
@@ -94,6 +99,11 @@ export default function AiChatPage() {
           }}
         >
           <CircularProgress size={28} />
+        </Box>
+      ) : isHistoryError && !messages?.length ? (
+        // A failed load must not fall through to the "new chat" empty state.
+        <Box sx={{ flex: 1, display: "grid", placeItems: "center", px: 3 }}>
+          <InlineError message="Couldn't load this conversation." onRetry={refetchHistory} />
         </Box>
       ) : (
         <AiChatMessageList

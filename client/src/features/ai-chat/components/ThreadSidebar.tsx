@@ -4,6 +4,7 @@ import {
   ChatBubbleOutline as ChatBubbleOutlineIcon,
   EditOutlined as EditOutlinedIcon,
 } from "@/shared/icons";
+import InlineError from "@/shared/components/feedback/InlineError";
 import { ListPaneHeader } from "@/shared/components/layout/ListPane";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -23,7 +24,7 @@ interface ThreadSidebarProps {
 export function ThreadSidebar({ onNavigate }: ThreadSidebarProps) {
   const navigate = useNavigate();
   const { conversationId: activeId } = useParams();
-  const { data: threads, isLoading } = useThreadsQuery();
+  const { data: threads, isLoading, isError, refetch } = useThreadsQuery();
   const { mutate: renameThread } = useRenameThread();
   const { mutate: deleteThread } = useDeleteThread();
 
@@ -62,6 +63,10 @@ export function ThreadSidebar({ onNavigate }: ThreadSidebarProps) {
       {isLoading ? (
         <Box sx={{ display: "flex", justifyContent: "center", pt: 4 }}>
           <CircularProgress size={24} />
+        </Box>
+      ) : isError && !threads ? (
+        <Box sx={{ pt: 2 }}>
+          <InlineError compact message="Couldn't load your chats." onRetry={refetch} />
         </Box>
       ) : !threads?.length ? (
         <Box

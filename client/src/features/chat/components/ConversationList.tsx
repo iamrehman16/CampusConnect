@@ -5,6 +5,7 @@ import {
   EditOutlined as EditOutlinedIcon,
   PeopleOutline as PeopleOutlineIcon,
 } from "@/shared/icons";
+import InlineError from "@/shared/components/feedback/InlineError";
 import { ListPaneHeader } from "@/shared/components/layout/ListPane";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/shared/hooks/useAuth";
@@ -23,7 +24,7 @@ export function ConversationList() {
   const { conversationId: activeId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { data: conversations, isLoading } = useConversationsQuery();
+  const { data: conversations, isLoading, isError, refetch } = useConversationsQuery();
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -55,6 +56,10 @@ export function ConversationList() {
             <Skeleton key={i} variant="rounded" height={56} />
           ))}
         </Stack>
+      ) : isError && !conversations ? (
+        <Box sx={{ pt: 2 }}>
+          <InlineError compact message="Couldn't load your messages." onRetry={refetch} />
+        </Box>
       ) : !hasAny ? (
         <Box
           sx={{
