@@ -130,3 +130,18 @@ export const useCompleteMentorship = () =>
     (id: string) => mentorshipService.complete(id),
     "Mentorship marked complete",
   );
+
+/** Rate a completed mentorship (BACKLOG.md E11); refreshes lists, the directory and profiles. */
+export const useRateMentorship = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; rating: number; review?: string }) =>
+      mentorshipService.rate(v.id, v.rating, v.review),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: mentorshipKeys.all });
+      void queryClient.invalidateQueries({ queryKey: mentorKeys.all });
+      void queryClient.invalidateQueries({ queryKey: profileKeys.all() });
+      toast.success("Thanks — your rating was saved");
+    },
+  });
+};

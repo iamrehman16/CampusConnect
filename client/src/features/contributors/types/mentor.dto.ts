@@ -17,6 +17,9 @@ export interface MentorSummary {
   maxActiveMentees: number;
   /** Free mentee slots right now. */
   slotsLeft: number;
+  /** Mean of 1-5 ratings from completed mentorships; null until rated (E11). */
+  ratingAverage: number | null;
+  ratingCount: number;
   /** Why this mentor was recommended (only on recommended lists, BACKLOG.md E12). */
   reasons?: string[];
 }

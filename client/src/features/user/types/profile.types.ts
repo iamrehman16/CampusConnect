@@ -18,6 +18,8 @@ export interface ProfileUserViewModel {
   mentorTopics: string[];
   maxActiveMentees: number;
   activeMenteeCount: number;
+  ratingAverage: number | null;
+  ratingCount: number;
   createdAt: string;
 }
 
@@ -65,6 +67,8 @@ export const toProfileUserViewModel = (
     mentorTopics: user.mentorTopics ?? [],
     maxActiveMentees: user.maxActiveMentees ?? DEFAULT_MAX_ACTIVE_MENTEES,
     activeMenteeCount: user.activeMenteeCount ?? 0,
+    ratingAverage: user.ratingAverage ?? null,
+    ratingCount: user.ratingCount ?? 0,
     createdAt: user.createdAt,
   };
 };

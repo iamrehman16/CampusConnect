@@ -24,6 +24,9 @@ export interface User {
   contributionScore?: number;
   tier?: ReputationTier;
   accountStatus?: string;
+  /** Mentor rating (BACKLOG.md E11); null until rated. */
+  ratingAverage?: number | null;
+  ratingCount?: number;
   createdAt:string;
   academicInfo?: string;
 }

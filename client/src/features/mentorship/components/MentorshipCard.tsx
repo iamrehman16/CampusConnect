@@ -8,6 +8,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Rating,
   Stack,
   TextField,
   Typography,
@@ -29,6 +30,7 @@ import {
   type MentorshipView,
 } from "../types/mentorship.dto";
 import UserAvatar from "@/shared/components/UserAvatar";
+import { RateMentorshipDialog } from "./RateMentorshipDialog";
 
 const STATUS_CHIP: Record<
   MentorshipStatus,
@@ -56,6 +58,7 @@ export function MentorshipCard({ mentorship, view }: Props) {
   const complete = useCompleteMentorship();
   const [declineOpen, setDeclineOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const [rateOpen, setRateOpen] = useState(false);
 
   const busy =
     accept.isPending || decline.isPending || cancel.isPending || complete.isPending;
@@ -138,6 +141,22 @@ export function MentorshipCard({ mentorship, view }: Props) {
           </Typography>
         )}
 
+        {status === "completed" && mentorship.feedback && (
+          <Box sx={{ p: 1.25, borderRadius: 1, bgcolor: "surface.subtle" }}>
+            <Stack direction="row" alignItems="center" gap={0.75}>
+              <Rating value={mentorship.feedback.rating} readOnly size="small" />
+              <Typography variant="caption" color="text.secondary">
+                {view === "mentee" ? "Your rating" : "Rated by your mentee"}
+              </Typography>
+            </Stack>
+            {mentorship.feedback.review && (
+              <Typography variant="body2" sx={{ mt: 0.5, whiteSpace: "pre-wrap" }}>
+                {mentorship.feedback.review}
+              </Typography>
+            )}
+          </Box>
+        )}
+
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
           <Typography variant="caption" color="text.secondary" sx={{ flex: 1 }}>
             {formatDistanceToNow(new Date(mentorship.createdAt), { addSuffix: true })}
@@ -177,6 +196,22 @@ export function MentorshipCard({ mentorship, view }: Props) {
             </Button>
           )}
 
+          {status === "completed" && view === "mentee" && (
+            <>
+              {!mentorship.feedback && (
+                <Button size="small" variant="contained" onClick={() => setRateOpen(true)}>
+                  Rate mentorship
+                </Button>
+              )}
+              {mentorship.feedback &&
+                new Date(mentorship.feedback.editableUntil) > new Date() && (
+                  <Button size="small" onClick={() => setRateOpen(true)}>
+                    Change rating
+                  </Button>
+                )}
+            </>
+          )}
+
           {status === "active" && (
             <>
               <Button
@@ -204,6 +239,16 @@ export function MentorshipCard({ mentorship, view }: Props) {
           )}
         </Box>
       </Stack>
+
+      {rateOpen && (
+        <RateMentorshipDialog
+          open
+          onClose={() => setRateOpen(false)}
+          mentorshipId={mentorship.id}
+          mentorName={mentorship.mentor.name}
+          existing={mentorship.feedback}
+        />
+      )}
 
       <Dialog
         open={declineOpen}

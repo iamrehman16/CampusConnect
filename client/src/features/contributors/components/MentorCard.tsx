@@ -1,6 +1,7 @@
 import { Box, ButtonBase, Card, CardContent, Chip, Link, Stack, Typography } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import { RequestMentorshipButton } from "@/features/mentorship/components/RequestMentorshipButton";
+import { MentorRating } from "@/features/mentorship/components/MentorRating";
 import { TierChip } from "@/features/reputation/components/TierChip";
 import { ROUTES } from "@/shared/constants/routes";
 import UserAvatar from "@/shared/components/UserAvatar";
@@ -101,6 +102,8 @@ export function MentorCard({ mentor }: Props) {
             )}
           </Stack>
         )}
+
+        <MentorRating average={mentor.ratingAverage} count={mentor.ratingCount} />
 
         <Stack direction="row" alignItems="center" gap={0.75}>
           <Box

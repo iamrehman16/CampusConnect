@@ -1,5 +1,6 @@
 import { Box, Chip, Stack, Typography } from "@mui/material";
 import { HandshakeOutlined as HandshakeOutlinedIcon } from "@/shared/icons";
+import { MentorRating } from "@/features/mentorship/components/MentorRating";
 import type { ProfileUserViewModel } from "../types/profile.types";
 
 interface Props {
@@ -40,6 +41,10 @@ export function MentorProfileBlock({ user, justify = "flex-start" }: Props) {
             : "All mentee slots are taken right now"}
         </Typography>
       </Stack>
+
+      <Box sx={{ mt: 0.75 }}>
+        <MentorRating average={user.ratingAverage} count={user.ratingCount} showEmpty={false} />
+      </Box>
 
       {user.mentorBio && (
         <Typography

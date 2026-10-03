@@ -21,6 +21,15 @@ export interface MentorshipParty {
   semester?: number;
 }
 
+/** The mentee's rating of a completed mentorship (BACKLOG.md E11). */
+export interface MentorshipFeedback {
+  rating: number;
+  review?: string;
+  ratedAt: string;
+  /** Until when the mentee may still change it. */
+  editableUntil: string;
+}
+
 export interface Mentorship {
   id: string;
   status: MentorshipStatus;
@@ -33,6 +42,7 @@ export interface Mentorship {
   mentee: MentorshipParty;
   respondedAt: string | null;
   completedAt: string | null;
+  feedback?: MentorshipFeedback;
   createdAt: string;
   updatedAt: string;
 }
@@ -50,6 +60,7 @@ export const MENTORSHIP_LIMITS = {
   introMin: 20,
   introMax: 500,
   declineReasonMax: 300,
+  reviewMax: 500,
 } as const;
 
 export const OPEN_STATUSES: readonly MentorshipStatus[] = ["pending", "active"];

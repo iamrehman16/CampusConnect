@@ -6,6 +6,7 @@ import type {
 import type {
   CreateMentorshipDto,
   Mentorship,
+  MentorshipFeedback,
   MentorshipStatus,
   MentorshipView,
 } from "../types/mentorship.dto";
@@ -55,6 +56,18 @@ const mentorshipService = {
 
   async complete(id: string): Promise<Mentorship> {
     const { data } = await api.patch<Mentorship>(`mentorships/${id}/complete`);
+    return data;
+  },
+
+  async rate(
+    id: string,
+    rating: number,
+    review?: string,
+  ): Promise<MentorshipFeedback> {
+    const { data } = await api.put<MentorshipFeedback>(`mentorships/${id}/rating`, {
+      rating,
+      review: review || undefined,
+    });
     return data;
   },
 };
