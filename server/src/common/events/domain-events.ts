@@ -16,6 +16,7 @@ export const DomainEvents = {
   MENTORSHIP_DECLINED: 'mentorship.declined',
   MENTORSHIP_COMPLETED: 'mentorship.completed',
   CHAT_MESSAGE_RECEIVED: 'chat.message.received',
+  USER_WARNED: 'moderation.user_warned',
   CHAT_CONVERSATION_READ: 'chat.conversation.read',
 } as const;
 
@@ -59,6 +60,12 @@ export interface ChatMessageReceivedEvent {
   senderId: string;
   receiverId: string;
   preview: string;
+}
+
+/** An admin upheld a report and issued a warning (BACKLOG.md E16). */
+export interface UserWarnedEvent {
+  userId: string;
+  note?: string;
 }
 
 /** The user marked everything in a conversation as seen. */

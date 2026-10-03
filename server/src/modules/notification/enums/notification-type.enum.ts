@@ -8,4 +8,5 @@ export enum NotificationType {
   MENTORSHIP_ACCEPTED = 'mentorship_accepted',
   MENTORSHIP_DECLINED = 'mentorship_declined',
   MENTORSHIP_COMPLETED = 'mentorship_completed',
+  ACCOUNT_WARNING = 'account_warning',
 }

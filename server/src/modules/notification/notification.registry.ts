@@ -37,6 +37,7 @@ export interface NotificationPayloads {
     /** Which side the recipient was on — decides which Mentors tab to open. */
     recipientRole: 'mentor' | 'mentee';
   };
+  [NotificationType.ACCOUNT_WARNING]: { note?: string };
 }
 
 export interface NotificationContent {
@@ -116,5 +117,12 @@ export const notificationBuilders: Builders = {
       recipientRole === 'mentee'
         ? '/mentors/mine?section=past'
         : '/mentors/mentoring?section=past',
+  }),
+  [NotificationType.ACCOUNT_WARNING]: ({ note }) => ({
+    title: 'Warning from the moderators',
+    body: note
+      ? `A report about your conduct was upheld: ${note}`
+      : 'A report about your conduct was upheld. Please follow the community guidelines.',
+    link: '/faq',
   }),
 };

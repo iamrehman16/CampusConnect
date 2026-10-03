@@ -11,6 +11,7 @@ import {
   DomainEvents,
   ResourceApprovedEvent,
   ResourceRejectedEvent,
+  UserWarnedEvent,
 } from '../../common/events/domain-events';
 import { NotificationService } from './notification.service';
 import { NotificationGateway } from './notification.gateway';
@@ -123,6 +124,13 @@ export class NotificationListener {
     return this.notify(recipient, NotificationType.MENTORSHIP_COMPLETED, {
       otherName: await this.nameOf(other),
       recipientRole: endedByMentor ? 'mentee' : 'mentor',
+    });
+  }
+
+  @OnEvent(DomainEvents.USER_WARNED, { async: true })
+  onUserWarned(event: UserWarnedEvent) {
+    return this.notify(event.userId, NotificationType.ACCOUNT_WARNING, {
+      note: event.note,
     });
   }
 

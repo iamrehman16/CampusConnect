@@ -771,6 +771,37 @@ already-open chat socket keeps working until the next HTTP call or reconnect
 - **Mentorship while blocked** surfaces the server's "You can't contact this
   user" through the app-wide mutation error toast; no special UI.
 
+**Decisions — reports + admin (commit 4), verified live on the demo DB:**
+- **Three report targets** (message, conversation, user — "mentor" is just a
+  user report from their profile). The reported person is derived server-side
+  (message sender / the other participant), never trusted from the client.
+- **Evidence is snapshotted at report time, in the report itself.** A message
+  report keeps that message plus up to 4 before it; a conversation report the
+  last 20; soft-deleted messages are included and flagged `wasDeleted`. This
+  is how "retained for review even if the sender soft-deletes it" is met — and
+  it also survives a later hard delete, which relying on the live message
+  would not.
+- **Authorization:** only participants can report a message/conversation; a
+  missing target and a not-yours target both return 404 so ids can't be probed;
+  you can't report yourself or your own message.
+- **One OPEN report per (reporter, target)** — a partial unique index, so the
+  duplicate is a friendly 409 and, once resolved, the same person may report
+  again. Details are capped at 500 chars; reasons are a fixed enum
+  (spam / harassment / inappropriate / other).
+- **Admin actions: dismiss, warn, suspend** (`PATCH /admin/reports/:id/resolve`,
+  admin-only). **Suspension is applied first, then the report is claimed
+  atomically from `open`:** a failed suspension leaves the report open to
+  retry instead of recorded-as-done, and two admins can't both resolve it
+  (loser gets 409). Administrators can't be suspended through a report (400).
+- **Warn = an in-app notification** (`account_warning`, with the admin's note)
+  via the existing domain-event -> notification path; it links to the FAQ.
+  There's no strike counting or auto-escalation — admins decide.
+- **The reporter is not told the outcome.** Deliberate for now: it avoids
+  retaliation loops and any promise about what happened to someone else's
+  account; easy to add later as a notification if wanted.
+- **Not done:** reports have no audit trail beyond `resolvedBy/At/Note`;
+  nothing stops an admin acting on a report about themselves.
+
 
 ---
 
