@@ -66,6 +66,16 @@ drawer); the app rail collapses to icons on these routes.
 ## Epic H — Demo readiness (H2, H3 open)
 
 ### H2 — Empty, loading and error states pass
+**Status: code DONE 2026-10-03, manual verification pending.** New shared
+`InlineError` (message + Retry) and a flat `EmptyState` (title, message, next
+action). Applied to Home widgets, Messages and Ask AI (lists, history, feed),
+Community rail and comments, admin panels, both profile pages and tabs,
+Mentorship lists, Settings and notifications. Fixed along the way: a failed
+request used to render the *empty* state (Home widgets "Nothing has been
+shared", Ask AI thread history showing the new-chat prompts) and Settings
+showed a skeleton forever. Library, Leaderboard, Mentor directory and Resource
+detail already had retries. **Still to do:** run the app as an empty user on the
+demo DB and with the API stopped, and fix what that shows.
 **Effort:** 5
 **Where:** every page redesigned in D6–D10
 **Why:** A usable app is mostly defined by the unhappy paths: first-run
