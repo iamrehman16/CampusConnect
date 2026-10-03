@@ -2,6 +2,7 @@ import { Box, Stack } from "@mui/material";
 import { PageContainer } from "@/shared/components/PageContainer";
 import { GreetingStatsCard } from "../components/GreetingStatsCard";
 import { AiAssistantCTA } from "../components/AiAssistantCta";
+import { MyImpactWidget } from "../components/MyImpactWidget";
 import {
   CommunityWidget,
   ContinueWidget,
@@ -31,6 +32,7 @@ export default function HomePage() {
           }}
         >
           <Stack spacing={3}>
+            <MyImpactWidget />
             <ContinueWidget />
             <SemesterResourcesWidget />
           </Stack>

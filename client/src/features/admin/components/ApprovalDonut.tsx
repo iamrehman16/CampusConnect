@@ -1,7 +1,7 @@
 // features/admin/components/ApprovalDonut.tsx
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { TooltipValueType } from 'recharts';
-import { useChartTheme } from '../hooks/useChartTheme';
+import { useChartTheme } from '@/shared/hooks/useChartTheme';
 import type { ApprovalFunnel } from '../types/admin.dto';
 
 interface Props { data: ApprovalFunnel }

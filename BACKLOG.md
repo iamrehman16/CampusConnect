@@ -859,6 +859,20 @@ commit):**
   empty because the seeded ledger predates the month — the UI has an empty
   state for it.
 
+**Decisions — impact panel (commit 3), verified in a browser:**
+- **On Home, for contributors and admins only** (a student never sees it —
+  checked with a student account), at the top of the left column: score + tier,
+  a progress bar to the next tier ("10 more points to Trusted"), a 30-day
+  Recharts sparkline, and tiles for downloads (+resource count), AI citations,
+  mentees (active / completed) and rating. "+N this month" shows when positive.
+- **Follows the admin chart conventions:** Recharts, the shared chart theme
+  (moved from `features/admin/hooks` to `shared/hooks/useChartTheme` so Home
+  doesn't import from another feature), the same tooltip styling, no animation.
+- **If the request fails the panel simply doesn't render** — Home still works;
+  the error toasts through the app-wide handler.
+- "AI citations" is labelled with the unit ("resource-days") because it counts
+  rewarded credits, not raw citations.
+
 
 ---
 ### Safety (roadmap Phase 4)

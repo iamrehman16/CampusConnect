@@ -4,7 +4,7 @@ import {
   XAxis, YAxis, Tooltip, Cell,
 } from 'recharts';
 import type { TooltipValueType } from 'recharts';
-import { useChartTheme } from '../hooks/useChartTheme';
+import { useChartTheme } from '@/shared/hooks/useChartTheme';
 import type { DistributionItem } from '../types/admin.dto';
 
 interface Props { data: DistributionItem[] }

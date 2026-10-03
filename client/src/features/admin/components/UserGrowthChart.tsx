@@ -4,7 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
 import type { TooltipValueType } from 'recharts';
-import { useChartTheme } from '../hooks/useChartTheme';
+import { useChartTheme } from '@/shared/hooks/useChartTheme';
 import { fillMissingDays } from '../utils/fillMissingDays';
 import type { DailyCount } from '../types/admin.dto';
 
