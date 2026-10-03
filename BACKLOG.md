@@ -1053,6 +1053,59 @@ no Google strategy, no callback route. `UserSchema`
 as `required: true` — that has to change before a passwordless OAuth user
 can be created.
 
+### Before F1 starts — manual setup only Abdur can do (2026-10-03)
+
+None of this can be done from the repo; F1–F3 code can be written without it,
+but F2 can't be *run* until steps 1–4 are done. **Never paste the client secret
+into chat, an issue or a commit** — put it straight into `server/.env` and the
+host's env settings (CLAUDE.md §3.7).
+
+1. **Google Cloud project** — console.cloud.google.com → create (or reuse) a
+   project, e.g. "CampusConnect".
+2. **OAuth consent screen** (APIs & Services → OAuth consent screen / Google
+   Auth Platform): user type **External**; app name, support email, developer
+   contact email. Scopes: only `openid`, `email`, `profile` (non-sensitive, so
+   no Google review). **Publishing status:** "Testing" only lets listed *test
+   users* sign in (max 100) — either add every demo/defense Google account as a
+   test user, or click **Publish app** (fine for these scopes) so anyone can.
+   Publishing may ask for an app homepage and a **privacy policy URL** — have a
+   public page ready (the FAQ page route can host a short one).
+3. **Create the OAuth client** (Credentials → Create credentials → OAuth
+   client ID → **Web application**):
+   - *Authorized JavaScript origins:* `http://localhost:5173` and the deployed
+     client URL.
+   - *Authorized redirect URIs* (must match EXACTLY — scheme, host, port, path,
+     no trailing slash; note the global `/api` prefix and server port 3100):
+     `http://localhost:3100/api/auth/google/callback` and
+     `https://<deployed-server>/api/auth/google/callback` (the client's
+     `.env` points at `https://campusconnect-server-qrm5.onrender.com` — confirm
+     that's still the live server).
+   - Copy the **Client ID** and **Client secret**. Changes can take a few
+     minutes to take effect.
+4. **Put the values in env** (names F1 will add to `.env.example`, shape only):
+   `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL` (the full
+   callback URL for that environment — different locally vs on Render), in
+   `server/.env` **and** the hosting provider's environment variables. Also
+   confirm `FRONTEND_URL` is set correctly in each environment — F2's
+   redirect-back and the existing CORS config both depend on it.
+5. **Decisions I need from you** (they change the code, so decide before F1):
+   - **Account linking:** if someone signs in with Google using an email that
+     already has a local (password) account, do we **link them** (recommended —
+     only when Google reports the email as *verified*) or refuse and ask them to
+     sign in with their password?
+   - **Domain restriction:** open to any Google account, or only the
+     university's domain (e.g. `@qau.edu.pk`)? Restricting is a one-line check
+     but excludes personal Gmail demo accounts.
+   - **New Google users** will land in onboarding like any new sign-up
+     (`isOnboarded: false`); their Google name pre-fills the name field, and
+     they still pick an in-app avatar (we don't import Google's photo).
+6. **Test accounts:** two Google accounts you control, plus a throwaway local
+   account whose email equals one of them (to test linking). If the app stays
+   in "Testing", both must be added as test users.
+7. **Hosting caveat:** if the server is on a free tier that sleeps (cold
+   start), the first Google redirect can take ~30–60s or time out — wake the
+   server before a demo.
+
 ### F1 — User schema + config for OAuth-created accounts
 **Effort:** 3
 **Where:** `server/src/modules/user/schemas/user.schema.ts`,
