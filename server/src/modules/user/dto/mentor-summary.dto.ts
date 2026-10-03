@@ -20,4 +20,7 @@ export interface MentorSummaryDto {
   maxActiveMentees: number;
   /** Free mentee slots right now (max minus active mentorships). */
   slotsLeft: number;
+  /** Mean of 1-5 ratings from completed mentorships; null until rated (E11). */
+  ratingAverage: number | null;
+  ratingCount: number;
 }

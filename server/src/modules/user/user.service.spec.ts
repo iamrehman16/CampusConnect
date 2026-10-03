@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { UserService } from './user.service';
+import { UserService, ratingSummary } from './user.service';
 import { User } from './schemas/user.schema';
 import { PaginationService } from '../../common/services/pagination.service';
 import { ValidationPipe } from '@nestjs/common';
@@ -84,6 +84,8 @@ describe('UserService#findMentors', () => {
           mentorTopics: ['OS'],
           maxActiveMentees: 4,
           activeMenteeCount: 1,
+          mentorRatingSum: 9,
+          mentorRatingCount: 2,
         },
       ],
       total: 1,
@@ -115,6 +117,8 @@ describe('UserService#findMentors', () => {
       mentorTopics: ['OS'],
       maxActiveMentees: 4,
       slotsLeft: 3,
+      ratingAverage: 4.5,
+      ratingCount: 2,
     });
     // The projection is also restricted at the query level.
     const args = paginate.mock.calls[0] as unknown[];
@@ -334,5 +338,26 @@ describe('UserService#changePassword (G5)', () => {
     await expect(bcrypt.compare('new-secret', update.password)).resolves.toBe(
       true,
     );
+  });
+});
+
+describe('ratingSummary (E11)', () => {
+  it('is null before the first rating', () => {
+    expect(ratingSummary(0, 0)).toEqual({
+      ratingAverage: null,
+      ratingCount: 0,
+    });
+    expect(ratingSummary(undefined, undefined)).toEqual({
+      ratingAverage: null,
+      ratingCount: 0,
+    });
+  });
+
+  it('rounds the mean to one decimal', () => {
+    expect(ratingSummary(14, 3)).toEqual({
+      ratingAverage: 4.7,
+      ratingCount: 3,
+    });
+    expect(ratingSummary(5, 1)).toEqual({ ratingAverage: 5, ratingCount: 1 });
   });
 });

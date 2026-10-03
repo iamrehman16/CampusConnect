@@ -85,6 +85,18 @@ export class User {
   @Prop({ default: 0, min: 0 })
   activeMenteeCount?: number;
 
+  /**
+   * Denormalized mentor rating (BACKLOG.md E11): sum and count of the 1-5
+   * ratings from completed mentorships, so the directory can show an average
+   * without a join. Maintained with $inc deltas by MentorFeedbackService; the
+   * mentorship documents are the source of truth if these ever drift.
+   */
+  @Prop({ default: 0, min: 0 })
+  mentorRatingSum?: number;
+
+  @Prop({ default: 0, min: 0 })
+  mentorRatingCount?: number;
+
   @Prop({ required: false })
   avatar?: string;
 

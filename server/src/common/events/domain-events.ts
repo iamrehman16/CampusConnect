@@ -15,6 +15,7 @@ export const DomainEvents = {
   MENTORSHIP_ACCEPTED: 'mentorship.accepted',
   MENTORSHIP_DECLINED: 'mentorship.declined',
   MENTORSHIP_COMPLETED: 'mentorship.completed',
+  MENTORSHIP_RATED: 'mentorship.rated',
   CHAT_MESSAGE_RECEIVED: 'chat.message.received',
   USER_WARNED: 'moderation.user_warned',
   CHAT_CONVERSATION_READ: 'chat.conversation.read',
@@ -60,6 +61,14 @@ export interface ChatMessageReceivedEvent {
   senderId: string;
   receiverId: string;
   preview: string;
+}
+
+/** A mentee rated a completed mentorship for the first time (E11). */
+export interface MentorshipRatedEvent {
+  mentorshipId: string;
+  mentorId: string;
+  menteeId: string;
+  rating: number;
 }
 
 /** An admin upheld a report and issued a warning (BACKLOG.md E16). */

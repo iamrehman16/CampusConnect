@@ -25,6 +25,7 @@ import { UserService } from '../user/user.service';
 import { UserStatus } from '../user/enums/user-status.enum';
 import { DEFAULT_MAX_ACTIVE_MENTEES } from '../user/user.constants';
 import { ChatService } from '../chat/chat.service';
+import { ratingEditableUntil } from './mentorship-feedback';
 import { BlockService } from '../moderation/block.service';
 import {
   DomainEvents,
@@ -70,6 +71,12 @@ const toParty = (p: PopulatedParty): MentorshipPartyDto => ({
 });
 
 const toDto = (m: MentorshipRecord): MentorshipDto => ({
+  feedback: m.feedback && {
+    rating: m.feedback.rating,
+    review: m.feedback.review,
+    ratedAt: m.feedback.ratedAt,
+    editableUntil: ratingEditableUntil(m.feedback.ratedAt),
+  },
   id: m._id.toString(),
   status: m.status,
   topic: m.topic,

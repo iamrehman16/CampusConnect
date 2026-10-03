@@ -521,6 +521,43 @@ proof, and quality is measurable.
 - Completed mentorship + rating emit reputation events (E5).
 - Abuse guard: only participants of a completed mentorship can rate/endorse.
 
+**E11 status: IN PROGRESS (2026-10-03).** Order: (1) ratings + reputation on
+the server, (2) endorsements on the server, (3) rating UI, (4) endorsement UI.
+
+**Decisions — ratings (commit 1), verified live on the demo DB:**
+- **The rating lives on the mentorship** (`feedback: {rating, review,
+  ratedAt}`), one per mentorship, and only the **mentee** of a **completed**
+  mentorship can write it. Not-yours and not-found are both 404 (no probing);
+  not completed is 409; 1–5 enforced by validation and the schema.
+- **Edit window = 24h from the FIRST rating, then immutable** (403). Editing
+  doesn't extend it. `PUT` has replace semantics: the client resends the
+  review text when it edits, otherwise it's cleared.
+- **Every write is one conditional update** (create requires "no feedback
+  yet", edit requires "inside the window"), so two concurrent requests
+  resolve in the database and the loser gets a 409 instead of double-counting.
+- **The mentor's average is denormalized on the user** (`mentorRatingSum`,
+  `mentorRatingCount`), adjusted by the exact delta (new rating = +r/+1, edit
+  = new−old/0). Same pattern as `activeMenteeCount`/`contributionScore`, and
+  it lets the directory show an average with no join. **Flagged shortcut:**
+  the rating write and the counter update aren't transactional; a failure
+  between them is logged with the repair instruction and the mentorship
+  documents are the source of truth — there is no recompute job yet.
+- **Only the average (1 decimal) and count are public**; the raw sum/count
+  never leave the server (asserted in the `findMentors` whitelist test). The
+  written review is visible to the two parties on the mentorship, **not** on
+  the public profile — reviews would otherwise need their own moderation path.
+  There's no minimum-count threshold for showing the average: it's shown with
+  its count so one rating is visibly one rating.
+- **Reputation (E5), keyed per mentor/mentee PAIR, not per mentorship:**
+  completing a mentorship earns the mentor +5, a 4–5★ rating +2, each at most
+  once ever for that pair (the ledger's unique `(type, sourceId)` index does
+  the dedupe). Cycling mentorships between the same two accounts therefore
+  can't farm points. **Ratings below 4 earn nothing and never reduce
+  reputation** — a bad review isn't punished twice.
+- **Not done:** existing completed mentorships (seed data) have no ledger
+  rows — only completions from now on earn the +5; there's no backfill.
+  Mentors aren't notified of a rating.
+
 ### E12 — Recommended mentors (matching)
 **Effort:** 5
 **Where:** `mentorship`/`user` service (`GET mentors/recommended`),

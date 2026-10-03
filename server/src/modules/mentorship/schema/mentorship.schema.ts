@@ -4,6 +4,7 @@ import { MentorshipStatus, OPEN_STATUSES } from '../mentorship.state';
 import {
   DECLINE_REASON_MAX,
   INTRO_MAX,
+  REVIEW_MAX,
   TOPIC_MAX,
 } from '../mentorship.constants';
 
@@ -44,6 +45,21 @@ export class Mentorship {
 
   @Prop({ type: Types.ObjectId, ref: 'User', default: null })
   completedBy: Types.ObjectId | null;
+
+  /**
+   * The mentee's rating of a COMPLETED mentorship (BACKLOG.md E11): at most
+   * one, editable for a short grace window after `ratedAt`, then immutable.
+   */
+  @Prop({
+    type: {
+      _id: false,
+      rating: { type: Number, min: 1, max: 5, required: true },
+      review: { type: String, maxlength: REVIEW_MAX },
+      ratedAt: { type: Date, required: true },
+    },
+    default: undefined,
+  })
+  feedback?: { rating: number; review?: string; ratedAt: Date };
 
   createdAt: Date;
   updatedAt: Date;

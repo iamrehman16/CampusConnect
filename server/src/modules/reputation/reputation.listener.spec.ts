@@ -129,4 +129,56 @@ describe('ReputationListener', () => {
       expect(reputation.award).not.toHaveBeenCalled();
     });
   });
+
+  describe('mentorship events (E11)', () => {
+    it('awards the MENTOR for a completed mentorship, keyed by the mentor/mentee pair', async () => {
+      const { listener, reputation } = build();
+
+      await listener.onMentorshipCompleted({
+        mentorshipId: 'm1',
+        mentorId: 'mentor',
+        menteeId: 'mentee',
+        completedBy: 'mentee',
+      });
+
+      expect(reputation.award).toHaveBeenCalledWith(
+        'mentor',
+        ReputationEventType.MENTORSHIP_COMPLETED,
+        'mentor:mentee',
+      );
+    });
+
+    it.each([4, 5])('awards for a %i-star rating', async (rating) => {
+      const { listener, reputation } = build();
+
+      await listener.onMentorshipRated({
+        mentorshipId: 'm1',
+        mentorId: 'mentor',
+        menteeId: 'mentee',
+        rating,
+      });
+
+      expect(reputation.award).toHaveBeenCalledWith(
+        'mentor',
+        ReputationEventType.MENTORSHIP_RATED_WELL,
+        'mentor:mentee',
+      );
+    });
+
+    it.each([1, 2, 3])(
+      'a %i-star rating earns nothing and never reduces reputation',
+      async (rating) => {
+        const { listener, reputation } = build();
+
+        await listener.onMentorshipRated({
+          mentorshipId: 'm1',
+          mentorId: 'mentor',
+          menteeId: 'mentee',
+          rating,
+        });
+
+        expect(reputation.award).not.toHaveBeenCalled();
+      },
+    );
+  });
 });

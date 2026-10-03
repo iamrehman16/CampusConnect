@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import {
   DomainEvents,
+  MentorshipCompletedEvent,
+  MentorshipRatedEvent,
   PostUpvotedEvent,
   ResourceApprovedEvent,
   ResourceCitedEvent,
@@ -69,6 +71,35 @@ export class ReputationListener {
         event.uploaderId,
         ReputationEventType.AI_CITATION,
         `${event.resourceId}:${day}`,
+      ),
+    );
+  }
+
+  /**
+   * Once per mentor/mentee pair EVER (not per mentorship): the ledger's unique
+   * (type, sourceId) index turns repeated cycles between the same two accounts
+   * into no-ops, which is the farming guard (BACKLOG.md E11).
+   */
+  @OnEvent(DomainEvents.MENTORSHIP_COMPLETED, { async: true })
+  onMentorshipCompleted(event: MentorshipCompletedEvent) {
+    return this.run(`mentorship ${event.mentorshipId} completed`, () =>
+      this.reputation.award(
+        event.mentorId,
+        ReputationEventType.MENTORSHIP_COMPLETED,
+        `${event.mentorId}:${event.menteeId}`,
+      ),
+    );
+  }
+
+  /** Only 4-5 stars earn points; a low rating never reduces reputation. */
+  @OnEvent(DomainEvents.MENTORSHIP_RATED, { async: true })
+  onMentorshipRated(event: MentorshipRatedEvent) {
+    if (event.rating < 4) return Promise.resolve();
+    return this.run(`mentorship ${event.mentorshipId} rated`, () =>
+      this.reputation.award(
+        event.mentorId,
+        ReputationEventType.MENTORSHIP_RATED_WELL,
+        `${event.mentorId}:${event.menteeId}`,
       ),
     );
   }

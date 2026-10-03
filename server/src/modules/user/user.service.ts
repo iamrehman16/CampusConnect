@@ -38,7 +38,7 @@ import { MentorSortBuilder } from './queries/build-mentor-sort';
 
 // Fields loaded for the public mentor directory (mirrors MentorSummaryDto).
 const MENTOR_PUBLIC_FIELDS =
-  'name avatar department semester role tier contributionScore expertise mentorBio mentorTopics maxActiveMentees activeMenteeCount';
+  'name avatar department semester role tier contributionScore expertise mentorBio mentorTopics maxActiveMentees activeMenteeCount mentorRatingSum mentorRatingCount';
 import { CompleteOnboardingDto } from './dto/complete-onboarding.dto';
 import { TopContributorDto } from './dto/top-contributor.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -46,6 +46,18 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 // Fields any member may see on another member's profile. Deliberately
 // excludes email, accountStatus and isOnboarded.
 const PROFILE_PUBLIC_FIELDS = `${MENTOR_PUBLIC_FIELDS} academicInfo interests isOpenToMentor lastSeenAt createdAt`;
+
+/** Average to one decimal, or null before the first rating. */
+export function ratingSummary(
+  sum: number | undefined,
+  count: number | undefined,
+): { ratingAverage: number | null; ratingCount: number } {
+  const n = count ?? 0;
+  return {
+    ratingAverage: n > 0 ? Math.round(((sum ?? 0) / n) * 10) / 10 : null,
+    ratingCount: n,
+  };
+}
 
 @Injectable()
 export class UserService {
@@ -140,6 +152,7 @@ export class UserService {
           mentorTopics: u.mentorTopics ?? [],
           maxActiveMentees,
           slotsLeft: Math.max(0, maxActiveMentees - (u.activeMenteeCount ?? 0)),
+          ...ratingSummary(u.mentorRatingSum, u.mentorRatingCount),
         };
       }),
     };
@@ -189,7 +202,8 @@ export class UserService {
     if (!user) {
       throw new NotFoundException(`User with id ${userId} not found`);
     }
-    return user;
+    const { mentorRatingSum, mentorRatingCount, ...rest } = user;
+    return { ...rest, ...ratingSummary(mentorRatingSum, mentorRatingCount) };
   }
 
   async findOneWithHashedRefreshToken(userId: string) {
@@ -308,6 +322,24 @@ export class UserService {
       .updateOne(
         { _id: mentorId, activeMenteeCount: { $gt: 0 } },
         { $inc: { activeMenteeCount: -1 } },
+      )
+      .exec();
+  }
+
+  /**
+   * Apply a rating change to a mentor's denormalized totals (BACKLOG.md E11):
+   * a new rating is (+rating, +1), an edit is (new - old, 0). Floors at 0 so a
+   * drifted total can't go negative.
+   */
+  async adjustMentorRating(
+    mentorId: string,
+    sumDelta: number,
+    countDelta: number,
+  ): Promise<void> {
+    await this.userModel
+      .updateOne(
+        { _id: mentorId },
+        { $inc: { mentorRatingSum: sumDelta, mentorRatingCount: countDelta } },
       )
       .exec();
   }

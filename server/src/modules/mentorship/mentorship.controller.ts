@@ -5,10 +5,13 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Req,
 } from '@nestjs/common';
 import { MentorshipService } from './mentorship.service';
+import { MentorFeedbackService } from './mentor-feedback.service';
+import { RateMentorshipDto } from './dto/rate-mentorship.dto';
 import { MentorRecommendationService } from './mentor-recommendation.service';
 import { RecommendedMentorsQueryDto } from './dto/recommended-mentors-query.dto';
 import { CreateMentorshipDto } from './dto/create-mentorship.dto';
@@ -22,6 +25,7 @@ export class MentorshipController {
   constructor(
     private readonly service: MentorshipService,
     private readonly recommendations: MentorRecommendationService,
+    private readonly feedback: MentorFeedbackService,
   ) {}
 
   @Post()
@@ -47,6 +51,16 @@ export class MentorshipController {
   @Get('pending-count')
   pendingCount(@Req() req: { user: CurrentUser }) {
     return this.service.pendingCount(req.user.id);
+  }
+
+  /** The mentee rates a completed mentorship; editable for 24h (BACKLOG.md E11). */
+  @Put(':id/rating')
+  rate(
+    @Req() req: { user: CurrentUser },
+    @Param('id', ParseMongoIdPipe) id: string,
+    @Body() dto: RateMentorshipDto,
+  ) {
+    return this.feedback.rate(id, req.user.id, dto);
   }
 
   @Patch(':id/accept')

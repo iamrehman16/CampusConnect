@@ -22,6 +22,8 @@ function mentor(
     mentorTopics: topics,
     maxActiveMentees: 3,
     slotsLeft: 2,
+    ratingAverage: null,
+    ratingCount: 0,
     ...extra,
   };
 }

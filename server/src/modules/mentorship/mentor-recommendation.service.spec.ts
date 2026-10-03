@@ -16,6 +16,8 @@ const mentor = (id: string, topics: string[]): MentorSummaryDto => ({
   mentorTopics: topics,
   maxActiveMentees: 3,
   slotsLeft: 1,
+  ratingAverage: null,
+  ratingCount: 0,
 });
 
 function build(opts: {
