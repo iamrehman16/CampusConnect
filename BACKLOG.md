@@ -69,7 +69,6 @@ drawer); the app rail collapses to icons on these routes.
 |---|-------|------|----------------|
 | 1 | Deploy on the monorepo | **I1–I3** | The demo runs on the deployed app, which is still wired to the two archived repos |
 | 2 | Demo readiness | H2 verification, H3 | Walkthrough and screenshots must be taken on the deployed build |
-| 3 | Local self-hosted stack | J1, then J2–J4 | Developer experience and resilience; must not change what the demo runs on |
 
 ---
 
@@ -121,79 +120,6 @@ easy it is to miss a variable (`FRONTEND_URL`, `GOOGLE_CALLBACK_URL`).
 - Written post-deploy smoke checklist: sign in, Google sign-in, upload, approve,
   ask AI with a citation, message over the socket.
 - Cold-start note for Render's free tier, and a way to warm it before the demo.
-
----
-
-## Epic J — Local self-hosted dev stack
-
-**Goal:** develop with no dependency on Atlas, Qdrant Cloud, Gemini or LlamaParse,
-with low latency, while the deployed app stays fully hosted. **Groq stays cloud
-for the LLM in both** (no GPU on the dev machine: 15 GB RAM, 8 cores).
-
-**Plan and constraints (agreed direction, 2026-10-03):**
-- **Feasible on this machine** but RAM is tight (about 7 GB free with the IDE and
-  browser open). Rough budget: Mongo 0.5 GB, Redis 0.1, Qdrant 0.5, embedding server
-  1–2, Docling 3–4 GB while parsing. So Docling is an optional compose profile,
-  started only when testing ingestion.
-- **Embeddings change the vector space.** The code hard-codes 3072 dimensions
-  (`VECTOR_SIZE` in `vector-store.service.ts`), which is Gemini's. A local model
-  (e.g. bge-m3 at 1024, nomic-embed-text at 768) needs its own collection and
-  dimension, and **local and production must never share a collection.** Local relevance
-  scores also differ, so the 0.6 cutoff + 0.05 margin (tuned for Gemini) must be
-  re-tuned per provider, not copied.
-- **The demo must run on the deployed stack** (Gemini + LlamaParse + Qdrant Cloud),
-  which is what was tuned and tested. The local stack is for development.
-- Parser output must keep per-page text, since citations show page numbers.
-
-### J1 — Local infrastructure compose (Mongo, Redis, Qdrant)
-**Effort:** 3
-**Where:** `docker-compose.yml` (repo root), `server/.env.local.example`, `package.json` scripts
-**Why:** Local dev currently mixes Atlas and a standalone Mongo container (which cannot
-run `createComment`'s transaction) and uses cloud Qdrant, which goes dormant.
-**Acceptance criteria:**
-- One command starts Mongo as a **single-node replica set** (transactions work),
-  Redis and Qdrant (no API key), with named volumes.
-- `.env.local.example` lists exactly the variables for this mode; Atlas is used only
-  for production and the demo database.
-- `npm run seed:demo` works against the local Mongo.
-- Documented in the README: start, stop, reset.
-
-### J2 — Parser provider abstraction + Docling
-**Effort:** 5 (start with a half-day spike)
-**Where:** `server/src/modules/ai/services/document-parser.service.ts`, compose profile
-**Why:** LlamaParse is a paid, rate-limited cloud call; Docling (`docling-serve`) runs
-locally on CPU.
-**Spike first:** run Docling CPU on 5 seed PDFs; record time per page, peak RAM and output
-quality (tables, headings) against LlamaParse. Stop here if it needs more than about 4 GB
-or takes more than a few seconds per page.
-**Acceptance criteria:**
-- A `DocumentParser` interface (`parse(url, resourceId) → ParsedDocument` with per-page
-  text) selected by `PARSER_PROVIDER=llamaparse|docling`; default `llamaparse`.
-- The existing LlamaParse implementation is unchanged in behavior (CLAUDE.md §4:
-  polling and in-memory `FormData` stay).
-- Docling implementation with explicit error handling and a timeout; unit tests with a
-  mocked HTTP layer.
-
-### J3 — Embedding provider abstraction + configurable dimension
-**Effort:** 5 (+3 to re-tune retrieval)
-**Where:** `embedding.service.ts`, `vector-store.service.ts`, `memory-store.service.ts`,
-compose profile (a CPU embedding server such as Text Embeddings Inference, or Ollama)
-**Acceptance criteria:**
-- `EMBEDDING_PROVIDER=gemini|local`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS`;
-  default stays Gemini 3072.
-- The Qdrant collection name includes the provider, model and dimension, so a mismatch
-  can never write wrong-sized vectors into an existing collection (the server refuses to
-  start rather than corrupt it).
-- A script to re-ingest all approved resources into a new collection.
-- A small labelled question set (about 20) measuring recall per provider, and the retrieval
-  cutoff tuned per provider from it (also closes the old "evaluation set" note from E14).
-
-### J4 — Local run-through and documentation
-**Effort:** 3
-**Acceptance criteria:**
-- Fresh clone to a working local app (seed, upload, ingest, ask with a citation) in one
-  documented path, with the RAM budget and which compose profiles to start.
-- A note of known differences from production (relevance scores, parse quality).
 
 ---
 
