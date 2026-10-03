@@ -18,6 +18,9 @@ import { CreateMessageDto } from './dto/create-message.dto';
 import { GetMessagesDto } from './dto/get-message.dto';
 import { MessageContextService } from './message-context.service';
 import { MessageKind } from './types/message-context';
+import { BlockService } from '../moderation/block.service';
+import { UserService } from '../user/user.service';
+import { UserStatus } from '../user/enums/user-status.enum';
 
 // Public-safe participant fields only — email deliberately excluded.
 const PARTICIPANT_PUBLIC_FIELDS = 'name avatar role lastSeenAt';
@@ -33,6 +36,8 @@ export class ChatService implements OnModuleInit {
     private readonly messageModel: Model<MessageDocument>,
     private readonly paginationService: PaginationService,
     private readonly messageContext: MessageContextService,
+    private readonly blocks: BlockService,
+    private readonly userService: UserService,
   ) {}
 
   async onModuleInit() {
@@ -119,6 +124,8 @@ export class ChatService implements OnModuleInit {
     currentUserId: string,
     dto: StartConversationDto,
   ) {
+    await this.blocks.assertCanContact(currentUserId, dto.participantId);
+
     const currentId = new Types.ObjectId(currentUserId);
     const participantId = new Types.ObjectId(dto.participantId);
 
@@ -267,10 +274,38 @@ export class ChatService implements OnModuleInit {
         'You are not a participant of this conversation',
       );
     }
+
+    return conversation;
+  }
+
+  /**
+   * Gate for sending (BACKLOG.md E16): a suspended account can't keep using an
+   * already-open socket, and a blocked pair can't message each other. Runs on
+   * every message, server-side, so it can't be bypassed from the client.
+   */
+  private async assertCanSend(
+    senderId: string,
+    receiverId: string,
+  ): Promise<void> {
+    const sender = await this.userService.findOne(senderId);
+    if (sender.accountStatus === UserStatus.SUSPENDED) {
+      throw new ForbiddenException('This account has been suspended');
+    }
+    await this.blocks.assertCanContact(senderId, receiverId);
   }
 
   async createMessageIdempotent(dto: CreateMessageDto, senderId: string) {
-    await this.verifyParticipant(dto.conversationId, senderId);
+    const conversation = await this.verifyParticipant(
+      dto.conversationId,
+      senderId,
+    );
+    const receiver = conversation.participants.find(
+      (p) => p.toString() !== senderId,
+    );
+    if (!receiver) {
+      throw new NotFoundException('Receiver not found in conversation!');
+    }
+    await this.assertCanSend(senderId, receiver.toString());
 
     const kind = dto.kind ?? MessageKind.TEXT;
     const context = dto.contextId

@@ -724,6 +724,37 @@ revealed to someone who doesn't know the password) and on refresh; setting
 already-open chat socket keeps working until the next HTTP call or reconnect
 — the message-send gate in commit 2 closes that for messaging.
 
+**Decisions — block (commit 2):**
+- **New `moderation` module** (feature-based, CLAUDE.md §3.5) owns blocks now
+  and reports next; chat and mentorship import its `BlockService`. The spec
+  said "chat module", but moderation isn't chat-specific (mentorship and the
+  admin queue use it too) and chat shouldn't own the admin side.
+- **One gate: `BlockService.assertCanContact(a, b)`,** called from the
+  service layer — conversation start, every `send_message`, and
+  `MentorshipService.request` — so it can't be bypassed by skipping the UI.
+  Verified live: send refused while blocked, `POST /conversations` 403,
+  mentorship request 403, all restored on unblock.
+- **Blocks are symmetric in effect, one row per direction.** Either side's
+  block stops contact; only the blocker can see/undo theirs. The refusal text
+  is neutral ("You can't contact this user") and never says who blocked whom.
+  `GET /blocks` lists only the caller's own blocks; there is deliberately no
+  "has X blocked me" endpoint.
+- **Block/unblock are idempotent** (unique `(blocker, blocked)` index; a
+  duplicate-key on re-block is success, any other storage error is rethrown).
+  Blocking yourself is a 400.
+- **Suspended senders are refused at send time too** (`assertCanSend`), which
+  closes the open-socket gap noted above, at the cost of one extra user read
+  per message.
+- **Known limits:** an existing ACTIVE mentorship survives a block (chat is
+  blocked, the mentorship record isn't ended — ending it would be a
+  mentorship-state decision); a blocked send shows as a generic "failed to
+  send" in the chat UI until the block UI (commit 3) explains it; a mentor
+  who accepts a request after the mentee blocked them fails at conversation
+  creation (403) rather than at accept.
+- **Doc drift found:** `CLAUDE.md` §5 still says 9/10 server test suites fail
+  on DI setup (A12). `npx jest src/modules` is currently 41/41 suites, 324
+  tests, green — the note and the advisory `test` CI job are due for review.
+
 
 ---
 

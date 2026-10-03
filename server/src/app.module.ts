@@ -13,6 +13,7 @@ import { AiModule } from './modules/ai/ai.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { CommonModule } from './common/common.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { ModerationModule } from './modules/moderation/moderation.module';
 import { BullModule } from '@nestjs/bullmq';
 import { NotificationModule } from './modules/notification/notification.module';
 import { ReputationModule } from './modules/reputation/reputation.module';
@@ -67,6 +68,7 @@ import { QueuesModule } from './modules/queues/queues.module';
     AiModule,
     CommonModule,
     ChatModule,
+    ModerationModule,
     QueuesModule,
     NotificationModule,
     ReputationModule,

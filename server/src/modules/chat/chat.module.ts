@@ -14,6 +14,7 @@ import { Resource, ResourceSchema } from '../resource/schemas/resource.schema';
 import { Post, PostSchema } from '../post/schemas/post.schema';
 import { PresenceService } from './presence.service';
 import { UserModule } from '../user/user.module';
+import { ModerationModule } from '../moderation/moderation.module';
 import jwtConfig from '../auth/config/jwt.config';
 
 @Module({
@@ -30,6 +31,7 @@ import jwtConfig from '../auth/config/jwt.config';
 
     CommonModule,
     UserModule,
+    ModerationModule,
   ],
   controllers: [ChatController],
   providers: [

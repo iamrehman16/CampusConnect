@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@nestjs/common';
 import { Model, Types } from 'mongoose';
 import { ChatService } from './chat.service';
 import { ConversationDocument } from './schema/conversation.schema';
@@ -5,6 +6,9 @@ import { MessageDocument } from './schema/message.schema';
 import { PaginationService } from '../../common/services/pagination.service';
 import { MessageContextService } from './message-context.service';
 import { MessageKind } from './types/message-context';
+import { BlockService } from '../moderation/block.service';
+import { UserService } from '../user/user.service';
+import { UserStatus } from '../user/enums/user-status.enum';
 
 type MockQuery = {
   populate: jest.Mock;
@@ -54,6 +58,10 @@ function buildChatService(conversationModel: Partial<MockConversationModel>) {
     {} as unknown as Model<MessageDocument>,
     {} as unknown as PaginationService,
     {} as unknown as MessageContextService,
+    {
+      assertCanContact: jest.fn().mockResolvedValue(undefined),
+    } as unknown as BlockService,
+    {} as unknown as UserService,
   );
 }
 
@@ -238,6 +246,8 @@ describe('ChatService#getUserConversations — unreadCount', () => {
       { aggregate } as unknown as Model<MessageDocument>,
       {} as unknown as PaginationService,
       {} as unknown as MessageContextService,
+      {} as unknown as BlockService,
+      {} as unknown as UserService,
     );
 
     const result = await chatService.getUserConversations(userId);
@@ -251,13 +261,22 @@ describe('ChatService#createMessageIdempotent (E13 context)', () => {
   const senderId = new Types.ObjectId().toString();
   const conversationId = new Types.ObjectId().toString();
 
+  const receiverId = new Types.ObjectId();
+
   function build(opts: {
     create: jest.Mock;
     resolve?: jest.Mock;
     findOne?: jest.Mock;
+    blocked?: boolean;
+    senderStatus?: UserStatus;
   }) {
     const conversationModel = {
-      findOne: jest.fn().mockReturnValue(chainable({ _id: conversationId })),
+      findOne: jest.fn().mockReturnValue(
+        chainable({
+          _id: conversationId,
+          participants: [new Types.ObjectId(senderId), receiverId],
+        }),
+      ),
       findByIdAndUpdate: jest.fn().mockResolvedValue(null),
     };
     const messageModel = {
@@ -265,13 +284,28 @@ describe('ChatService#createMessageIdempotent (E13 context)', () => {
       findOne: opts.findOne ?? jest.fn(),
     };
     const resolve = opts.resolve ?? jest.fn();
+    const assertCanContact = jest
+      .fn()
+      .mockImplementation(() =>
+        opts.blocked
+          ? Promise.reject(
+              new ForbiddenException("You can't contact this user"),
+            )
+          : Promise.resolve(),
+      );
     const service = new ChatService(
       conversationModel as unknown as Model<ConversationDocument>,
       messageModel as unknown as Model<MessageDocument>,
       {} as unknown as PaginationService,
       { resolve } as unknown as MessageContextService,
+      { assertCanContact } as unknown as BlockService,
+      {
+        findOne: jest.fn().mockResolvedValue({
+          accountStatus: opts.senderStatus ?? UserStatus.ACTIVE,
+        }),
+      } as unknown as UserService,
     );
-    return { service, resolve };
+    return { service, resolve, assertCanContact };
   }
 
   const created = (extra: object) => ({
@@ -349,5 +383,108 @@ describe('ChatService#createMessageIdempotent (E13 context)', () => {
     );
 
     expect(result).toBe(existing);
+  });
+});
+
+describe('ChatService#createMessageIdempotent (E16 moderation gate)', () => {
+  const senderId = new Types.ObjectId().toString();
+  const conversationId = new Types.ObjectId().toString();
+  const receiverId = new Types.ObjectId();
+
+  function build(opts: { blocked?: boolean; senderStatus?: UserStatus }) {
+    const create = jest.fn().mockResolvedValue({
+      _id: new Types.ObjectId(),
+      createdAt: new Date(),
+      toObject: () => ({}),
+    });
+    const assertCanContact = jest
+      .fn()
+      .mockImplementation(() =>
+        opts.blocked
+          ? Promise.reject(
+              new ForbiddenException("You can't contact this user"),
+            )
+          : Promise.resolve(),
+      );
+    const service = new ChatService(
+      {
+        findOne: jest.fn().mockReturnValue(
+          chainable({
+            _id: conversationId,
+            participants: [new Types.ObjectId(senderId), receiverId],
+          }),
+        ),
+        findByIdAndUpdate: jest.fn().mockResolvedValue(null),
+      } as unknown as Model<ConversationDocument>,
+      { create } as unknown as Model<MessageDocument>,
+      {} as unknown as PaginationService,
+      {} as unknown as MessageContextService,
+      { assertCanContact } as unknown as BlockService,
+      {
+        findOne: jest.fn().mockResolvedValue({
+          accountStatus: opts.senderStatus ?? UserStatus.ACTIVE,
+        }),
+      } as unknown as UserService,
+    );
+    return { service, create, assertCanContact };
+  }
+
+  const dto = { conversationId, content: 'hi', clientId: 'c1' };
+
+  it('checks the block list against the OTHER participant, then stores the message', async () => {
+    const { service, create, assertCanContact } = build({});
+
+    await service.createMessageIdempotent(dto, senderId);
+
+    expect(assertCanContact).toHaveBeenCalledWith(
+      senderId,
+      receiverId.toString(),
+    );
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses to send, and stores nothing, when the pair is blocked', async () => {
+    const { service, create } = build({ blocked: true });
+
+    await expect(
+      service.createMessageIdempotent(dto, senderId),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('refuses a suspended sender even on an already-open socket', async () => {
+    const { service, create } = build({ senderStatus: UserStatus.SUSPENDED });
+
+    await expect(
+      service.createMessageIdempotent(dto, senderId),
+    ).rejects.toThrow('suspended');
+    expect(create).not.toHaveBeenCalled();
+  });
+});
+
+describe('ChatService#findOrCreateConversation (E16)', () => {
+  it("won't start a conversation between a blocked pair", async () => {
+    const findOne = jest.fn();
+    const service = new ChatService(
+      { findOne } as unknown as Model<ConversationDocument>,
+      {} as unknown as Model<MessageDocument>,
+      {} as unknown as PaginationService,
+      {} as unknown as MessageContextService,
+      {
+        assertCanContact: jest
+          .fn()
+          .mockRejectedValue(
+            new ForbiddenException("You can't contact this user"),
+          ),
+      } as unknown as BlockService,
+      {} as unknown as UserService,
+    );
+
+    await expect(
+      service.findOrCreateConversation(new Types.ObjectId().toString(), {
+        participantId: new Types.ObjectId().toString(),
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(findOne).not.toHaveBeenCalled();
   });
 });

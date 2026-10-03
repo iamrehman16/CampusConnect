@@ -25,6 +25,7 @@ import { UserService } from '../user/user.service';
 import { UserStatus } from '../user/enums/user-status.enum';
 import { DEFAULT_MAX_ACTIVE_MENTEES } from '../user/user.constants';
 import { ChatService } from '../chat/chat.service';
+import { BlockService } from '../moderation/block.service';
 import {
   DomainEvents,
   MentorshipAcceptedEvent,
@@ -102,6 +103,7 @@ export class MentorshipService {
     private readonly chatService: ChatService,
     private readonly paginationService: PaginationService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly blocks: BlockService,
   ) {}
 
   // ─── Request ───────────────────────────────────────────────────────────────
@@ -112,6 +114,8 @@ export class MentorshipService {
         'You cannot request mentorship from yourself',
       );
     }
+
+    await this.blocks.assertCanContact(menteeId, dto.mentorId);
 
     const mentor = await this.userService.findOne(dto.mentorId);
     if (!mentor.isOpenToMentor || mentor.accountStatus !== UserStatus.ACTIVE) {

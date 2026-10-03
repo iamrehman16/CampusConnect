@@ -12,6 +12,7 @@ import { MentorshipDocument } from './schema/mentorship.schema';
 import { MentorshipStatus } from './mentorship.state';
 import { UserService } from '../user/user.service';
 import { ChatService } from '../chat/chat.service';
+import { BlockService } from '../moderation/block.service';
 import { PaginationService } from '../../common/services/pagination.service';
 
 const mentorId = new Types.ObjectId();
@@ -69,14 +70,16 @@ function build(opts: {
     ...opts.chat,
   };
   const eventEmitter = { emit: jest.fn() };
+  const blocks = { assertCanContact: jest.fn().mockResolvedValue(undefined) };
   const service = new MentorshipService(
     (opts.model ?? {}) as unknown as Model<MentorshipDocument>,
     userService as unknown as UserService,
     chatService as unknown as ChatService,
     {} as PaginationService,
     eventEmitter as unknown as EventEmitter2,
+    blocks as unknown as BlockService,
   );
-  return { service, userService, chatService, eventEmitter };
+  return { service, userService, chatService, eventEmitter, blocks };
 }
 
 describe('MentorshipService#request', () => {
@@ -97,6 +100,25 @@ describe('MentorshipService#request', () => {
       ...overrides,
     };
   }
+
+  it('rejects a request between a blocked pair before touching the mentor or the DB (E16)', async () => {
+    const model = requestModel();
+    const { service, blocks, userService, eventEmitter } = build({ model });
+    blocks.assertCanContact.mockRejectedValue(
+      new ForbiddenException("You can't contact this user"),
+    );
+
+    await expect(
+      service.request(menteeId.toString(), dto),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(blocks.assertCanContact).toHaveBeenCalledWith(
+      menteeId.toString(),
+      mentorId.toString(),
+    );
+    expect(userService.findOne).not.toHaveBeenCalled();
+    expect(model.create).not.toHaveBeenCalled();
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
 
   it('creates a pending request and emits mentorship.requested', async () => {
     const { service, eventEmitter } = build({ model: requestModel() });
