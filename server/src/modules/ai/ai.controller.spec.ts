@@ -1,7 +1,8 @@
 import { EventEmitter } from 'events';
 import { Subject } from 'rxjs';
 import { Response } from 'express';
-import { AiController, AuthenticatedRequest } from './ai.controller';
+import { AiController } from './ai.controller';
+import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 import { AiChatService } from './services/ai-chat.service';
 import { ChatMessageDto } from './dto/chat-message.dto';
 

@@ -1,10 +1,8 @@
 import { Body, Controller, Delete, Post, Req, Res } from '@nestjs/common';
-import { Request, Response } from 'express';
+import type { Response } from 'express';
 import { ChatMessageDto } from './dto/chat-message.dto';
 import { AiChatService } from './services/ai-chat.service';
-import { CurrentUser } from '../auth/types/current-user';
-
-export type AuthenticatedRequest = Request & { user: CurrentUser };
+import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 
 @Controller('ai')
 export class AiController {

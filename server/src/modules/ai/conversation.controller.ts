@@ -16,7 +16,7 @@ import { RenameConversationDto } from './dto/rename-conversation.dto';
 import { SetMessageFeedbackDto } from './dto/set-message-feedback.dto';
 import { ParseMongoIdPipe } from '../../common/pipes/is-mongo-id.pipe';
 import { BaseQueryDto } from '../../common/dto/base-query.dto';
-import { AuthenticatedRequest } from './ai.controller';
+import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 
 @Controller('ai/conversations')
 export class ConversationController {
