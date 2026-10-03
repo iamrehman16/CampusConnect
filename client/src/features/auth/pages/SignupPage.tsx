@@ -3,6 +3,7 @@ import { Link as RouterLink } from "react-router-dom";
 import { ROUTES } from "@/shared/constants/routes";
 import { AuthLayout } from "../components/AuthLayout";
 import RegisterForm from "../components/RegisterForm";
+import GoogleSignInButton from "../components/GoogleSignInButton";
 
 export default function SignupPage() {
   return (
@@ -19,6 +20,7 @@ export default function SignupPage() {
       }
     >
       <RegisterForm />
+      <GoogleSignInButton />
     </AuthLayout>
   );
 }

@@ -7,6 +7,8 @@ export const ROUTES = {
   AUTH: "/auth",
   LOGIN: "/login",
   SIGNUP: "/signup",
+  /** Where the server sends the browser back after Google (BACKLOG.md F2/F3). */
+  GOOGLE_CALLBACK: "/auth/google/callback",
   HOME: "/",
   RESOURCES: "/resources",
   RESOURCE_DETAIL: "/resources/:id",

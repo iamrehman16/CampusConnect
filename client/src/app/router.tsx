@@ -14,6 +14,7 @@ import SuspenseWrapper from "./SuspenseWrapper";
 import LandingPage from "@/features/auth/pages/LandingPage";
 import LoginPage from "@/features/auth/pages/LoginPage";
 import SignupPage from "@/features/auth/pages/SignupPage";
+import GoogleCallbackPage from "@/features/auth/pages/GoogleCallbackPage";
 import DashboardPage from "@/features/dashboard/pages/DashboardPage";
 import OnboardingRoute from "./routes/OnboardingRoute";
 import MentorsLayout, {
@@ -93,6 +94,7 @@ const router = createBrowserRouter([
       },
       { path: ROUTES.LOGIN, element: <LoginPage /> },
       { path: ROUTES.SIGNUP, element: <SignupPage /> },
+      { path: ROUTES.GOOGLE_CALLBACK, element: <GoogleCallbackPage /> },
     ],
   },
 

@@ -14,6 +14,14 @@ const authService = {
     return response.data;
   },
 
+  /** Swaps the one-time code from the Google redirect for the normal token pair. */
+  async exchangeGoogleCode(code: string): Promise<AuthTokens> {
+    const response = await api.post<AuthTokens>('/auth/google/exchange', {
+      code,
+    });
+    return response.data;
+  },
+
   async completeOnboarding(data: CompleteOnboardingRequest): Promise<void> {
     await api.patch('/auth/onboarding', data);
   },
