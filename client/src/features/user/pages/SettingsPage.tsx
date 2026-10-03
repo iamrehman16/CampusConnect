@@ -1,3 +1,4 @@
+import InlineError from "@/shared/components/feedback/InlineError";
 import { useState } from "react";
 import { Box, Button, Skeleton, Stack, Typography } from "@mui/material";
 import { PageContainer } from "@/shared/components/PageContainer";
@@ -16,7 +17,7 @@ import { toProfileUserViewModel } from "../types/profile.types";
  * a page of its own.
  */
 export default function SettingsPage() {
-  const { data: profile, isLoading } = useMyProfile();
+  const { data: profile, isLoading, isError, refetch } = useMyProfile();
   const { mutate: updateProfile, isPending } = useUpdateProfile();
   const [avatarOpen, setAvatarOpen] = useState(false);
   const user = toProfileUserViewModel(profile);
@@ -24,7 +25,9 @@ export default function SettingsPage() {
   return (
     <PageContainer width="narrow">
       <PageHeader title="Settings" subtitle="Your profile, mentoring preferences, password and blocked users." />
-      {isLoading || !user ? (
+      {isError && !profile ? (
+        <InlineError message="Couldn't load your settings." onRetry={refetch} />
+      ) : isLoading || !user ? (
         <Stack spacing={3}>
           <Skeleton variant="rounded" height={320} />
           <Skeleton variant="rounded" height={140} />

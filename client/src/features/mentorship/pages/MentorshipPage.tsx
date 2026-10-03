@@ -1,3 +1,4 @@
+import InlineError from "@/shared/components/feedback/InlineError";
 import { useCallback, useRef } from "react";
 import {
   Alert,
@@ -57,6 +58,7 @@ function MentorshipList({
     data,
     isLoading,
     isError,
+    refetch,
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
@@ -84,7 +86,7 @@ function MentorshipList({
       </Box>
     );
   }
-  if (isError) return <Alert severity="error">Couldn't load this list.</Alert>;
+  if (isError) return <InlineError message="Couldn't load this list." onRetry={refetch} />;
   if (items.length === 0) {
     return (
       <Typography color="text.secondary" sx={{ py: 6, textAlign: "center" }}>

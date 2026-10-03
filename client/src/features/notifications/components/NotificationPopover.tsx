@@ -1,3 +1,4 @@
+import InlineError from "@/shared/components/feedback/InlineError";
 import {
   Box,
   Button,
@@ -33,7 +34,7 @@ export function NotificationPopover({
 }: Props) {
   const open = Boolean(anchorEl);
   const navigate = useNavigate();
-  const { data, isLoading, isError, hasNextPage, fetchNextPage, isFetchingNextPage } =
+  const { data, isLoading, isError, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } =
     useNotifications(open);
   const { data: unreadCount = 0 } = useUnreadNotificationCount();
   const markRead = useMarkNotificationRead();
@@ -77,9 +78,7 @@ export function NotificationPopover({
       )}
 
       {isError && (
-        <Typography variant="body2" color="error" sx={{ p: 2 }}>
-          Couldn't load notifications.
-        </Typography>
+        <InlineError compact message="Couldn't load notifications." onRetry={refetch} />
       )}
 
       {!isLoading && !isError && items.length === 0 && (
