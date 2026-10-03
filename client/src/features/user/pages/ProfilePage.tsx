@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Box, Button, Stack, Tab, Tabs } from "@mui/material";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { Edit } from "@/shared/icons";
+import InlineError from "@/shared/components/feedback/InlineError";
 import { PageContainer } from "@/shared/components/PageContainer";
 import { ROUTES } from "@/shared/constants/routes";
 import { ApprovalStatus, UserRole } from "@/shared/types/enums";
@@ -27,7 +28,7 @@ const ProfilePage: React.FC = () => {
   const [editTarget, setEditTarget] = useState<Resource | null>(null);
   const [avatarDialogOpen, setAvatarDialogOpen] = useState(false);
 
-  const { data: profile, isLoading: profileLoading } = useMyProfile();
+  const { data: profile, isLoading: profileLoading, isError: profileError, refetch: refetchProfile } = useMyProfile();
   const posts = useOwnPosts();
 
   // Only uploaders have resources; /resources/my is Contributor/Admin only.
@@ -56,6 +57,9 @@ const ProfilePage: React.FC = () => {
   return (
     <PageContainer width="narrow">
       <Stack spacing={3}>
+        {profileError && !profile && (
+          <InlineError message="Couldn't load your profile." onRetry={refetchProfile} />
+        )}
         <ProfileHero
           user={user}
           stats={stats}
@@ -92,6 +96,13 @@ const ProfilePage: React.FC = () => {
               isFetchingNextPage={posts.isFetchingNextPage}
               hasNextPage={posts.hasNextPage}
               fetchNextPage={posts.fetchNextPage}
+              isError={posts.isError}
+              onRetry={posts.refetch}
+              emptyAction={
+                <Button size="small" variant="outlined" onClick={() => navigate(ROUTES.COMMUNITY)}>
+                  Go to Community
+                </Button>
+              }
             />
           ) : (
             <ProfileResourcesTab
@@ -101,6 +112,13 @@ const ProfilePage: React.FC = () => {
               hasNextPage={resources.hasNextPage}
               fetchNextPage={resources.fetchNextPage}
               publicView={false}
+              isError={resources.isError}
+              onRetry={resources.refetch}
+              emptyAction={
+                <Button size="small" variant="outlined" onClick={() => navigate(ROUTES.RESOURCES)}>
+                  Open the library
+                </Button>
+              }
               statusFilter={resourceFilter}
               onStatusFilterChange={setResourceFilter}
               onEditResource={setEditTarget}

@@ -5,11 +5,12 @@ import {
   CardContent,
   Skeleton,
   Stack,
-  Typography,
 } from "@mui/material";
 import { ChatBubbleOutline } from "@/shared/icons";
 import type { PaginatedResult } from "@/shared/types/api.types";
 import type { Post } from "@/features/community/types/community.dto";
+import EmptyState from "@/shared/components/feedback/EmptyState";
+import InlineError from "@/shared/components/feedback/InlineError";
 import { PostCard } from "@/features/community/components/PostCard";
 
 interface ProfilePostsTabProps {
@@ -18,6 +19,10 @@ interface ProfilePostsTabProps {
   isFetchingNextPage: boolean;
   hasNextPage: boolean | undefined;
   fetchNextPage: () => void;
+  isError?: boolean;
+  onRetry?: () => void;
+  /** Next step shown in the empty state (own profile only). */
+  emptyAction?: React.ReactNode;
 }
 
 // BACKLOG.md D2 — was hardcoded to a white-alpha overlay that assumed a
@@ -44,6 +49,9 @@ const ProfilePostsTab: React.FC<ProfilePostsTabProps> = ({
   isFetchingNextPage,
   hasNextPage,
   fetchNextPage,
+  isError,
+  onRetry,
+  emptyAction,
 }) => {
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -72,18 +80,18 @@ const ProfilePostsTab: React.FC<ProfilePostsTabProps> = ({
     );
   }
 
+  if (isError && !allPosts.length) {
+    return <InlineError message="Couldn't load posts." onRetry={onRetry} />;
+  }
+
   if (!allPosts.length) {
     return (
-      <Box
-        sx={{
-          textAlign: "center",
-          py: 8,
-          color: "text.secondary",
-        }}
-      >
-        <ChatBubbleOutline sx={{ fontSize: 48, opacity: 0.3, mb: 2 }} />
-        <Typography variant="body2">No posts yet.</Typography>
-      </Box>
+      <EmptyState
+        icon={<ChatBubbleOutline sx={{ fontSize: 32 }} />}
+        title="No posts yet"
+        message="Posts appear here once they're shared in Community."
+        action={emptyAction}
+      />
     );
   }
 

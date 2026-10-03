@@ -27,7 +27,7 @@ const PublicProfilePage: React.FC = () => {
   const { user: me } = useAuth();
   const [params, setParams] = useSearchParams();
 
-  const { data: profile, isLoading, isError } = useUserProfile(userId);
+  const { data: profile, isLoading, isError, refetch } = useUserProfile(userId);
   const { isBlocked, toggle: toggleBlock, isPending: blockPending } = useBlockToggle(
     userId,
     profile?.name ?? "",
@@ -50,9 +50,14 @@ const PublicProfilePage: React.FC = () => {
           <Typography variant="subtitle1" fontWeight={600}>
             This profile isn't available
           </Typography>
-          <Button variant="outlined" sx={{ mt: 2 }} onClick={() => navigate(ROUTES.MENTORS)}>
-            Browse mentors
-          </Button>
+          <Stack direction="row" justifyContent="center" gap={1} sx={{ mt: 2 }}>
+            <Button variant="outlined" onClick={() => refetch()}>
+              Try again
+            </Button>
+            <Button variant="outlined" onClick={() => navigate(ROUTES.MENTORS)}>
+              Browse mentors
+            </Button>
+          </Stack>
         </Card>
       </PageContainer>
     );
@@ -137,6 +142,8 @@ const PublicProfilePage: React.FC = () => {
               isFetchingNextPage={posts.isFetchingNextPage}
               hasNextPage={posts.hasNextPage}
               fetchNextPage={posts.fetchNextPage}
+              isError={posts.isError}
+              onRetry={posts.refetch}
             />
           ) : (
             <ProfileResourcesTab
@@ -146,6 +153,8 @@ const PublicProfilePage: React.FC = () => {
               hasNextPage={resources.hasNextPage}
               fetchNextPage={resources.fetchNextPage}
               publicView
+              isError={resources.isError}
+              onRetry={resources.refetch}
             />
           )}
         </Box>

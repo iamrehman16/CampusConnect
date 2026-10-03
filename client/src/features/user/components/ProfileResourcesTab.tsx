@@ -6,7 +6,6 @@ import {
   Chip,
   Skeleton,
   Stack,
-  Typography,
   useTheme,
 } from "@mui/material";
 import { alpha, type Theme } from "@mui/material/styles";
@@ -14,6 +13,8 @@ import { CheckCircle, HourglassEmpty, Cancel, InsertDriveFile } from "@/shared/i
 import { ApprovalStatus } from "@/shared/types/enums";
 import type { PaginatedResult } from "@/shared/types/api.types";
 import type { Resource } from "@/features/resources/types/resource.dto";
+import EmptyState from "@/shared/components/feedback/EmptyState";
+import InlineError from "@/shared/components/feedback/InlineError";
 import { ResourceCard } from "@/features/resources/components/ResourceCard";
 
 interface ProfileResourcesTabProps {
@@ -22,6 +23,10 @@ interface ProfileResourcesTabProps {
   isFetchingNextPage: boolean;
   hasNextPage: boolean | undefined;
   fetchNextPage: () => void;
+  isError?: boolean;
+  onRetry?: () => void;
+  /** Next step shown in the empty state (own profile only). */
+  emptyAction?: React.ReactNode;
   publicView?: boolean;
   statusFilter?: ApprovalStatus | "all";
   onStatusFilterChange?: (val: ApprovalStatus | "all") => void;
@@ -166,11 +171,15 @@ const ProfileResourcesTab: React.FC<ProfileResourcesTabProps> = (props) => {
         <Stack spacing={2}>
           {[0, 1, 2].map((i) => <ResourceCardSkeleton key={i} />)}
         </Stack>
+      ) : props.isError && allResources.length === 0 ? (
+        <InlineError message="Couldn't load resources." onRetry={props.onRetry} />
       ) : allResources.length === 0 ? (
-        <Box sx={{ textAlign: "center", py: 8, color: "text.secondary" }}>
-          <InsertDriveFile sx={{ fontSize: 48, opacity: 0.3, mb: 2 }} />
-          <Typography variant="body2">No resources found.</Typography>
-        </Box>
+        <EmptyState
+          icon={<InsertDriveFile sx={{ fontSize: 32 }} />}
+          title="No resources found"
+          message={publicView ? "Nothing approved has been shared yet." : "Resources you upload appear here with their review status."}
+          action={props.emptyAction}
+        />
       ) : (
         <Stack spacing={2}>
           {allResources.map((r) => (
