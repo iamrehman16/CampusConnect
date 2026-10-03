@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Box, TextField, Button, Stack } from '@mui/material';
+import { Box, TextField, Button, Skeleton, Stack } from '@mui/material';
+import InlineError from '@/shared/components/feedback/InlineError';
 import { useCreateComment, useComments } from '../hooks/community.hooks';
 import { useAuth } from '@/shared/hooks/useAuth';
 import UserAvatar from "@/shared/components/UserAvatar";
@@ -19,7 +20,8 @@ export function CommentSection({ postId }: CommentSectionProps) {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-    status
+    status,
+    refetch,
   } = useComments(postId);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -65,9 +67,13 @@ export function CommentSection({ postId }: CommentSectionProps) {
       )}
 
       {status === 'pending' ? (
-        <Box sx={{ textAlign: 'center', py: 2 }}>Loading comments...</Box>
+        <Stack spacing={1}>
+          {[0, 1].map((i) => (
+            <Skeleton key={i} variant="rounded" height={48} />
+          ))}
+        </Stack>
       ) : status === 'error' ? (
-        <Box sx={{ textAlign: 'center', py: 2, color: 'error.main' }}>Error loading comments</Box>
+        <InlineError compact message="Couldn't load comments." onRetry={refetch} />
       ) : (
         <Stack spacing={1}>
           {comments.map((comment) => (

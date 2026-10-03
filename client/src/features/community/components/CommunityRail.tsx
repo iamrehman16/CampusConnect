@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Box, ButtonBase, Card, Skeleton, Stack, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import InlineError from "@/shared/components/feedback/InlineError";
 import UserAvatar from "@/shared/components/UserAvatar";
 import { ROUTES } from "@/shared/constants/routes";
 import { TierChip } from "@/features/reputation/components/TierChip";
@@ -36,7 +37,7 @@ const rowSx = {
  */
 export function CommunityRail({ posts, onOpenPost }: { posts: Post[]; onOpenPost: (id: string) => void }) {
   const navigate = useNavigate();
-  const { data: contributors, isLoading } = useTopContributors(5);
+  const { data: contributors, isLoading, isError, refetch } = useTopContributors(5);
   const active = useMemo(
     () => [...posts].filter((p) => p.commentCount > 0).sort((a, b) => b.commentCount - a.commentCount).slice(0, 4),
     [posts],
@@ -51,6 +52,8 @@ export function CommunityRail({ posts, onOpenPost }: { posts: Post[]; onOpenPost
               <Skeleton key={i} variant="rounded" height={32} />
             ))}
           </Stack>
+        ) : isError ? (
+          <InlineError compact message="Couldn't load contributors." onRetry={refetch} />
         ) : !contributors?.length ? (
           <Typography variant="body2" color="text.secondary" sx={{ px: 2 }}>
             No one has earned reputation yet.
