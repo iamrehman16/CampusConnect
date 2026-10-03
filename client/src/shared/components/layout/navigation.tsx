@@ -57,6 +57,16 @@ export function isNavActive(pathname: string, path: string): boolean {
   return pathname === path || pathname.startsWith(`${path}/`);
 }
 
+/**
+ * Routes that carry their own permanent list pane (BACKLOG.md D11). The app
+ * rail collapses to icons there so two sidebars don't sit side by side.
+ */
+export function hasSecondaryPane(pathname: string): boolean {
+  return [ROUTES.AI_CHAT, ROUTES.CHAT].some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  );
+}
+
 /** Badge counts for nav items, fetched once per render tree. */
 export function useNavBadges(): Record<NavBadge, number> {
   const messages = useTotalUnread();

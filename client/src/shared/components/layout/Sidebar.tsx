@@ -16,6 +16,7 @@ import { UserRole } from "@/shared/types/enums";
 import {
   ADMIN_NAV,
   PRIMARY_NAV,
+  hasSecondaryPane,
   isNavActive,
   useNavBadges,
   type NavItem,
@@ -33,7 +34,10 @@ export default function Sidebar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { sidebarCollapsed: collapsed, toggleSidebar } = useUIStore();
+  const { sidebarCollapsed: preferCollapsed, toggleSidebar } = useUIStore();
+  // The saved preference is untouched; it applies again on other routes.
+  const forcedCollapsed = hasSecondaryPane(pathname);
+  const collapsed = preferCollapsed || forcedCollapsed;
   const badges = useNavBadges();
 
   const renderItem = (item: NavItem) => {
@@ -155,11 +159,13 @@ export default function Sidebar() {
       </List>
 
       <Box sx={{ p: 1.25, display: "flex", justifyContent: collapsed ? "center" : "flex-end" }}>
-        <Tooltip title={collapsed ? "Expand sidebar" : "Collapse sidebar"} placement="right">
-          <IconButton size="small" onClick={toggleSidebar} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
-            {collapsed ? <ChevronRight fontSize="small" /> : <ArrowBackIosNew fontSize="small" />}
-          </IconButton>
-        </Tooltip>
+        {!forcedCollapsed && (
+          <Tooltip title={collapsed ? "Expand sidebar" : "Collapse sidebar"} placement="right">
+            <IconButton size="small" onClick={toggleSidebar} aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}>
+              {collapsed ? <ChevronRight fontSize="small" /> : <ArrowBackIosNew fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+        )}
       </Box>
     </Box>
   );
