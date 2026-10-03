@@ -69,7 +69,7 @@ export class DashboardService {
 
     return {
       totalUsers: userInfo.totalUsers,
-      availableMentors: userInfo.totalContributors,
+      availableMentors: userInfo.availableMentors,
       totalResources,
       postsThisMonth,
     };

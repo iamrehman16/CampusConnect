@@ -448,12 +448,27 @@ export class UserService {
     return updatedUser.toObject();
   }
 
+  /**
+   * Platform totals for the public stats. `availableMentors` is the number of
+   * active members who are open to mentoring AND have a free slot — the same
+   * definition as the directory's "has capacity" filter. (It used to count
+   * every contributor, who aren't necessarily mentors.)
+   */
   async getTotalUsersAndMentors() {
-    const [totalUsers, totalContributors] = await Promise.all([
+    const [totalUsers, availableMentors] = await Promise.all([
       this.userModel.countDocuments(),
-      this.userModel.countDocuments({ role: Roles.CONTRIBUTOR }),
+      this.userModel.countDocuments({
+        isOpenToMentor: true,
+        accountStatus: UserStatus.ACTIVE,
+        $expr: {
+          $lt: [
+            { $ifNull: ['$activeMenteeCount', 0] },
+            { $ifNull: ['$maxActiveMentees', DEFAULT_MAX_ACTIVE_MENTEES] },
+          ],
+        },
+      }),
     ]);
 
-    return { totalUsers, totalContributors };
+    return { totalUsers, availableMentors };
   }
 }
