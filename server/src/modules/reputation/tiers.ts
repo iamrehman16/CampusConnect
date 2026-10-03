@@ -50,3 +50,32 @@ export function tierMongoExpression(
     },
   };
 }
+
+export interface TierProgress {
+  tier: ReputationTier;
+  /** The next tier up, or null at the top. */
+  next: { tier: ReputationTier; minScore: number } | null;
+  pointsToNext: number;
+  /** 0..1 progress between this tier's floor and the next tier's floor; 1 at the top. */
+  fraction: number;
+}
+
+/** Where a score sits between its tier and the next (BACKLOG.md E15). */
+export function tierProgress(score: number): TierProgress {
+  const safe = Number.isFinite(score) && score > 0 ? score : 0;
+  const tier = tierForScore(safe);
+  const current = TIER_THRESHOLDS.find((t) => t.tier === tier)!;
+  // Thresholds are highest-first, so the next tier up is the closest one above.
+  const next =
+    [...TIER_THRESHOLDS].reverse().find((t) => t.minScore > current.minScore) ??
+    null;
+
+  if (!next) return { tier, next: null, pointsToNext: 0, fraction: 1 };
+
+  return {
+    tier,
+    next: { tier: next.tier, minScore: next.minScore },
+    pointsToNext: next.minScore - safe,
+    fraction: (safe - current.minScore) / (next.minScore - current.minScore),
+  };
+}

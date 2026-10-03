@@ -791,6 +791,50 @@ retention lever for the supply side.
   respected; reuses existing top-contributors aggregation where possible.
 - Follows the dataviz conventions already used in admin charts (Recharts).
 
+**E15 status: IN PROGRESS (2026-10-03).** Order: (1) "My impact" endpoint,
+(2) leaderboard + opt-out on the server, (3) impact panel UI, (4) leaderboard
+UI + opt-out toggle.
+
+**Decisions — "My impact" (commit 1), verified live:**
+- **One endpoint, `GET /dashboard/me/impact`,** built by an `ImpactService`
+  in the dashboard module so the controller stays thin. Each figure comes from
+  its source of truth: score history, this month's points and AI citations
+  from the **reputation ledger**; downloads from approved resources; mentees
+  from mentorships (active / completed as mentor); rating from the user's
+  denormalized totals (E11); tier progress from the tier table.
+- **Score history is a 30-day running total built from the ledger** (balance
+  before the window + each day's net points, quiet days carried forward,
+  never below 0). It's a pure function (`buildScoreSeries`) with tests. It can
+  differ slightly from `contributionScore` if that has drifted from the ledger
+  — the ledger is the source of truth (see E5).
+- **Tier progress is derived, not stored:** `tierProgress(score)` shares the
+  `TIER_THRESHOLDS` table, so "points to next tier" can't disagree with the
+  tier rules; the top tier reports no next tier and full progress.
+- **"AI citations" counts ledger rows, i.e. distinct (resource, day) credits**
+  — what the contributor was actually rewarded for, not raw citation volume.
+
+**Found while building it (two pre-existing bugs, each fixed in its own
+commit):**
+1. **`GET /dashboard/me/stats` returned zeros for everyone** (`d537830`):
+   `@Req() dto: CurrentUser` receives the whole request, so `dto.id` was
+   undefined and a random ObjectId was queried. Now `req.user.id`, with a
+   regression test.
+2. **A resource's `uploadedBy` was stored as a string** (`6f6eca8`). Under
+   `@nestjs/mongoose`, `@Prop({ type: Types.ObjectId })` resolves to a **Mixed**
+   path, so Mongoose never casts; `ResourceService.create` saved a string while
+   queries/joins used ObjectIds, so they silently matched nothing — contributors
+   couldn't edit or delete their own resources, badge counts and the admin
+   top-contributors chart missed them, and impact stats were 0. Fixed for
+   resources (new rows store an ObjectId, the uploader filter casts, the DTO
+   validates the id, and a boot-time migration converted the 23 legacy rows).
+   **Follow-up (not done): audit every `@Prop({ type: Types.ObjectId })` —**
+   `Post.author`, `Message.sender`, etc. are Mixed too. They behave today only
+   because callers happen to pass ObjectIds; a string slipping in would break
+   queries the same silent way. The principled fix is `Schema.Types.ObjectId`
+   (or `@Prop({ type: SchemaTypes.ObjectId })`) plus a per-collection check
+   and migration, like this one.
+
+
 ---
 ### Safety (roadmap Phase 4)
 

@@ -1,4 +1,5 @@
 import {
+  tierProgress,
   ReputationTier,
   TIER_THRESHOLDS,
   tierForScore,
@@ -67,5 +68,40 @@ describe('tierMongoExpression', () => {
         (b) => b.case.$gte[0] === '$contributionScore',
       ),
     ).toBe(true);
+  });
+});
+
+describe('tierProgress (E15)', () => {
+  it('reports progress inside a tier and the points to the next one', () => {
+    // regular is 10..49, trusted starts at 50
+    const p = tierProgress(30);
+
+    expect(p.tier).toBe(ReputationTier.REGULAR);
+    expect(p.next).toEqual({ tier: ReputationTier.TRUSTED, minScore: 50 });
+    expect(p.pointsToNext).toBe(20);
+    expect(p.fraction).toBeCloseTo(0.5);
+  });
+
+  it('is at 0 progress exactly on a tier floor', () => {
+    expect(tierProgress(10).fraction).toBe(0);
+    expect(tierProgress(50).tier).toBe(ReputationTier.TRUSTED);
+  });
+
+  it('starts from newcomer, including zero and bad input', () => {
+    for (const bad of [0, -5, Number.NaN]) {
+      const p = tierProgress(bad);
+      expect(p.tier).toBe(ReputationTier.NEWCOMER);
+      expect(p.next?.tier).toBe(ReputationTier.REGULAR);
+      expect(p.pointsToNext).toBe(10);
+    }
+  });
+
+  it('is complete, with no next tier, at the top', () => {
+    const p = tierProgress(400);
+
+    expect(p.tier).toBe(ReputationTier.STAR);
+    expect(p.next).toBeNull();
+    expect(p.fraction).toBe(1);
+    expect(p.pointsToNext).toBe(0);
   });
 });
