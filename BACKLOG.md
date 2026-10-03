@@ -47,7 +47,23 @@ epics are summarized below; their detail lives in `git log`.
 
 ---
 
-## Epic H — Demo readiness (H2, H3 open — the only active work)
+## Epic D (continued) — D11 comes before H2/H3
+
+### D11 — Coherent two-pane layout for Ask AI and Messages
+**Effort:** 5
+**Where:** `shared/components/layout/*`, `features/ai-chat/*`, `features/chat/*`
+**Why:** Both screens put a thread/conversation list directly beside the app's
+own sidebar: two left columns, with different widths, headers and styles.
+**Decision (2026-10-03):** the list stays always visible on desktop (no
+drawer); the app rail collapses to icons on these routes.
+**Acceptance criteria:**
+- On desktop, `/ai` and `/chat` show the app rail collapsed (icons only)
+  regardless of the saved preference; other routes are unchanged.
+- One shared list-pane (same width, header with title + "new" action, search,
+  row style, active highlight) used by both screens.
+- Mobile unchanged: one pane at a time.
+
+## Epic H — Demo readiness (H2, H3 open)
 
 ### H2 — Empty, loading and error states pass
 **Effort:** 5

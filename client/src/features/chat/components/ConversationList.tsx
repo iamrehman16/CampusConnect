@@ -1,22 +1,11 @@
 // src/features/chat/components/ConversationList.tsx
 import { useMemo, useState } from "react";
-import {
-  Box,
-  Button,
-  IconButton,
-  InputAdornment,
-  List,
-  Skeleton,
-  Stack,
-  TextField,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+import { Box, Button, List, Skeleton, Stack, Typography } from "@mui/material";
 import {
   EditOutlined as EditOutlinedIcon,
   PeopleOutline as PeopleOutlineIcon,
-  Search as SearchIcon,
 } from "@/shared/icons";
+import { ListPaneHeader } from "@/shared/components/layout/ListPane";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { useConversationsQuery } from "../hooks/chat-hooks";
@@ -49,51 +38,16 @@ export function ConversationList() {
 
   const hasAny = (conversations?.length ?? 0) > 0;
 
-  const newMessageButton = (
-    <Tooltip title="New message">
-      <IconButton aria-label="New message" onClick={() => navigate(ROUTES.MY_MENTORS)}>
-        <EditOutlinedIcon fontSize="small" />
-      </IconButton>
-    </Tooltip>
-  );
-
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
-      <Box sx={{ p: 1.5, pb: 1, flexShrink: 0 }}>
-        <Stack
-          direction="row"
-          alignItems="center"
-          sx={{ mb: 1.25, minHeight: 36, display: { xs: "none", md: "flex" } }}
-        >
-          <Typography variant="subtitle1" component="h1" fontWeight={700} sx={{ flex: 1, px: 0.5 }}>
-            Messages
-          </Typography>
-          {newMessageButton}
-        </Stack>
-        {hasAny && (
-          <Stack direction="row" alignItems="center" gap={0.5}>
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="Search people"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              slotProps={{
-                input: {
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon sx={{ fontSize: 16, color: "text.tertiary" }} />
-                    </InputAdornment>
-                  ),
-                },
-                htmlInput: { "aria-label": "Search conversations" },
-              }}
-            />
-            {/* Mobile has no title row (the top bar shows it). */}
-            <Box sx={{ display: { xs: "block", md: "none" } }}>{newMessageButton}</Box>
-          </Stack>
-        )}
-      </Box>
+      <ListPaneHeader
+        title="Messages"
+        actionLabel="New message"
+        actionIcon={<EditOutlinedIcon fontSize="small" />}
+        onAction={() => navigate(ROUTES.MY_MENTORS)}
+        search={hasAny ? { value: query, onChange: setQuery, placeholder: "Search people" } : undefined}
+        hideTitleOnMobile
+      />
 
       {isLoading ? (
         <Stack spacing={1} sx={{ px: 1.5, pt: 1 }}>

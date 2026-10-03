@@ -1,6 +1,7 @@
 import { Box, useMediaQuery, useTheme } from "@mui/material";
 import { Outlet, useParams } from "react-router-dom";
 import { ConversationList } from "../components/ConversationList";
+import { ListPane } from "@/shared/components/layout/ListPane";
 
 /**
  * Messages (BACKLOG.md D8) — same two-pane pattern as Ask AI: list on the
@@ -17,20 +18,9 @@ export default function ConversationsPage() {
 
   return (
     <Box sx={{ display: "flex", height: "100%", overflow: "hidden" }}>
-      <Box
-        sx={{
-          width: 320,
-          flexShrink: 0,
-          borderRight: "1px solid",
-          borderColor: "divider",
-          bgcolor: "background.paper",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        }}
-      >
+      <ListPane>
         <ConversationList />
-      </Box>
+      </ListPane>
       <Box
         sx={{
           flex: 1,

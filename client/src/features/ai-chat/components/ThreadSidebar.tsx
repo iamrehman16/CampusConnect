@@ -1,5 +1,10 @@
-import { Box, Button, CircularProgress, List, Typography } from "@mui/material";
-import { Add as AddIcon, ChatBubbleOutline as ChatBubbleOutlineIcon } from "@/shared/icons";
+import { useMemo, useState } from "react";
+import { Box, CircularProgress, List, Typography } from "@mui/material";
+import {
+  ChatBubbleOutline as ChatBubbleOutlineIcon,
+  EditOutlined as EditOutlinedIcon,
+} from "@/shared/icons";
+import { ListPaneHeader } from "@/shared/components/layout/ListPane";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   useDeleteThread,
@@ -22,6 +27,12 @@ export function ThreadSidebar({ onNavigate }: ThreadSidebarProps) {
   const { mutate: renameThread } = useRenameThread();
   const { mutate: deleteThread } = useDeleteThread();
 
+  const [query, setQuery] = useState("");
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? (threads ?? []).filter((t) => t.title.toLowerCase().includes(q)) : (threads ?? []);
+  }, [threads, query]);
+
   const goTo = (path: string) => {
     navigate(path);
     onNavigate?.();
@@ -36,24 +47,17 @@ export function ThreadSidebar({ onNavigate }: ThreadSidebarProps) {
         overflow: "hidden",
       }}
     >
-      <Box sx={{ p: 1.5, flexShrink: 0 }}>
-        <Button
-          fullWidth
-          variant="outlined"
-          startIcon={<AddIcon />}
-          onClick={() => goTo(ROUTES.AI_CHAT)}
-          sx={{ justifyContent: "flex-start" }}
-        >
-          New chat
-        </Button>
-        <Typography
-          variant="caption"
-          color="text.tertiary"
-          sx={{ display: "block", px: 0.5, pt: 2, fontWeight: 600, letterSpacing: "0.04em" }}
-        >
-          RECENT
-        </Typography>
-      </Box>
+      <ListPaneHeader
+        title="Ask AI"
+        actionLabel="New chat"
+        actionIcon={<EditOutlinedIcon fontSize="small" />}
+        onAction={() => goTo(ROUTES.AI_CHAT)}
+        search={
+          threads?.length
+            ? { value: query, onChange: setQuery, placeholder: "Search chats" }
+            : undefined
+        }
+      />
 
       {isLoading ? (
         <Box sx={{ display: "flex", justifyContent: "center", pt: 4 }}>
@@ -77,9 +81,13 @@ export function ThreadSidebar({ onNavigate }: ThreadSidebarProps) {
             No chats yet — start a new one.
           </Typography>
         </Box>
+      ) : filtered.length === 0 ? (
+        <Typography variant="body2" color="text.secondary" sx={{ px: 2.5, py: 3, textAlign: "center" }}>
+          No chats match “{query.trim()}”.
+        </Typography>
       ) : (
-        <List disablePadding sx={{ flex: 1, overflowY: "auto" }}>
-          {threads.map((thread) => (
+        <List disablePadding sx={{ flex: 1, overflowY: "auto", px: 1, pb: 1 }}>
+          {filtered.map((thread) => (
             <ThreadListItem
               key={thread.id}
               thread={thread}

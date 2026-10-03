@@ -67,12 +67,8 @@ export function ThreadListItem({
     <ListItemButton
       onClick={onClick}
       selected={isActive}
-      sx={{
-        px: 2,
-        py: 1.25,
-        gap: 1,
-        "&.Mui-selected": { bgcolor: "action.selected" },
-      }}
+      aria-current={isActive ? "page" : undefined}
+      sx={{ px: 1.25, py: 1, gap: 1, borderRadius: 1, mb: 0.25 }}
     >
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography variant="body2" fontWeight={600} noWrap>
