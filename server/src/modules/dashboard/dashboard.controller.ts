@@ -15,7 +15,7 @@ export class DashboardController {
   }
 
   @Get('me/stats')
-  getMyStats(@Req() dto: CurrentUser) {
-    return this.dashboardService.getMyStats(dto.id);
+  getMyStats(@Req() req: { user: CurrentUser }) {
+    return this.dashboardService.getMyStats(req.user.id);
   }
 }
