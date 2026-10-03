@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, TextField, Button, Skeleton, Stack } from '@mui/material';
+import { Box, TextField, Button, Skeleton, Stack, Typography } from '@mui/material';
 import InlineError from '@/shared/components/feedback/InlineError';
 import { useCreateComment, useComments } from '../hooks/community.hooks';
 import { useAuth } from '@/shared/hooks/useAuth';
@@ -76,6 +76,11 @@ export function CommentSection({ postId }: CommentSectionProps) {
         <InlineError compact message="Couldn't load comments." onRetry={refetch} />
       ) : (
         <Stack spacing={1}>
+          {comments.length === 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 1 }}>
+              No replies yet. Be the first to answer.
+            </Typography>
+          )}
           {comments.map((comment) => (
             <CommentCard key={comment._id} comment={comment} postId={postId} />
           ))}
