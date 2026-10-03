@@ -92,6 +92,13 @@ can't reach either dashboard), then `CLAUDE.md` §8
 - Render: Git repository = `CampusConnect`, **Root Directory = `server`**, build
   `npm ci && npm run build`, start `npm run start:prod`, health check path set.
 - Old repos disconnected so a stray push can't deploy an old build.
+- **Render build command must be `npm ci --include=dev && npm run build`.** Render sets
+  `NODE_ENV=production`, so a plain `npm ci` skips devDependencies (`@types/*`); `tsc`
+  then compiles `AuthenticatedRequest` into a runtime reference and the app crashes at
+  boot with `ai_controller_1 is not defined` (reproduced 2026-10-03).
+- Vercel: one project only (`campus-connect-client`, URL `campus-connect-client-two`);
+  the duplicate `campus-connect-client-7cuw` was deleted 2026-10-03. Both were already
+  linked to the monorepo with Root Directory `client`.
 - Deployed `/auth/google/callback` and a hard refresh on `/login` load (no 404).
 - Sign-in, Google sign-in, an upload and an AI answer verified on the deployed app.
 
