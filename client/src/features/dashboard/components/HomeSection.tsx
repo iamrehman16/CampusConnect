@@ -4,6 +4,7 @@ import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
+import InlineError from "@/shared/components/feedback/InlineError";
 
 interface HomeSectionProps {
   title: string;
@@ -59,4 +60,9 @@ export function HomeEmpty({ children, action }: { children: ReactNode; action?: 
       {action && <Box sx={{ mt: 1.25 }}>{action}</Box>}
     </Box>
   );
+}
+
+/** A widget whose request failed: say so and offer a retry (BACKLOG.md H2). */
+export function HomeError({ onRetry }: { onRetry: () => void }) {
+  return <InlineError compact message="Couldn't load this." onRetry={onRetry} />;
 }

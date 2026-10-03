@@ -25,7 +25,7 @@ import { useRecommendedMentors } from "@/features/contributors/hooks/mentor.hook
 import { ResourceRow } from "@/features/resources/components/ResourceRow";
 import { useMyProfile } from "@/features/user/hooks/profile-hooks";
 import { ApprovalStatus, ResourceSort } from "@/shared/types/enums";
-import { HomeEmpty, HomeSection } from "./HomeSection";
+import { HomeEmpty, HomeError, HomeSection } from "./HomeSection";
 
 const ago = (iso: string) => formatDistanceToNowStrict(new Date(iso), { addSuffix: true });
 
@@ -90,15 +90,17 @@ function WidgetRow({
 
 export function ContinueWidget() {
   const navigate = useNavigate();
-  const { data: threads, isLoading } = useThreadsQuery();
+  const { data: threads, isLoading, isError, refetch } = useThreadsQuery();
   const recent = (threads ?? []).slice(0, 3);
 
-  if (!isLoading && recent.length === 0) return null;
+  if (!isLoading && !isError && recent.length === 0) return null;
 
   return (
     <HomeSection title="Pick up where you left off" action={{ label: "All chats", to: ROUTES.AI_CHAT }} flush>
       {isLoading ? (
         <RowSkeletons count={2} />
+      ) : isError ? (
+        <HomeError onRetry={refetch} />
       ) : (
         recent.map((t) => (
           <WidgetRow
@@ -124,7 +126,7 @@ export function SemesterResourcesWidget() {
   const navigate = useNavigate();
   const { data: profile } = useMyProfile();
   const semester = profile?.semester;
-  const { data, isLoading } = useResources({
+  const { data, isLoading, isError, refetch } = useResources({
     semester,
     status: ApprovalStatus.APPROVED,
     sort: ResourceSort.POPULAR,
@@ -139,6 +141,8 @@ export function SemesterResourcesWidget() {
     >
       {isLoading || !profile ? (
         <RowSkeletons count={4} />
+      ) : isError ? (
+        <HomeError onRetry={refetch} />
       ) : items.length === 0 ? (
         <HomeEmpty
           action={
@@ -160,7 +164,7 @@ export function SemesterResourcesWidget() {
 
 export function MentorshipWidget() {
   const navigate = useNavigate();
-  const { data: active, isLoading } = useMentorships("mentee", ["active"]);
+  const { data: active, isLoading, isError, refetch } = useMentorships("mentee", ["active"]);
   const { data: pending } = useMentorships("mentee", ["pending"]);
   const { data: requestsForMe = 0 } = usePendingRequestCount();
   const mentors = (active?.pages[0]?.data ?? []).slice(0, 3);
@@ -178,6 +182,8 @@ export function MentorshipWidget() {
       )}
       {isLoading ? (
         <RowSkeletons count={2} />
+      ) : isError ? (
+        <HomeError onRetry={refetch} />
       ) : mentors.length === 0 ? (
         <HomeEmpty
           action={
@@ -215,11 +221,11 @@ export function MentorshipWidget() {
 
 export function RecommendedMentorsWidget() {
   const navigate = useNavigate();
-  const { data, isLoading } = useRecommendedMentors(3);
+  const { data, isLoading, isError, refetch } = useRecommendedMentors(3);
 
   // Nothing to suggest (everyone is already your mentor / no open mentors):
-  // better absent than an empty box on Home.
-  if (!isLoading && (!data || data.mentors.length === 0)) return null;
+  // better absent than an empty box on Home. A failure is not "nothing".
+  if (!isLoading && !isError && (!data || data.mentors.length === 0)) return null;
 
   return (
     <HomeSection
@@ -229,6 +235,8 @@ export function RecommendedMentorsWidget() {
     >
       {isLoading ? (
         <RowSkeletons count={3} />
+      ) : isError ? (
+        <HomeError onRetry={refetch} />
       ) : (
         data?.mentors.map((m) => (
           <WidgetRow
@@ -249,17 +257,19 @@ export function RecommendedMentorsWidget() {
 export function MessagesWidget() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { data: conversations, isLoading } = useConversationsQuery();
+  const { data: conversations, isLoading, isError, refetch } = useConversationsQuery();
   const recent = [...(conversations ?? [])]
     .sort((a, b) => b.unreadCount - a.unreadCount || +new Date(b.lastMessageAt) - +new Date(a.lastMessageAt))
     .slice(0, 3);
 
-  if (!isLoading && recent.length === 0) return null;
+  if (!isLoading && !isError && recent.length === 0) return null;
 
   return (
     <HomeSection title="Messages" action={{ label: "Open messages", to: ROUTES.CHAT }} flush>
       {isLoading ? (
         <RowSkeletons count={2} />
+      ) : isError ? (
+        <HomeError onRetry={refetch} />
       ) : (
         recent.map((c) => {
           const other = c.participants.find((p) => p.id !== user?._id) ?? c.participants[0];
@@ -290,13 +300,15 @@ export function MessagesWidget() {
 
 export function CommunityWidget() {
   const navigate = useNavigate();
-  const { data, isLoading } = usePosts();
+  const { data, isLoading, isError, refetch } = usePosts();
   const posts = (data?.pages[0]?.data ?? []).slice(0, 3);
 
   return (
     <HomeSection title="From the community" action={{ label: "Community", to: ROUTES.COMMUNITY }} flush>
       {isLoading ? (
         <RowSkeletons count={3} />
+      ) : isError ? (
+        <HomeError onRetry={refetch} />
       ) : posts.length === 0 ? (
         <HomeEmpty>No discussions yet — start one in Community.</HomeEmpty>
       ) : (
