@@ -68,6 +68,7 @@ drawer); the app rail collapses to icons on these routes.
 | # | Phase | PBIs | Why this order |
 |---|-------|------|----------------|
 | 1 | Deploy on the monorepo | **I1–I3** | The demo runs on the deployed app, which is still wired to the two archived repos |
+| 1b | Live AI fixes | **I4, D12** | The AI is the demo's centerpiece and currently hangs on the deployed app |
 | 2 | Demo readiness | H2 verification, H3 | Walkthrough and screenshots must be taken on the deployed build |
 
 ---
@@ -114,6 +115,32 @@ can't reach either dashboard), then `CLAUDE.md` §8
 - Wrong-password login for an unknown email returns 404 ("User not found") instead of
   401, which also tells an attacker which emails have accounts (follow-up, not scheduled).
 
+### I4 — AI chat hangs on "Thinking" on the deployed app (BUG, blocks the demo)
+**Effort:** 5
+**Where:** `server/src/modules/ai/ai.controller.ts` (SSE handler), the global exception filter,
+`vector-store.service.ts`, Render env
+**Evidence (Render logs, 2026-10-03 06:22):** `POST /api/ai/chat/stream` → Qdrant
+`getCollections` fails with `ECONNRESET` → the service correctly raises its 503 ("AI assistant is
+temporarily unavailable") → `GlobalHttpExceptionFilter` then throws
+`ERR_HTTP_HEADERS_SENT`, because the SSE headers were already written. So the client never gets
+an error event or an end of stream and waits indefinitely.
+**Two causes, fix both:**
+1. **Error after SSE headers must be sent as an SSE `error` event, then `res.end()`**, not through
+   the global filter's `res.status()/json()`. The filter must skip responses where
+   `res.headersSent` is true. This is the CLAUDE.md §9 `ERR_HTTP_HEADERS_SENT` guard reappearing
+   on a path it didn't cover. Add a regression test.
+2. **Why Qdrant resets from Render:** check `QDRANT_URL` (the cluster with the `_demo` collections is
+   `f2ec13c1…eu-central-1-0.aws`, not `dc52239e…us-east4`), `QDRANT_API_KEY` for that cluster,
+   `QDRANT_COLLECTION_SUFFIX=_demo`, and whether the cluster is dormant. Also set
+   `REDIS_UPSTASH_URL` (the old Upstash database no longer exists).
+**Acceptance criteria:**
+- With Qdrant unreachable, the chat shows a readable error within seconds and the composer
+  re-enables (never an endless "Thinking").
+- With everything configured, a question about Data Structures answers with a citation on the
+  deployed app.
+- The client also times out a stream that sends nothing for a set period (for example 45 s) with
+  a retry option, as a second line of defense.
+
 ### I2 — Environment contract and `render.yaml`
 **Effort:** 3
 **Where:** `render.yaml` (repo root), `server/.env.example`, `client/.env.example`, docs
@@ -141,6 +168,31 @@ easy it is to miss a variable (`FRONTEND_URL`, `GOOGLE_CALLBACK_URL`).
 - Cold-start note for Render's free tier, and a way to warm it before the demo.
 
 ---
+
+## Epic D (continued) — D12
+
+### D12 — An AI answer must survive leaving the page
+**Effort:** 5–8 (design pass first)
+**Where:** `ai.controller.ts` / `ai-chat.service.ts` (generation vs. connection), the client
+streaming hooks (`useStreamMessage`, `useDrainQueue`, `useStreamRefs`), `useConversation`
+**Problem:** if you send a message, navigate away and come back, the reply is gone. The stream
+is tied to the page: leaving unmounts it, the fetch is aborted, and the server unsubscribes on
+`req.on('close')`, so the answer is never finished or saved.
+**Direction (to confirm in the design pass):** decouple generation from the connection.
+The server keeps generating after the client disconnects and **persists the full reply**; the
+client, on returning (or refreshing, or reopening the tab), shows the saved reply and, if it
+is still generating, picks it up. This also covers a refresh and a closed tab, which lifting
+the stream into a global client store would not.
+**Constraints:** keep CLAUDE.md §4 (manual `res.write()` SSE on POST, raw `fetch`, the split
+hooks, rAF batching). Don't generate unbounded: a disconnected stream still needs a timeout
+and the token budget (B9).
+**Acceptance criteria:**
+- Send, leave to another page, return: the thread shows the complete reply (or a live
+  continuation), never a missing answer.
+- Same after a hard refresh mid-answer.
+- A thread with a reply still being generated shows it as "answering…" and updates when done
+  (the existing refetch-on-mount for history ending in a user message is the starting point).
+- No duplicate messages (`clientId` de-dup still holds).
 
 ## Epic H — Demo readiness (H2, H3 open)
 
