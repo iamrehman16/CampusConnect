@@ -32,7 +32,7 @@ Work top to bottom:
 | 2 | Design foundation | D4, D5 (+D3 folded in) ✅ | Tokens + app shell every page redesign builds on |
 | 3 | Page redesigns | D6–D10 (D6, D7 ✅) | In demo-walkthrough order |
 | 4 | Integration features | E13 ✅, E14 ✅, E16 ✅ | The "resource → AI → human" story; safety before any public use |
-| 5 | Mentorship depth | **E12 ✅, E11, E15** | Builds on E10 + reputation. **E12 moved first (2026-10-03):** E14's mentor matcher is an interim stand-in for it, and "Recommended for you" is more demo-visible than E11's ratings |
+| 5 | Mentorship depth | **E12 ✅, E11 ✅, E15** | Builds on E10 + reputation. **E12 moved first (2026-10-03):** E14's mentor matcher is an interim stand-in for it, and "Recommended for you" is more demo-visible than E11's ratings |
 | 6 | Google sign-in | F1–F3 | Independent; can slot in anywhere if needed |
 | 7 | Demo polish | H2, H3 | States, walkthrough, final pass |
 
@@ -521,8 +521,9 @@ proof, and quality is measurable.
 - Completed mentorship + rating emit reputation events (E5).
 - Abuse guard: only participants of a completed mentorship can rate/endorse.
 
-**E11 status: IN PROGRESS (2026-10-03).** Order: (1) ratings + reputation on
-the server, (2) endorsements on the server, (3) rating UI, (4) endorsement UI.
+**E11 status: DONE (2026-10-03).** Four commits: ratings + reputation, then
+endorsements on the server, then the rating UI and the endorsement UI. All
+verified live on the demo DB and in a browser.
 
 **Decisions — ratings (commit 1), verified live on the demo DB:**
 - **The rating lives on the mentorship** (`feedback: {rating, review,

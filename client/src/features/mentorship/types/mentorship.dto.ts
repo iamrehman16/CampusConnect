@@ -69,3 +69,16 @@ export const PAST_STATUSES: readonly MentorshipStatus[] = [
   "cancelled",
   "completed",
 ];
+
+/** One of a mentor's skills with its endorsement count (BACKLOG.md E11). */
+export interface EndorsementTag {
+  tag: string;
+  count: number;
+  endorsedByMe: boolean;
+}
+
+export interface EndorsementSummary {
+  tags: EndorsementTag[];
+  /** The viewer completed a mentorship with this mentor, so may endorse. */
+  canEndorse: boolean;
+}

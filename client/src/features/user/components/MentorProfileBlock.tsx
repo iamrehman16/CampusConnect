@@ -1,5 +1,6 @@
 import { Box, Chip, Stack, Typography } from "@mui/material";
 import { HandshakeOutlined as HandshakeOutlinedIcon } from "@/shared/icons";
+import { EndorsementTags } from "@/features/mentorship/components/EndorsementTags";
 import { MentorRating } from "@/features/mentorship/components/MentorRating";
 import type { ProfileUserViewModel } from "../types/profile.types";
 
@@ -58,20 +59,11 @@ export function MentorProfileBlock({ user, justify = "flex-start" }: Props) {
         </Typography>
       )}
 
-      {user.mentorTopics.length > 0 && (
-        <Stack
-          direction="row"
-          flexWrap="wrap"
-          gap={0.75}
-          justifyContent={justify}
-          sx={{ mt: 0.75 }}
-          aria-label="Mentoring topics"
-        >
-          {user.mentorTopics.map((topic) => (
-            <Chip key={topic} label={topic} size="small" variant="outlined" />
-          ))}
-        </Stack>
-      )}
+      <EndorsementTags
+        mentorId={user.id}
+        fallbackTopics={user.mentorTopics}
+        justify={justify}
+      />
     </Box>
   );
 }

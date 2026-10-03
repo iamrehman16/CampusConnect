@@ -5,6 +5,7 @@ import type {
 } from "@/shared/types/api.types";
 import type {
   CreateMentorshipDto,
+  EndorsementSummary,
   Mentorship,
   MentorshipFeedback,
   MentorshipStatus,
@@ -69,6 +70,19 @@ const mentorshipService = {
       review: review || undefined,
     });
     return data;
+  },
+
+  async getEndorsements(mentorId: string): Promise<EndorsementSummary> {
+    const { data } = await api.get<EndorsementSummary>(`endorsements/${mentorId}`);
+    return data;
+  },
+
+  async endorse(mentorId: string, tag: string): Promise<void> {
+    await api.put(`endorsements/${mentorId}`, { tag });
+  },
+
+  async retractEndorsement(mentorId: string, tag: string): Promise<void> {
+    await api.delete(`endorsements/${mentorId}`, { params: { tag } });
   },
 };
 

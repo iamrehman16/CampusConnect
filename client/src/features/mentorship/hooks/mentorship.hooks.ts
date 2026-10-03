@@ -23,6 +23,8 @@ export const mentorshipKeys = {
     [...mentorshipKeys.all, "list", view, statuses] as const,
   open: () => [...mentorshipKeys.all, "open"] as const,
   pendingCount: () => [...mentorshipKeys.all, "pending-count"] as const,
+  endorsements: (mentorId: string) =>
+    [...mentorshipKeys.all, "endorsements", mentorId] as const,
 };
 
 export const useMentorships = (
@@ -143,5 +145,29 @@ export const useRateMentorship = () => {
       void queryClient.invalidateQueries({ queryKey: profileKeys.all() });
       toast.success("Thanks — your rating was saved");
     },
+  });
+};
+
+/** A mentor's skills with endorsement counts (BACKLOG.md E11). */
+export const useEndorsements = (mentorId: string) =>
+  useQuery({
+    queryKey: mentorshipKeys.endorsements(mentorId),
+    queryFn: () => mentorshipService.getEndorsements(mentorId),
+    enabled: !!mentorId,
+    staleTime: 1000 * 60,
+  });
+
+/** Endorse or take back an endorsement; the server owns the rules, errors toast globally. */
+export const useToggleEndorsement = (mentorId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tag, endorsed }: { tag: string; endorsed: boolean }) =>
+      endorsed
+        ? mentorshipService.retractEndorsement(mentorId, tag)
+        : mentorshipService.endorse(mentorId, tag),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: mentorshipKeys.endorsements(mentorId),
+      }),
   });
 };
