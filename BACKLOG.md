@@ -31,8 +31,8 @@ Work top to bottom:
 | 1 | Demo data | H1 ✅ | Redesigning against 4 resources and 1 mentor gives misleading screens |
 | 2 | Design foundation | D4, D5 (+D3 folded in) ✅ | Tokens + app shell every page redesign builds on |
 | 3 | Page redesigns | D6–D10 (D6, D7 ✅) | In demo-walkthrough order |
-| 4 | Integration features | E13, E14, E16 | The "resource → AI → human" story; safety before any public use |
-| 5 | Mentorship depth | E11, E12, E15 | Builds on E10 + reputation |
+| 4 | Integration features | E13 ✅, E14 ✅, E16 | The "resource → AI → human" story; safety before any public use |
+| 5 | Mentorship depth | **E12, E11, E15** | Builds on E10 + reputation. **E12 moved first (2026-10-03):** E14's mentor matcher is an interim stand-in for it, and "Recommended for you" is more demo-visible than E11's ratings |
 | 6 | Google sign-in | F1–F3 | Independent; can slot in anywhere if needed |
 | 7 | Demo polish | H2, H3 | States, walkthrough, final pass |
 
@@ -505,7 +505,7 @@ Product vision (from the 2026-09-20 audit, still current): **find a
 resource -> trust its author -> ask them -> get helped -> author earns
 reputation -> more people contribute.** E1–E10 shipped the foundations
 (see Completed work). Remaining PBIs, in roadmap order: **E13, E14, E16**
-(Phase 4), then **E11, E12, E15** (Phase 5).
+(Phase 4), then **E12, E11, E15** (Phase 5, reordered 2026-10-03).
 
 ### E11 — Mentorship feedback & skill endorsements
 **Effort:** 5
