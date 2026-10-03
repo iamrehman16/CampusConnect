@@ -593,8 +593,10 @@ all verified against the demo DB and in a browser.
   and "Operating Systems" matched "Database Systems". Cost: "Web Development"
   no longer matches "Backend Development" — fewer false matches over more
   recall, since a wrong "for you" is worse than a missing one.
-- **No rating signal yet** — the criterion lists rating, but that's E11. When
-  E11 lands, add it as one more term in `scoreForProfile`.
+- **Rating signal added with E11 (2026-10-03):** +1 for an average of 4.5+
+  from at least 3 ratings, and — like seniority — only on top of a topic or
+  department match. The 3-rating minimum means a single rating can't move
+  anyone, and the reason "Rated 4.8/5" appears on the card.
 - **Cold start is honest, not faked.** If nothing matches (or the student has
   set no interests/department) the endpoint returns top contributors with
   `personalized: false` and the reason "Top contributor", so the UI can say

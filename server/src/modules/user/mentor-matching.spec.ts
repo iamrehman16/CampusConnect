@@ -193,6 +193,40 @@ describe('scoreForProfile (E12)', () => {
   });
 });
 
+describe('scoreForProfile rating bonus (E11)', () => {
+  const base = { interests: ['Data Structures'] };
+  const rated = (average: number | null, count: number) =>
+    mentor('m', ['Data Structures'], {
+      ratingAverage: average,
+      ratingCount: count,
+    });
+
+  it('adds a point for a well-rated mentor and says so', () => {
+    const r = scoreForProfile(rated(4.8, 5), base);
+
+    expect(r.score).toBe(4 + 1);
+    expect(r.reasons).toContain('Rated 4.8/5');
+  });
+
+  it('needs at least 3 ratings, so one 5-star rating moves nothing', () => {
+    expect(scoreForProfile(rated(5, 2), base).score).toBe(4);
+  });
+
+  it('needs an average of 4.5 or better', () => {
+    expect(scoreForProfile(rated(4.4, 10), base).score).toBe(4);
+    expect(scoreForProfile(rated(4.5, 10), base).score).toBe(5);
+  });
+
+  it('never qualifies a mentor on rating alone', () => {
+    const r = scoreForProfile(
+      mentor('m', ['Painting'], { ratingAverage: 5, ratingCount: 50 }),
+      base,
+    );
+
+    expect(r.score).toBe(0);
+  });
+});
+
 describe('recommendMentors (E12)', () => {
   const pool = [
     mentor('ds', ['Data Structures'], { contributionScore: 10 }),

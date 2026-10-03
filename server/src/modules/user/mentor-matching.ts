@@ -169,17 +169,22 @@ export interface MenteeProfile {
  *       other, or a shared non-generic word ("development" or "systems"
  *       alone is too generic to count).
  *   +3  same department.
- *   +2  mentor is further along (semester greater) — a BONUS only: it never
- *       qualifies a mentor on its own, or every senior would match everyone.
+ *   +2  mentor is further along (semester greater)
+ *   +1  well rated: average >= 4.5 from at least 3 ratings (E11)
  *
- * Capacity is a precondition (callers pass only mentors with a free slot),
- * reputation breaks ties, and there is no rating signal yet (that is E11).
- * A mentor with 0 from topic + department is not recommended on seniority.
+ * The last two are BONUSES only: neither qualifies a mentor on its own,
+ * otherwise every senior (or one 5-star mentor) would match everyone. The
+ * 3-rating minimum keeps a single rating from moving anyone. Capacity is a
+ * precondition (callers pass only mentors with a free slot) and reputation
+ * breaks ties.
  */
 const INTEREST_OVERLAP = 4;
 const INTEREST_CAP = 12;
 const SAME_DEPARTMENT = 3;
 const SENIOR_BONUS = 2;
+const WELL_RATED_BONUS = 1;
+const WELL_RATED_MIN_AVERAGE = 4.5;
+const WELL_RATED_MIN_COUNT = 3;
 
 /** Words too common in course/topic names to mean two labels are the same subject. */
 const GENERIC_WORDS = new Set([
@@ -244,14 +249,22 @@ export function scoreForProfile(
     mentor.semester > mentee.semester;
   const seniorScore = isSenior ? SENIOR_BONUS : 0;
 
+  const isWellRated =
+    qualifying > 0 &&
+    mentor.ratingAverage !== null &&
+    mentor.ratingAverage >= WELL_RATED_MIN_AVERAGE &&
+    mentor.ratingCount >= WELL_RATED_MIN_COUNT;
+  const ratingScore = isWellRated ? WELL_RATED_BONUS : 0;
+
   const reasons: string[] = [];
   if (matchedLabels.length > 0) {
     reasons.push(`Helps with ${matchedLabels.slice(0, 2).join(', ')}`);
   }
   if (sameDepartment) reasons.push('Same department');
   if (isSenior) reasons.push(`Senior (semester ${mentor.semester})`);
+  if (isWellRated) reasons.push(`Rated ${mentor.ratingAverage}/5`);
 
-  return { mentor, score: qualifying + seniorScore, reasons };
+  return { mentor, score: qualifying + seniorScore + ratingScore, reasons };
 }
 
 export interface RecommendationResult {
