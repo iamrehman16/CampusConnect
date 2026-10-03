@@ -25,6 +25,8 @@ import { RetrievalService } from './services/retrieval.service';
 import { MemoryStoreService } from './services/memory-store.service';
 import { MemoryService } from './services/memory.service';
 import { CommonModule } from '../../common/common.module';
+import { UserModule } from '../user/user.module';
+import { MentorSuggestionService } from './services/mentor-suggestion.service';
 import { ContributorLookupService } from './services/contributor-lookup.service';
 import { Resource, ResourceSchema } from '../resource/schemas/resource.schema';
 import { VectorCleanupListener } from './vector-cleanup.listener';
@@ -41,6 +43,7 @@ import { VectorCleanupListener } from './vector-cleanup.listener';
       { name: Resource.name, schema: ResourceSchema },
     ]),
     CommonModule,
+    UserModule,
   ],
   controllers: [AiController, ConversationController],
   providers: [
@@ -54,6 +57,7 @@ import { VectorCleanupListener } from './vector-cleanup.listener';
     ChunkingService,
     RetrievalService,
     ContributorLookupService,
+    MentorSuggestionService,
     MemoryStoreService,
     MemoryService,
     VectorCleanupListener,

@@ -584,16 +584,51 @@ material powers answers.
 - Does not change the "Groq is instructed not to cite inline" decision
   (CLAUDE.md §4) — citations remain programmatic.
 
-**E14 status: IN PROGRESS (2026-10-03).** Done: (a) citations carry the
-uploader `{id,name,avatar,tier}` via one batched lookup, persisted with the
-message, shown as "Shared by …" on the citation card; (c) each cited
-resource emits `resource.cited` -> 1 point to the uploader, keyed
-`resourceId:UTC-day` so the ledger's unique index dedupes per (resource, day);
-self-citations don't count. Verified live: two answers citing the same
-resource wrote one ledger row. **Remaining:** (b) the "Ask a human" card on
-weak retrieval / thumbs-down suggesting up to 3 mentors with a one-click
-request. E12's scoring doesn't exist yet, so this needs a minimal
-subject/course-based matcher (E12 can later replace it).
+**E14 status: IN PROGRESS (2026-10-03).** Server side done for all three
+criteria; client "Ask a human" card remaining.
+
+**Decisions (and why):**
+- **Attribution is a snapshot, persisted with the message.** Citations store
+  the uploader `{id,name,avatar,tier}` as of answer time, so reopening an old
+  thread needs no extra lookup. Trade-off: a later rename/tier change doesn't
+  show in old threads. Resolved with one batched query (resource find with
+  `uploadedBy` populated), never per citation.
+- **Lookup failure degrades, doesn't fail the answer.** Attribution is added
+  to an answer that is already generated; the error is logged with context
+  and the citation just has no contributor (CLAUDE.md §3.3 satisfied: not
+  swallowed, not rethrown into the user's chat).
+- **"Cited by AI" = 1 point, once per (resource, UTC day).** Small on
+  purpose (an approval is 10). The ledger's existing unique `(type,
+  sourceId)` index does the dedupe, so `sourceId = resourceId:YYYY-MM-DD`
+  needs no new state. Citations of your own resource earn nothing. Emitted
+  only after the answer is persisted, fire-and-forget through the existing
+  domain-event path.
+- **"Weak retrieval" reuses the existing `retrievalStatus`, no new
+  threshold.** `no-matches` and `below-threshold` (the documented 0.6 score
+  cutoff + relative margin in `RetrievalService`) count as weak; so does a
+  thumbs-down. Inventing a second number would mean two thresholds to keep
+  in sync.
+- **Mentor match key = subject of the cited resources, not the course code
+  alone.** Seeded/real mentor topics are written like resource subjects
+  ("Data Structures"), course codes ("CS-201") are a secondary signal. With
+  nothing cited, the question text is the fallback (phrase match, then
+  whole-word overlap minus stopwords). Subjects come from one batched
+  resource lookup because `Citation` doesn't carry `subject`.
+- **Matcher is pure and interim.** `ai/mentor-matching.ts` is a pure scorer
+  (exact subject 5 > course code 4 > partial/phrase 3 > word overlap 1, ties
+  by reputation then id). E12's "recommended mentors" should replace or
+  absorb it. **Shortcut flagged:** candidates are the first 100 mentors with
+  free capacity (via `UserService.findMentors`, so public fields only) scored
+  in-process; move matching into the query when the pool outgrows that.
+- **No match -> no card, not a random mentor.** A suggestion that doesn't
+  match what you asked is worse than none.
+- **Endpoint:** `GET /ai/conversations/:id/messages/:messageId/mentor-suggestions` is
+  ownership-checked through the parent conversation (messages have no
+  userId), same as feedback (C1). Up to 3 results.
+
+**Remaining:** client — inline "Ask a human" card under a weak or
+thumbs-downed answer, one-click request reusing E10's request dialog with the
+topic pre-filled (`suggestedTopic`).
 
 ### E15 — Contributor impact dashboard & leaderboard
 **Effort:** 5

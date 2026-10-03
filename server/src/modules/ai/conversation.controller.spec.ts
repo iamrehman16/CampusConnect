@@ -1,11 +1,15 @@
 import { ConversationController } from './conversation.controller';
 import { ConversationService } from './services/conversation.service';
+import { MentorSuggestionService } from './services/mentor-suggestion.service';
 import { AuthenticatedRequest } from './ai.controller';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { RenameConversationDto } from './dto/rename-conversation.dto';
 
 function buildController(conversationService: Partial<ConversationService>) {
-  return new ConversationController(conversationService as ConversationService);
+  return new ConversationController(
+    conversationService as ConversationService,
+    {} as MentorSuggestionService,
+  );
 }
 
 function mockRequest(userId = 'user-1'): AuthenticatedRequest {
