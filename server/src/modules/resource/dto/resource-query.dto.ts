@@ -1,6 +1,7 @@
 import {
   IsOptional,
   IsEnum,
+  IsMongoId,
   IsNumber,
   IsString,
   MaxLength,
@@ -34,7 +35,7 @@ export class ResourceQueryDto extends BaseQueryDto {
   status?: ApprovalStatus;
 
   @IsOptional()
-  @IsString()
+  @IsMongoId()
   uploadedBy?: string;
 
   /** Course code, matched exactly but case-insensitively ("cs-341"). */

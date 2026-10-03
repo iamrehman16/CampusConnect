@@ -5,6 +5,8 @@ import {
   ForbiddenException,
   BadRequestException,
   Inject,
+  Logger,
+  OnModuleInit,
 } from '@nestjs/common';
 import { CloudinaryService } from '../storage/cloudinary.service';
 import { InjectModel } from '@nestjs/mongoose';
@@ -80,7 +82,8 @@ interface ResourceAnalyticsFacetResult {
 }
 
 @Injectable()
-export class ResourceService {
+export class ResourceService implements OnModuleInit {
+  private readonly logger = new Logger(ResourceService.name);
   private readonly queryBuilder = new ResourceQueryBuilder();
   private readonly sortBuilder = new ResourceSortBuilder();
 
@@ -93,6 +96,27 @@ export class ResourceService {
     private resourceCfg: ConfigType<typeof resourceConfig>,
     @InjectQueue(QUEUES.RAG_INGESTION) private readonly ingestionQueue: Queue,
   ) {}
+
+  /**
+   * `uploadedBy` was stored as a STRING (this schema's `type: Types.ObjectId`
+   * resolves to a Mixed path under @nestjs/mongoose, so Mongoose never casts),
+   * while every query that filters or joins on it used an ObjectId — so those
+   * silently matched nothing: contributors couldn't edit/delete their own
+   * resources, badge counts and the admin top-contributors chart missed them,
+   * and impact stats were zero. New resources now store an ObjectId; this
+   * converts the legacy rows once. Idempotent: a no-op when none are left.
+   */
+  async onModuleInit(): Promise<void> {
+    const result = await this.resourceModel.collection.updateMany(
+      { uploadedBy: { $type: 'string' } },
+      [{ $set: { uploadedBy: { $toObjectId: '$uploadedBy' } } }],
+    );
+    if (result.modifiedCount > 0) {
+      this.logger.warn(
+        `Converted uploadedBy from string to ObjectId on ${result.modifiedCount} resource(s) (see BACKLOG.md E15)`,
+      );
+    }
+  }
 
   generateUploadSignature(
     mimetype: AllowedMimetype,
@@ -163,7 +187,7 @@ export class ResourceService {
         fileType, // FileType enum: PDF, DOC, etc.
         fileSize: dto.bytes,
         cloudinaryResourceType: dto.cloudinaryResourceType, // 'image' | 'raw'
-        uploadedBy: userId,
+        uploadedBy: new Types.ObjectId(userId),
         // approvalStatus defaults to PENDING via schema
       });
 

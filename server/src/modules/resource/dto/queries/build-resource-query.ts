@@ -1,4 +1,4 @@
-import { QueryFilter } from 'mongoose';
+import { QueryFilter, Types } from 'mongoose';
 import { ResourceDocument } from '../../schemas/resource.schema';
 import { ResourceQueryDto } from '../resource-query.dto';
 import { ApprovalStatus } from '../../enums/approval-status.enum';
@@ -18,7 +18,8 @@ export class ResourceQueryBuilder implements IQueryBuilder<ResourceQueryDto> {
     if (status) query.approvalStatus = status;
 
     if (dto.uploadedBy) {
-      query.uploadedBy = dto.uploadedBy;
+      // Stored as an ObjectId; the Mixed schema path won't cast a string.
+      query.uploadedBy = new Types.ObjectId(dto.uploadedBy);
     }
     if (dto.type) {
       query.resourceType = dto.type;
