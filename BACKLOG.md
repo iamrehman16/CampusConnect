@@ -584,8 +584,9 @@ material powers answers.
 - Does not change the "Groq is instructed not to cite inline" decision
   (CLAUDE.md §4) — citations remain programmatic.
 
-**E14 status: IN PROGRESS (2026-10-03).** Server side done for all three
-criteria; client "Ask a human" card remaining.
+**E14 status: DONE (2026-10-03).** Verified in a browser on the demo DB: a
+cited answer shows "Shared by …"; a thumbs-down and a weak-retrieval answer
+each show the Ask-a-human card with a matching mentor.
 
 **Decisions (and why):**
 - **Attribution is a snapshot, persisted with the message.** Citations store
@@ -626,9 +627,26 @@ criteria; client "Ask a human" card remaining.
   ownership-checked through the parent conversation (messages have no
   userId), same as feedback (C1). Up to 3 results.
 
-**Remaining:** client — inline "Ask a human" card under a weak or
-thumbs-downed answer, one-click request reusing E10's request dialog with the
-topic pre-filled (`suggestedTopic`).
+**Client decisions:**
+- **Reuse `RequestMentorshipButton`, don't build a second request flow.** It
+  already knows the states (request sent / open chat / no free slots), so the
+  card is never a dead end — both live checks hit those states (seed data has
+  an active mentorship with Ayesha and a pending one with Bilal). The topic is
+  pre-filled with the matched label (`suggestedTopic`), editable in E10's
+  dialog.
+- **The card is a sibling of the answer, not part of the toolbar,** and only
+  fetches when it would show (weak status or thumbs-down) and the message has
+  a persisted id — a streaming bubble's id isn't real until `message-saved`.
+  `staleTime` 60s because mentor capacity changes.
+- **Hidden when there are no suggestions** (including on a failed request)
+  rather than showing an empty or generic card.
+- Contributor byline on the citation card is plain text, not a link: the
+  whole card is already a click target and nesting links is invalid HTML.
+
+**Follow-ups (not blocking):** E12 should absorb `ai/mentor-matching.ts`;
+the weak-retrieval cutoff itself is still the B-era 0.6 + 0.05 relative
+margin in `RetrievalService` — the old note about "E14's evaluation set" for
+tuning it was not done; no labelled set exists yet.
 
 ### E15 — Contributor impact dashboard & leaderboard
 **Effort:** 5

@@ -154,3 +154,22 @@ export function useDeleteThread() {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// useMentorSuggestions (BACKLOG.md E14) — mentors to offer under a weak or
+// thumbs-downed answer. Only enabled when the card would actually show, and
+// only for a persisted message id (a streaming bubble's id isn't real until
+// 'message-saved' arrives). Short staleTime: mentor capacity changes.
+// ---------------------------------------------------------------------------
+export function useMentorSuggestions(
+  conversationId: string,
+  messageId: string,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: aiChatKeys.mentorSuggestions(conversationId, messageId),
+    queryFn: () => aiChatService.getMentorSuggestions(conversationId, messageId),
+    enabled,
+    staleTime: 60_000,
+  });
+}

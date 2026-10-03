@@ -3,6 +3,7 @@ import { Box, IconButton, Tooltip, keyframes } from "@mui/material";
 import { ContentCopyRounded as ContentCopyRoundedIcon, CheckRounded as CheckRoundedIcon, ThumbUpRounded as ThumbUpRoundedIcon, ThumbUpOutlined as ThumbUpOutlinedIcon, ThumbDownRounded as ThumbDownRoundedIcon, ThumbDownOutlined as ThumbDownOutlinedIcon } from "@/shared/icons";
 import { ThinkingBubble } from "./ThinkingBubble";
 import { CitationsChip } from "./CitationChip";
+import { AskHumanCard } from "./AskHumanCard";
 import { MarkdownMessage } from "./MarkdownMessage";
 import { useSetMessageFeedback } from "../hooks/ai-chat.hooks";
 import type { ConversationMessage } from "../types/ai-chat.dto";
@@ -165,6 +166,10 @@ export function MessageBubble({ message, conversationId }: MessageBubbleProps) {
             message={message}
             conversationId={conversationId}
           />
+        )}
+
+        {!isUser && (
+          <AskHumanCard message={message} conversationId={conversationId} />
         )}
       </Box>
     </Box>

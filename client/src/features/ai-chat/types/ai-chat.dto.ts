@@ -43,6 +43,19 @@ export interface Citation {
   contributor?: CitationContributor;
 }
 
+/** A mentor suggested under a weak or thumbs-downed answer (BACKLOG.md E14). */
+export interface MentorSuggestion {
+  id: string;
+  name: string;
+  avatar?: string;
+  tier: ReputationTier;
+  /** The mentor's own topic labels that matched this answer. */
+  matchedOn: string[];
+  slotsLeft: number;
+  /** Pre-fill for the mentorship request topic. */
+  suggestedTopic: string;
+}
+
 export interface ConversationMessage {
   id: string;
   role: 'user' | 'assistant';

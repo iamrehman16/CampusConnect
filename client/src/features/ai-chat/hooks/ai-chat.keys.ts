@@ -8,4 +8,6 @@ export const aiChatKeys = {
   threads: () => [...aiChatKeys.all, 'threads'] as const,
   conversation: (conversationId: string) =>
     [...aiChatKeys.all, 'conversation', conversationId] as const,
+  mentorSuggestions: (conversationId: string, messageId: string) =>
+    [...aiChatKeys.all, 'mentor-suggestions', conversationId, messageId] as const,
 };

@@ -7,6 +7,7 @@ import type {
   ChatResponseDto,
   Citation,
   ConversationMessage,
+  MentorSuggestion,
   MessageFeedback,
   RetrievalStatus,
 } from "../types/ai-chat.dto";
@@ -115,6 +116,16 @@ export class AiChatService {
       { params: { page: 1, limit: HISTORY_PAGE_LIMIT } },
     );
     return data.data.map(normalizeMessage).reverse();
+  }
+
+  async getMentorSuggestions(
+    conversationId: string,
+    messageId: string,
+  ): Promise<MentorSuggestion[]> {
+    const { data } = await api.get<MentorSuggestion[]>(
+      `ai/conversations/${conversationId}/messages/${messageId}/mentor-suggestions`,
+    );
+    return data;
   }
 
   async setMessageFeedback(
