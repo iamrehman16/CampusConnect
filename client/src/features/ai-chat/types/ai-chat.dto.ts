@@ -1,3 +1,4 @@
+import type { ReputationTier } from "@/features/reputation/types/reputation.types";
 export interface ChatMessageDto {
   message: string;
   // Omitted on the first message of a new thread — the server creates one
@@ -25,12 +26,21 @@ export interface AiConversationThread {
   updatedAt: string;
 }
 
+/** Uploader of a cited resource (BACKLOG.md E14). */
+export interface CitationContributor {
+  id: string;
+  name: string;
+  avatar?: string;
+  tier: ReputationTier;
+}
+
 export interface Citation {
   title: string;
   pageNumber: number;
   semester: number;
   course: string;
   resourceId: string;
+  contributor?: CitationContributor;
 }
 
 export interface ConversationMessage {

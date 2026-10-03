@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Card, CardActionArea, Chip, Collapse, Stack, Typography } from '@mui/material';
 import { OpenInNew as OpenInNewIcon } from "@/shared/icons";
+import UserAvatar from '@/shared/components/UserAvatar';
+import { TierChip } from '@/features/reputation/components/TierChip';
 import type { Citation } from '../types/ai-chat.dto';
 
 interface CitationsChipProps {
@@ -114,6 +116,15 @@ function CitationItem({ citation, index }: CitationItemProps) {
               sx={{ height: 18, fontSize: '0.65rem', '& .MuiChip-label': { px: 0.75 } }}
             />
           </Stack>
+          {citation.contributor && (
+            <Stack direction="row" alignItems="center" gap={0.75} sx={{ mt: 0.6 }}>
+              <UserAvatar name={citation.contributor.name} avatar={citation.contributor.avatar} size={16} />
+              <Typography noWrap sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+                Shared by {citation.contributor.name || 'a contributor'}
+              </Typography>
+              <TierChip tier={citation.contributor.tier} hideNewcomer sx={{ height: 16 }} />
+            </Stack>
+          )}
         </Box>
         <OpenInNewIcon sx={{ fontSize: 14, color: 'primary.main', opacity: 0.6, flexShrink: 0 }} />
       </CardActionArea>
