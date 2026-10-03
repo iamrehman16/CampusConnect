@@ -96,7 +96,12 @@ export default function AdminDashboardPage() {
       </Box>
 
       {/* Tab panels — keep all mounted to preserve scroll state */}
-      <Box hidden={tab !== 'overview'} sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      {/* display is set explicitly: an sx `display: flex` overrides the `hidden`
+          attribute, which left Overview showing above every other tab. */}
+      <Box
+        hidden={tab !== 'overview'}
+        sx={{ display: tab === 'overview' ? 'flex' : 'none', flexDirection: 'column', gap: 3 }}
+      >
         <OverviewSection />
         <AnalyticsSection />
       </Box>
