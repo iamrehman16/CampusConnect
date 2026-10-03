@@ -4,6 +4,7 @@ import {
   DomainEvents,
   PostUpvotedEvent,
   ResourceApprovedEvent,
+  ResourceCitedEvent,
   ResourceRemovedEvent,
 } from '../../common/events/domain-events';
 import { ReputationService } from './reputation.service';
@@ -49,6 +50,25 @@ export class ReputationListener {
         event.authorId,
         ReputationEventType.POST_UPVOTE_RECEIVED,
         `${event.postId}:${event.voterId}`,
+      ),
+    );
+  }
+
+  /**
+   * Keyed by (resource, UTC day): the ledger's unique (type, sourceId) index
+   * makes any further citations of the same resource that day no-ops, so an
+   * uploader earns at most 1 point per resource per day however often it is
+   * cited. Citations for your own resource don't count.
+   */
+  @OnEvent(DomainEvents.RESOURCE_CITED, { async: true })
+  onResourceCited(event: ResourceCitedEvent) {
+    if (event.citedForUserId === event.uploaderId) return Promise.resolve();
+    const day = new Date().toISOString().slice(0, 10);
+    return this.run(`cited ${event.resourceId}`, () =>
+      this.reputation.award(
+        event.uploaderId,
+        ReputationEventType.AI_CITATION,
+        `${event.resourceId}:${day}`,
       ),
     );
   }

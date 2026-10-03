@@ -9,6 +9,11 @@ import {
   RetrievedContext,
 } from '../interfaces/retrieved-context.interface';
 import { Observable } from 'rxjs';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+  DomainEvents,
+  ResourceCitedEvent,
+} from '../../../common/events/domain-events';
 
 @Injectable()
 export class AiChatService {
@@ -17,6 +22,7 @@ export class AiChatService {
     private readonly conversationService: ConversationService,
     private readonly retrievalService: RetrievalService,
     private readonly contributorLookup: ContributorLookupService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /**
@@ -54,6 +60,22 @@ export class AiChatService {
       const contributor = contributors.get(c.resourceId);
       return contributor ? { ...c, contributor } : c;
     });
+  }
+
+  /**
+   * Tells the reputation module which contributors' resources just backed an
+   * answer (E14). Fire-and-forget: the listener is async and logs its own
+   * failures, so this can never affect the response.
+   */
+  private emitCitations(userId: string, citations: Citation[]): void {
+    for (const c of citations) {
+      if (!c.contributor) continue;
+      this.eventEmitter.emit(DomainEvents.RESOURCE_CITED, {
+        resourceId: c.resourceId,
+        uploaderId: c.contributor.id,
+        citedForUserId: userId,
+      } satisfies ResourceCitedEvent);
+    }
   }
 
   async getChatResponse(
@@ -95,6 +117,7 @@ export class AiChatService {
         (content: string) => this.groqService.summarize(content),
         { citations, retrievalStatus },
       );
+    this.emitCitations(userId, citations);
 
     // Fire-and-forget (BACKLOG.md B4): maybeGenerateTitle never rejects —
     // a failed Groq call is logged and falls back to a default there, so
@@ -192,6 +215,8 @@ export class AiChatService {
               (content: string) => this.groqService.summarize(content),
               { citations, retrievalStatus },
             );
+
+          this.emitCitations(userId, citations);
 
           // BACKLOG.md C1 — the client has no real message id until now
           // (appendMessages runs after 'done' is already flushed, by

@@ -79,4 +79,54 @@ describe('ReputationListener', () => {
       }),
     ).resolves.toBeUndefined();
   });
+
+  describe('AI citations (E14)', () => {
+    afterEach(() => jest.useRealTimers());
+
+    it('awards the uploader keyed by resource and UTC day', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-10-03T23:59:00Z'));
+      const { listener, reputation } = build();
+
+      await listener.onResourceCited({
+        resourceId: 'r1',
+        uploaderId: 'u1',
+        citedForUserId: 'asker',
+      });
+
+      expect(reputation.award).toHaveBeenCalledWith(
+        'u1',
+        ReputationEventType.AI_CITATION,
+        'r1:2026-10-03',
+      );
+    });
+
+    it('uses a different key the next day so it can award again', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-10-04T00:01:00Z'));
+      const { listener, reputation } = build();
+
+      await listener.onResourceCited({
+        resourceId: 'r1',
+        uploaderId: 'u1',
+        citedForUserId: 'asker',
+      });
+
+      expect(reputation.award).toHaveBeenCalledWith(
+        'u1',
+        ReputationEventType.AI_CITATION,
+        'r1:2026-10-04',
+      );
+    });
+
+    it("doesn't award when you are cited on your own resource", async () => {
+      const { listener, reputation } = build();
+
+      await listener.onResourceCited({
+        resourceId: 'r1',
+        uploaderId: 'u1',
+        citedForUserId: 'u1',
+      });
+
+      expect(reputation.award).not.toHaveBeenCalled();
+    });
+  });
 });

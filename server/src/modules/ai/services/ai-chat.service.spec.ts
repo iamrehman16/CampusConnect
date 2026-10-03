@@ -1,4 +1,6 @@
 import { Types } from 'mongoose';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { DomainEvents } from '../../../common/events/domain-events';
 import { ReputationTier } from '../../reputation/tiers';
 import { AiChatService } from './ai-chat.service';
 import { GroqService } from './groq.service';
@@ -67,12 +69,16 @@ function buildService(
     resolve: jest.fn().mockResolvedValue(contributors),
   };
 
-  return new AiChatService(
+  const eventEmitter = { emit: jest.fn() };
+
+  const service = new AiChatService(
     groqService as GroqService,
     conversationService as ConversationService,
     retrievalService as RetrievalService,
     contributorLookup as ContributorLookupService,
+    eventEmitter as unknown as EventEmitter2,
   );
+  return Object.assign(service, { emitSpy: eventEmitter.emit });
 }
 
 describe('AiChatService — citation deduplication', () => {
@@ -135,6 +141,27 @@ describe('AiChatService — citation deduplication', () => {
 
     expect(citations[0].contributor).toEqual(contributor);
     expect(citations[1].contributor).toBeUndefined();
+  });
+
+  it('emits a resource.cited event per contributor-attributed citation (E14)', async () => {
+    const service = buildService(
+      [chunk('resource-1', 3, 0.9), chunk('resource-2', 1, 0.8)],
+      new Map([
+        [
+          'resource-1',
+          { id: 'uploader-1', name: 'A', tier: ReputationTier.NEWCOMER },
+        ],
+      ]),
+    );
+
+    await service.getChatResponse('asker', 'query');
+
+    expect(service.emitSpy).toHaveBeenCalledTimes(1);
+    expect(service.emitSpy).toHaveBeenCalledWith(DomainEvents.RESOURCE_CITED, {
+      resourceId: 'resource-1',
+      uploaderId: 'uploader-1',
+      citedForUserId: 'asker',
+    });
   });
 
   it('getChatResponse returns the persisted assistant message id (C1)', async () => {
@@ -207,6 +234,7 @@ function buildServiceWithConversation(recentMessages: unknown[]) {
       {
         resolve: jest.fn().mockResolvedValue(new Map()),
       } as unknown as ContributorLookupService,
+      { emit: jest.fn() } as unknown as EventEmitter2,
     ),
     conversation,
     conversationService,

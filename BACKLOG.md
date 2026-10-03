@@ -584,6 +584,17 @@ material powers answers.
 - Does not change the "Groq is instructed not to cite inline" decision
   (CLAUDE.md §4) — citations remain programmatic.
 
+**E14 status: IN PROGRESS (2026-10-03).** Done: (a) citations carry the
+uploader `{id,name,avatar,tier}` via one batched lookup, persisted with the
+message, shown as "Shared by …" on the citation card; (c) each cited
+resource emits `resource.cited` -> 1 point to the uploader, keyed
+`resourceId:UTC-day` so the ledger's unique index dedupes per (resource, day);
+self-citations don't count. Verified live: two answers citing the same
+resource wrote one ledger row. **Remaining:** (b) the "Ask a human" card on
+weak retrieval / thumbs-down suggesting up to 3 mentors with a one-click
+request. E12's scoring doesn't exist yet, so this needs a minimal
+subject/course-based matcher (E12 can later replace it).
+
 ### E15 — Contributor impact dashboard & leaderboard
 **Effort:** 5
 **Where:** `dashboard` module (extend `my-stats`), `DashboardPage`,

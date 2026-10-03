@@ -8,6 +8,7 @@ export const DomainEvents = {
   RESOURCE_REJECTED: 'resource.rejected',
   RESOURCE_REMOVED: 'resource.removed',
   POST_UPVOTED: 'post.upvoted',
+  RESOURCE_CITED: 'resource.cited',
   CONTRIBUTOR_APPLICATION_APPROVED: 'contributor_application.approved',
   CONTRIBUTOR_APPLICATION_REJECTED: 'contributor_application.rejected',
   MENTORSHIP_REQUESTED: 'mentorship.requested',
@@ -35,6 +36,14 @@ export interface ResourceRejectedEvent {
 export interface ResourceRemovedEvent {
   resourceId: string;
   uploaderId: string;
+}
+
+/** The AI assistant cited a resource in an answer to someone else. */
+export interface ResourceCitedEvent {
+  resourceId: string;
+  uploaderId: string;
+  /** The user whose question produced the citation. */
+  citedForUserId: string;
 }
 
 /** A user newly upvoted someone else's post (not emitted on un-upvote). */
