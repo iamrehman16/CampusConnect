@@ -32,7 +32,7 @@ Work top to bottom:
 | 2 | Design foundation | D4, D5 (+D3 folded in) ✅ | Tokens + app shell every page redesign builds on |
 | 3 | Page redesigns | D6–D10 (D6, D7 ✅) | In demo-walkthrough order |
 | 4 | Integration features | E13 ✅, E14 ✅, E16 ✅ | The "resource → AI → human" story; safety before any public use |
-| 5 | Mentorship depth | **E12, E11, E15** | Builds on E10 + reputation. **E12 moved first (2026-10-03):** E14's mentor matcher is an interim stand-in for it, and "Recommended for you" is more demo-visible than E11's ratings |
+| 5 | Mentorship depth | **E12 ✅, E11, E15** | Builds on E10 + reputation. **E12 moved first (2026-10-03):** E14's mentor matcher is an interim stand-in for it, and "Recommended for you" is more demo-visible than E11's ratings |
 | 6 | Google sign-in | F1–F3 | Independent; can slot in anywhere if needed |
 | 7 | Demo polish | H2, H3 | States, walkthrough, final pass |
 
@@ -536,8 +536,8 @@ onboarding and never used — free signal for matching.
   sort in E9.
 - Graceful cold start when a student has no interests set.
 
-**E12 status: IN PROGRESS (2026-10-03).** Server done; client (Home widget +
-directory "For you") remaining.
+**E12 status: DONE (2026-10-03).** Server, Home widget and directory "For you"
+all verified against the demo DB and in a browser.
 
 **Decisions (and why):**
 - **One pure scorer file, `user/mentor-matching.ts`, holds both matchers.**
@@ -576,6 +576,25 @@ directory "For you") remaining.
 - **Found and fixed separately:** the public stats' `availableMentors`
   counted `role = contributor` users rather than mentors; it now counts active,
   open-to-mentor members with a free slot (`2ffac4f`).
+
+**Client decisions:**
+- **"For you" is a curated list (up to 12), not a re-sort of the directory.**
+  Ranking the whole directory by a computed score across Mongo pagination
+  would mean either scoring everyone on every page or a stored score; for a
+  list this size neither earns its keep. Consequence: the search box and
+  filters stay visible but don't apply under "For you" — the page says so
+  ("Filters don't apply here"). Hiding them there is a possible polish.
+- **Home gets a "Mentors for you" widget** under "Your mentors" (3 rows,
+  reasons as the secondary line, "See all" opens the directory on "For you").
+  It renders nothing when there's nothing to suggest, and is titled "Mentors
+  to meet" on a cold start rather than claiming personalization.
+- **Cold start copy** links to Settings so the student can fix the cause
+  (add interests) instead of just being told it's generic.
+- **The sort value `recommended` is client-only**: the server's directory sort
+  enum is unchanged, so the client never sends it (the list query is
+  disabled while it's selected).
+- **Reasons are shown on the card** (e.g. "Helps with Web Development ·
+  Senior (semester 7)") so a recommendation is explainable, not a black box.
 
 
 ---

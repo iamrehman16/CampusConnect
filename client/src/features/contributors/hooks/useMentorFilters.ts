@@ -22,7 +22,10 @@ export function useMentorFilters() {
       semesterMin: asSemester(params.get("semMin")),
       semesterMax: asSemester(params.get("semMax")),
       hasCapacity: params.get("slots") === "1" ? true : undefined,
-      sort: (params.get("sort") === "active" ? "active" : "score") as MentorSort,
+      sort: ((): MentorSort => {
+        const raw = params.get("sort");
+        return raw === "active" || raw === "recommended" ? raw : "score";
+      })(),
     }),
     [params],
   );

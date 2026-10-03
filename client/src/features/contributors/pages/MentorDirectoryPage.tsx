@@ -9,8 +9,12 @@ import {
 } from "@mui/material";
 import { MentorCard } from "../components/MentorCard";
 import { MentorFilterBar } from "../components/MentorFilterBar";
-import { useMentors } from "../hooks/mentor.hooks";
+import { Link as RouterLink } from "react-router-dom";
+import { ROUTES } from "@/shared/constants/routes";
+import { useMentors, useRecommendedMentors } from "../hooks/mentor.hooks";
 import { useMentorFilters } from "../hooks/useMentorFilters";
+
+const RECOMMENDED_LIMIT = 12;
 
 const GRID_SX = {
   display: "grid",
@@ -29,7 +33,11 @@ export default function MentorDirectoryPage() {
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
-  } = useMentors(filters);
+  } = useMentors(filters, filters.sort !== "recommended");
+  // "For you" is a curated list (BACKLOG.md E12), not a re-sort of the directory:
+  // the filters above don't apply to it.
+  const forYou = filters.sort === "recommended";
+  const recommended = useRecommendedMentors(RECOMMENDED_LIMIT, forYou);
 
   const mentors = data?.pages.flatMap((p) => p.data) ?? [];
   const total = data?.pages[0]?.total ?? 0;
@@ -48,6 +56,20 @@ export default function MentorDirectoryPage() {
     [isFetchingNextPage, hasNextPage, fetchNextPage],
   );
   useEffect(() => () => observer.current?.disconnect(), []);
+
+  if (forYou) {
+    return (
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+        <MentorFilterBar
+          filters={filters}
+          hasActiveFilters={hasActiveFilters}
+          onChange={setFilters}
+          onReset={reset}
+        />
+        <ForYouList result={recommended} />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
@@ -123,5 +145,68 @@ export default function MentorDirectoryPage() {
         </>
       )}
     </Box>
+  );
+}
+
+function ForYouList({ result }: { result: ReturnType<typeof useRecommendedMentors> }) {
+  const { data, isLoading, isError, refetch } = result;
+
+  if (isLoading) {
+    return (
+      <Box sx={GRID_SX}>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} variant="rounded" height={210} />
+        ))}
+      </Box>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Alert
+        severity="error"
+        action={
+          <Button color="inherit" size="small" onClick={() => refetch()}>
+            Retry
+          </Button>
+        }
+      >
+        Couldn't load recommendations.
+      </Alert>
+    );
+  }
+
+  if (!data || data.mentors.length === 0) {
+    return (
+      <Box sx={{ py: 8, textAlign: "center" }}>
+        <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+          No mentors to suggest right now
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Everyone with a free slot is already your mentor or has a request pending.
+        </Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <>
+      <Typography variant="caption" color="text.secondary" aria-live="polite">
+        {data.personalized ? (
+          "Picked from your interests, department and semester."
+        ) : (
+          <>
+            Not enough in your profile to match yet, so these are top contributors.{" "}
+            <RouterLink to={ROUTES.SETTINGS}>Add your interests</RouterLink> for better suggestions.
+          </>
+        )}{" "}
+        Filters don't apply here.
+      </Typography>
+      <Box sx={GRID_SX}>
+        {data.mentors.map((mentor) => (
+          <MentorCard key={mentor.id} mentor={mentor} />
+        ))}
+      </Box>
+    </>
   );
 }

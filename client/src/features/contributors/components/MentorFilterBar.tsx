@@ -139,6 +139,7 @@ export function MentorFilterBar({ filters, hasActiveFilters, onChange, onReset }
           slotProps={{ htmlInput: { "aria-label": "Sort mentors" } }}
           sx={{ width: { xs: 132, sm: 180 }, flexShrink: 0 }}
         >
+          <MenuItem value="recommended">For you</MenuItem>
           <MenuItem value="score">Top reputation</MenuItem>
           <MenuItem value="active">Recently active</MenuItem>
         </TextField>

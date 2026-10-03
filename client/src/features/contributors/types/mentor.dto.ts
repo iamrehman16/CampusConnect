@@ -17,9 +17,18 @@ export interface MentorSummary {
   maxActiveMentees: number;
   /** Free mentee slots right now. */
   slotsLeft: number;
+  /** Why this mentor was recommended (only on recommended lists, BACKLOG.md E12). */
+  reasons?: string[];
 }
 
-export type MentorSort = "score" | "active";
+export type MentorSort = "score" | "active" | "recommended";
+
+/** Server response of GET mentorships/recommended-mentors. */
+export interface RecommendedMentors {
+  mentors: MentorSummary[];
+  /** False on a cold start: these are top contributors, not matches. */
+  personalized: boolean;
+}
 
 export interface MentorFilters {
   search?: string;

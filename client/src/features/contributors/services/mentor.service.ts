@@ -1,6 +1,6 @@
 import api from "@/shared/api/axios.instance";
 import type { PaginatedResult } from "@/shared/types/api.types";
-import type { MentorFilters, MentorSummary } from "../types/mentor.dto";
+import type { MentorFilters, MentorSummary, RecommendedMentors } from "../types/mentor.dto";
 
 const mentorService = {
   async getMentors(
@@ -12,6 +12,13 @@ const mentorService = {
       "users/mentors",
       { params: { ...filters, page, limit } },
     );
+    return data;
+  },
+
+  async getRecommended(limit: number): Promise<RecommendedMentors> {
+    const { data } = await api.get<RecommendedMentors>("mentorships/recommended-mentors", {
+      params: { limit },
+    });
     return data;
   },
 };

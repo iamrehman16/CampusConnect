@@ -21,6 +21,7 @@ import {
   usePendingRequestCount,
 } from "@/features/mentorship/hooks/mentorship.hooks";
 import { useResources } from "@/features/resources/hooks/resource.hooks";
+import { useRecommendedMentors } from "@/features/contributors/hooks/mentor.hooks";
 import { ResourceRow } from "@/features/resources/components/ResourceRow";
 import { useMyProfile } from "@/features/user/hooks/profile-hooks";
 import { ApprovalStatus, ResourceSort } from "@/shared/types/enums";
@@ -205,6 +206,39 @@ export function MentorshipWidget() {
         <Typography variant="caption" color="text.tertiary" sx={{ display: "block", px: 1.5, pt: 0.5 }}>
           {pendingCount} request{pendingCount === 1 ? "" : "s"} awaiting a reply
         </Typography>
+      )}
+    </HomeSection>
+  );
+}
+
+// ── Recommended mentors (BACKLOG.md E12) ─────────────────────────────────────
+
+export function RecommendedMentorsWidget() {
+  const navigate = useNavigate();
+  const { data, isLoading } = useRecommendedMentors(3);
+
+  // Nothing to suggest (everyone is already your mentor / no open mentors):
+  // better absent than an empty box on Home.
+  if (!isLoading && (!data || data.mentors.length === 0)) return null;
+
+  return (
+    <HomeSection
+      title={data?.personalized === false ? "Mentors to meet" : "Mentors for you"}
+      action={{ label: "See all", to: `${ROUTES.MENTORS}?sort=recommended` }}
+      flush
+    >
+      {isLoading ? (
+        <RowSkeletons count={3} />
+      ) : (
+        data?.mentors.map((m) => (
+          <WidgetRow
+            key={m.id}
+            leading={<UserAvatar name={m.name} avatar={m.avatar} size={32} />}
+            title={m.name}
+            secondary={m.reasons?.join(" · ")}
+            onClick={() => navigate(ROUTES.PUBLIC_PROFILE.replace(":userId", m.id))}
+          />
+        ))
       )}
     </HomeSection>
   );

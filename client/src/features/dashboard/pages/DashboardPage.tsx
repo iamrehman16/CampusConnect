@@ -6,6 +6,7 @@ import {
   CommunityWidget,
   ContinueWidget,
   MentorshipWidget,
+  RecommendedMentorsWidget,
   MessagesWidget,
   SemesterResourcesWidget,
 } from "../components/HomeWidgets";
@@ -35,6 +36,7 @@ export default function HomePage() {
           </Stack>
           <Stack spacing={3}>
             <MentorshipWidget />
+            <RecommendedMentorsWidget />
             <MessagesWidget />
             <CommunityWidget />
           </Stack>

@@ -85,6 +85,12 @@ export function MentorCard({ mentor }: Props) {
           </Typography>
         )}
 
+        {mentor.reasons && mentor.reasons.length > 0 && (
+          <Typography variant="caption" color="primary.main" fontWeight={600}>
+            {mentor.reasons.join(" · ")}
+          </Typography>
+        )}
+
         {shownTopics.length > 0 && (
           <Stack direction="row" flexWrap="wrap" gap={0.5} aria-label="Topics">
             {shownTopics.map((t) => (
