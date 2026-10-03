@@ -11,6 +11,9 @@ import refreshJwtConfig from './config/refresh-jwt.config';
 import { RefreshJWTStrategy } from './strategies/refresh-jwt.strategy';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './guards/jwt-auth.guards';
+import googleConfig from './config/google.config';
+import { GoogleStrategy } from './strategies/google.strategy';
+import { GoogleExchangeService } from './google-exchange.service';
 import { RolesGuard } from './guards/roles.guard';
 
 @Module({
@@ -19,6 +22,7 @@ import { RolesGuard } from './guards/roles.guard';
     JwtModule.registerAsync(jwtConfig.asProvider()),
     ConfigModule.forFeature(jwtConfig),
     ConfigModule.forFeature(refreshJwtConfig),
+    ConfigModule.forFeature(googleConfig),
   ],
   controllers: [AuthController],
   providers: [
@@ -26,6 +30,8 @@ import { RolesGuard } from './guards/roles.guard';
     LocalStrategy,
     JWTStrategy,
     RefreshJWTStrategy,
+    GoogleStrategy,
+    GoogleExchangeService,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

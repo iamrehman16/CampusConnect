@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { UserService } from '../user/user.service';
 import { UserStatus } from '../user/enums/user-status.enum';
 import { JwtService } from '@nestjs/jwt';
+import { GoogleExchangeService } from './google-exchange.service';
 
 jest.mock('bcrypt', () => ({ compare: jest.fn() }));
 jest.mock('argon2', () => ({
@@ -13,10 +14,15 @@ jest.mock('argon2', () => ({
   default: { verify: jest.fn() },
 }));
 
+const issue = jest.fn().mockReturnValue('code-1');
+const consume = jest.fn();
+const googleExchange = { issue, consume } as unknown as GoogleExchangeService;
+
 function build(userService: Partial<UserService>) {
   return new AuthService(
     userService as UserService,
     {} as Partial<JwtService> as JwtService,
+    googleExchange,
     { secret: 'test-secret', expiresIn: '7d' },
   );
 }
@@ -99,6 +105,59 @@ describe('AuthService', () => {
 
       await expect(service.validateRefreshToken('x', 'rt')).rejects.toThrow(
         'suspended',
+      );
+    });
+  });
+
+  describe('Google sign-in', () => {
+    const profile = {
+      googleId: 'g1',
+      email: 'a@b.c',
+      emailVerified: true,
+      name: 'A',
+    };
+
+    it('issues a one-time code for an active user', async () => {
+      const u = user(UserStatus.ACTIVE);
+      const service = build({
+        findOrCreateGoogleUser: jest.fn().mockResolvedValue(u),
+      });
+
+      await expect(service.startGoogleSignIn(profile)).resolves.toBe('code-1');
+      expect(issue).toHaveBeenCalledWith(u._id.toString());
+    });
+
+    it('refuses a suspended account', async () => {
+      const service = build({
+        findOrCreateGoogleUser: jest
+          .fn()
+          .mockResolvedValue(user(UserStatus.SUSPENDED)),
+      });
+
+      await expect(service.startGoogleSignIn(profile)).rejects.toThrow(
+        'suspended',
+      );
+    });
+
+    it('rejects an unknown, expired or reused code', async () => {
+      consume.mockReturnValue(null);
+      const service = build({});
+
+      await expect(service.finishGoogleSignIn('nope')).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it('tells a Google-only account to use Google on password login', async () => {
+      const service = build({
+        findByEmail: jest.fn().mockResolvedValue({
+          ...user(UserStatus.ACTIVE),
+          password: undefined,
+        }),
+      });
+
+      await expect(service.validateUser('a@b.c', 'pw')).rejects.toThrow(
+        'Google sign-in',
       );
     });
   });

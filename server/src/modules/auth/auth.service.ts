@@ -9,6 +9,8 @@ import refreshJwtConfig from './config/refresh-jwt.config';
 import type { ConfigType } from '@nestjs/config';
 import argon2 from 'argon2';
 import { CurrentUser } from './types/current-user';
+import { GoogleExchangeService } from './google-exchange.service';
+import type { GoogleProfile } from '../user/google-profile';
 import { CompleteOnboardingDto } from '../user/dto/complete-onboarding.dto';
 
 @Injectable()
@@ -16,6 +18,7 @@ export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
+    private readonly googleExchange: GoogleExchangeService,
     @Inject(refreshJwtConfig.KEY)
     private readonly refreshtTokenConfig: ConfigType<typeof refreshJwtConfig>,
   ) {}
@@ -39,9 +42,31 @@ export class AuthService {
       refreshToken,
     };
   }
+  /** BACKLOG.md F2: resolves the Google profile to an account, returns a one-time code. */
+  async startGoogleSignIn(profile: GoogleProfile): Promise<string> {
+    const user = await this.userService.findOrCreateGoogleUser(profile);
+    if (user.accountStatus === UserStatus.SUSPENDED)
+      throw new UnauthorizedException('This account has been suspended');
+    return this.googleExchange.issue(user._id.toString());
+  }
+
+  /** Swaps the code for the same token pair a password login issues. */
+  async finishGoogleSignIn(code: string) {
+    const userId = this.googleExchange.consume(code);
+    if (!userId)
+      throw new UnauthorizedException('Sign-in link expired or already used');
+    await this.validateJwtUser(userId); // re-checks suspension
+    return this.login(userId);
+  }
+
   async validateUser(email: string, password: string) {
     const user = await this.userService.findByEmail(email);
     if (!user) throw new UnauthorizedException('User not found!');
+    // Google-created accounts have no password (BACKLOG.md F1).
+    if (!user.password)
+      throw new UnauthorizedException(
+        'This account uses Google sign-in. Continue with Google instead.',
+      );
     const isPasswordMatch = await compare(password, user.password);
     if (!isPasswordMatch)
       throw new UnauthorizedException('Invalid Credentials');
