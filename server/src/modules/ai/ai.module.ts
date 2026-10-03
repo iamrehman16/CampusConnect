@@ -25,6 +25,8 @@ import { RetrievalService } from './services/retrieval.service';
 import { MemoryStoreService } from './services/memory-store.service';
 import { MemoryService } from './services/memory.service';
 import { CommonModule } from '../../common/common.module';
+import { ContributorLookupService } from './services/contributor-lookup.service';
+import { Resource, ResourceSchema } from '../resource/schemas/resource.schema';
 import { VectorCleanupListener } from './vector-cleanup.listener';
 
 @Module({
@@ -36,6 +38,7 @@ import { VectorCleanupListener } from './vector-cleanup.listener';
       { name: ConversationSession.name, schema: ConversationSessionSchema },
       { name: AiConversation.name, schema: AiConversationSchema },
       { name: AiMessage.name, schema: AiMessageSchema },
+      { name: Resource.name, schema: ResourceSchema },
     ]),
     CommonModule,
   ],
@@ -50,6 +53,7 @@ import { VectorCleanupListener } from './vector-cleanup.listener';
     VectorStoreService,
     ChunkingService,
     RetrievalService,
+    ContributorLookupService,
     MemoryStoreService,
     MemoryService,
     VectorCleanupListener,

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { GroqService } from './groq.service';
 import { ConversationService } from './conversation.service';
 import { RetrievalService } from './retrieval.service';
+import { ContributorLookupService } from './contributor-lookup.service';
 import {
   Citation,
   ChatResponse,
@@ -15,6 +16,7 @@ export class AiChatService {
     private readonly groqService: GroqService,
     private readonly conversationService: ConversationService,
     private readonly retrievalService: RetrievalService,
+    private readonly contributorLookup: ContributorLookupService,
   ) {}
 
   /**
@@ -41,6 +43,17 @@ export class AiChatService {
     }
 
     return citations;
+  }
+
+  /** Adds each citation's uploader via one batched lookup (E14). */
+  private async attachContributors(citations: Citation[]): Promise<Citation[]> {
+    const contributors = await this.contributorLookup.resolve(
+      citations.map((c) => c.resourceId),
+    );
+    return citations.map((c) => {
+      const contributor = contributors.get(c.resourceId);
+      return contributor ? { ...c, contributor } : c;
+    });
   }
 
   async getChatResponse(
@@ -70,7 +83,9 @@ export class AiChatService {
     );
 
     const answer = await this.groqService.generateResponse(messages);
-    const citations = this.buildCitations(context);
+    const citations = await this.attachContributors(
+      this.buildCitations(context),
+    );
 
     const { assistantMessageId } =
       await this.conversationService.appendMessages(
@@ -127,7 +142,9 @@ export class AiChatService {
       memories,
     );
 
-    const citations = this.buildCitations(context);
+    const citations = await this.attachContributors(
+      this.buildCitations(context),
+    );
 
     return new Observable<MessageEvent>((observer) => {
       // The Observable executor must be synchronous, so this async IIFE is

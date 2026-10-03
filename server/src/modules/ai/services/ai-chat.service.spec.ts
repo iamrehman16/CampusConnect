@@ -1,10 +1,13 @@
 import { Types } from 'mongoose';
+import { ReputationTier } from '../../reputation/tiers';
 import { AiChatService } from './ai-chat.service';
 import { GroqService } from './groq.service';
 import { ConversationService } from './conversation.service';
 import { RetrievalService } from './retrieval.service';
+import { ContributorLookupService } from './contributor-lookup.service';
 import {
   Citation,
+  CitationContributor,
   RetrievedContext,
 } from '../interfaces/retrieved-context.interface';
 
@@ -27,7 +30,10 @@ function chunk(
   };
 }
 
-function buildService(context: RetrievedContext[]) {
+function buildService(
+  context: RetrievedContext[],
+  contributors: Map<string, CitationContributor> = new Map(),
+) {
   const groqService: Partial<GroqService> = {
     buildMessages: jest.fn().mockReturnValue([]),
     generateResponse: jest.fn().mockResolvedValue('the answer'),
@@ -57,10 +63,15 @@ function buildService(context: RetrievedContext[]) {
       .mockResolvedValue({ context, status: 'ok', memories: [] }),
   };
 
+  const contributorLookup: Partial<ContributorLookupService> = {
+    resolve: jest.fn().mockResolvedValue(contributors),
+  };
+
   return new AiChatService(
     groqService as GroqService,
     conversationService as ConversationService,
     retrievalService as RetrievalService,
+    contributorLookup as ContributorLookupService,
   );
 }
 
@@ -107,6 +118,23 @@ describe('AiChatService — citation deduplication', () => {
     expect(citationsEvent.citations).toHaveLength(1);
     expect(citationsEvent.citations[0].resourceId).toBe('resource-1');
     expect(citationsEvent.citations[0].pageNumber).toBe(3);
+  });
+
+  it('attaches the uploader to each citation that has one (E14)', async () => {
+    const contributor: CitationContributor = {
+      id: 'user-9',
+      name: 'Ayesha',
+      tier: ReputationTier.STAR,
+    };
+    const service = buildService(
+      [chunk('resource-1', 3, 0.9), chunk('resource-2', 1, 0.8)],
+      new Map([['resource-1', contributor]]),
+    );
+
+    const { citations } = await service.getChatResponse('user-1', 'query');
+
+    expect(citations[0].contributor).toEqual(contributor);
+    expect(citations[1].contributor).toBeUndefined();
   });
 
   it('getChatResponse returns the persisted assistant message id (C1)', async () => {
@@ -176,6 +204,9 @@ function buildServiceWithConversation(recentMessages: unknown[]) {
       groqService as GroqService,
       conversationService as ConversationService,
       retrievalService as RetrievalService,
+      {
+        resolve: jest.fn().mockResolvedValue(new Map()),
+      } as unknown as ContributorLookupService,
     ),
     conversation,
     conversationService,

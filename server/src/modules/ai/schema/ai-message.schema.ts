@@ -49,6 +49,16 @@ export class AiMessage {
         semester: Number,
         course: String,
         resourceId: String,
+        contributor: {
+          type: {
+            _id: false,
+            id: String,
+            name: String,
+            avatar: String,
+            tier: String,
+          },
+          default: undefined,
+        },
       },
     ],
     default: undefined,

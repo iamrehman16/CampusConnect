@@ -1,3 +1,5 @@
+import { ReputationTier } from '../../reputation/tiers';
+
 /**
  * Distinguishes why no citations were returned, so the caller isn't left
  * treating "no documents matched at all" and "matches existed but were too
@@ -34,12 +36,22 @@ export interface ChatResponse {
   messageId: string;
 }
 
+/** Who uploaded a cited resource (BACKLOG.md E14); a snapshot at answer time. */
+export interface CitationContributor {
+  id: string;
+  name: string;
+  avatar?: string;
+  tier: ReputationTier;
+}
+
 export interface Citation {
   title: string;
   pageNumber: number;
   semester: number;
   course: string;
   resourceId: string;
+  /** Absent when the uploader couldn't be resolved. */
+  contributor?: CitationContributor;
 }
 
 export interface RetrievedContext {
