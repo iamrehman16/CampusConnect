@@ -32,6 +32,7 @@ import { UserQueryBuilder } from './queries/build-user-query';
 import { UserSortBuilder } from './queries/build-user-sort';
 import { MentorQueryDto } from './dto/mentor-query.dto';
 import { DEFAULT_MAX_ACTIVE_MENTEES } from './user.constants';
+import type { GoogleProfile } from './google-profile';
 import { MentorSummaryDto } from './dto/mentor-summary.dto';
 import { MentorQueryBuilder } from './queries/build-mentor-query';
 import { MentorSortBuilder } from './queries/build-mentor-sort';
@@ -89,6 +90,72 @@ export class UserService {
       }
       throw error;
     }
+  }
+
+  /**
+   * BACKLOG.md F1. Resolution order: Google id, then email (account linking),
+   * then create. Linking happens only when Google reports the email as
+   * verified — otherwise anyone could register a Google identity with someone
+   * else's address and take over their account.
+   */
+  async findOrCreateGoogleUser(profile: GoogleProfile) {
+    const byGoogleId = await this.userModel
+      .findOne({ googleId: profile.googleId })
+      .exec();
+    if (byGoogleId) return byGoogleId.toObject();
+
+    const existing = await this.userModel
+      .findOne({ email: profile.email })
+      .exec();
+    if (existing) {
+      if (!profile.emailVerified) {
+        throw new ConflictException(
+          'An account with this email exists and Google has not verified it',
+        );
+      }
+      return this.linkGoogleAccount(existing._id.toString(), profile.googleId);
+    }
+
+    try {
+      const created = await this.userModel.create({
+        email: profile.email,
+        name: profile.name,
+        authProvider: 'google',
+        googleId: profile.googleId,
+        role: Roles.STUDENT,
+        accountStatus: UserStatus.ACTIVE,
+        contributionScore: 0,
+      });
+      return created.toObject();
+    } catch (error) {
+      if (!this.isDuplicateKeyError(error)) throw error;
+      // A concurrent first sign-in (double-clicked button) won the race.
+      const winner = await this.userModel
+        .findOne({
+          $or: [{ googleId: profile.googleId }, { email: profile.email }],
+        })
+        .exec();
+      if (!winner) throw error;
+      return winner.toObject();
+    }
+  }
+
+  private async linkGoogleAccount(userId: string, googleId: string) {
+    // Conditional so an account already linked to a different Google identity
+    // is never silently re-pointed.
+    const linked = await this.userModel
+      .findOneAndUpdate(
+        { _id: userId, googleId: { $exists: false } },
+        { googleId },
+        { new: true },
+      )
+      .exec();
+    if (!linked) {
+      throw new ConflictException(
+        'This account is already linked to a different Google account',
+      );
+    }
+    return linked.toObject();
   }
 
   private isDuplicateKeyError(err: unknown): boolean {
@@ -438,6 +505,11 @@ export class UserService {
       throw new NotFoundException(`User with id ${userId} not found`);
     }
 
+    if (!user.password) {
+      throw new BadRequestException(
+        'This account signs in with Google and has no password to change',
+      );
+    }
     const matches = await bcrypt.compare(dto.currentPassword, user.password);
     if (!matches) {
       throw new BadRequestException('Current password is incorrect');

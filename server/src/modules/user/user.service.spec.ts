@@ -405,3 +405,79 @@ describe('UserService leaderboard visibility (E15)', () => {
     expect(f).not.toHaveBeenCalled();
   });
 });
+
+describe('UserService.findOrCreateGoogleUser', () => {
+  const profile = {
+    googleId: 'g1',
+    email: 'a@b.c',
+    emailVerified: true,
+    name: 'A',
+  };
+  const doc = (o: object) => ({
+    toObject: () => o,
+    _id: { toString: () => 'u1' },
+  });
+  const q = (v: unknown) => ({ exec: jest.fn().mockResolvedValue(v) });
+
+  function build(model: Record<string, jest.Mock>) {
+    return new UserService(
+      model as unknown as Model<User>,
+      {} as PaginationService,
+    );
+  }
+
+  it('returns the account already linked to the Google id', async () => {
+    const findOne = jest.fn().mockReturnValue(q(doc({ id: 'x' })));
+    const result = await build({ findOne }).findOrCreateGoogleUser(profile);
+    expect(result).toEqual({ id: 'x' });
+    expect(findOne).toHaveBeenCalledTimes(1);
+  });
+
+  it('links a verified email to the existing local account', async () => {
+    const findOne = jest
+      .fn()
+      .mockReturnValueOnce(q(null))
+      .mockReturnValueOnce(q(doc({})));
+    const findOneAndUpdate = jest
+      .fn()
+      .mockReturnValue(q(doc({ linked: true })));
+    const result = await build({
+      findOne,
+      findOneAndUpdate,
+    }).findOrCreateGoogleUser(profile);
+    expect(result).toEqual({ linked: true });
+    expect((findOneAndUpdate.mock.calls as unknown[][])[0][0]).toEqual({
+      _id: 'u1',
+      googleId: { $exists: false },
+    });
+  });
+
+  it('refuses to link an unverified Google email', async () => {
+    const findOne = jest
+      .fn()
+      .mockReturnValueOnce(q(null))
+      .mockReturnValueOnce(q(doc({})));
+    await expect(
+      build({ findOne }).findOrCreateGoogleUser({
+        ...profile,
+        emailVerified: false,
+      }),
+    ).rejects.toThrow('not verified');
+  });
+
+  it('creates a passwordless google account when nothing matches', async () => {
+    const findOne = jest.fn().mockReturnValue(q(null));
+    const create = jest.fn().mockResolvedValue(doc({ created: true }));
+    await build({ findOne, create }).findOrCreateGoogleUser(profile);
+    const arg = (create.mock.calls as unknown[][])[0][0] as Record<
+      string,
+      unknown
+    >;
+    expect(arg).toMatchObject({
+      authProvider: 'google',
+      googleId: 'g1',
+      email: 'a@b.c',
+    });
+    expect(arg).not.toHaveProperty('password');
+  });
+});

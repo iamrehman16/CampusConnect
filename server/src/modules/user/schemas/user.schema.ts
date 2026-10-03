@@ -18,8 +18,17 @@ export class User {
   @Prop({ required: true, unique: true, index: true })
   email: string;
 
-  @Prop({ required: true, select: false })
-  password: string;
+  /** Absent for accounts created through Google sign-in (BACKLOG.md F1). */
+  @Prop({ required: false, select: false })
+  password?: string;
+
+  /** How the account was first created; linking Google later doesn't change it. */
+  @Prop({ type: String, enum: ['local', 'google'], default: 'local' })
+  authProvider: 'local' | 'google';
+
+  /** Google's stable account id (`sub`) — never the email, which can change. */
+  @Prop({ required: false, unique: true, sparse: true })
+  googleId?: string;
 
   @Prop({ default: '' })
   name?: string;
