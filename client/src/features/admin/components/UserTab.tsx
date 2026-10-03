@@ -1,4 +1,5 @@
 // features/admin/components/UsersTab.tsx
+import InlineError from "@/shared/components/feedback/InlineError";
 import { useState, useCallback } from "react";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
@@ -188,7 +189,7 @@ export default function UsersTab() {
     ...(debouncedSearch && { search: debouncedSearch }),
   };
 
-  const { data, isLoading, isError } = useUsers(params);
+  const { data, isLoading, isError, refetch } = useUsers(params);
 
   const handlePaginationChange = useCallback((model: GridPaginationModel) => {
     setPaginationModel(model);
@@ -274,9 +275,7 @@ export default function UsersTab() {
       {/* DataGrid */}
       <Box sx={{ minWidth: 900, overflowX: "auto" }}>
         {isError ? (
-          <Typography color="error" variant="body2">
-            Failed to load users. Please refresh.
-          </Typography>
+          <InlineError message="Failed to load users." onRetry={refetch} />
         ) : (
           <DataGrid
             rows={data?.data ?? []}

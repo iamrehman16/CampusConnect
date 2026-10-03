@@ -1,7 +1,7 @@
 // features/admin/components/AnalyticsSection.tsx
 import Grid from "@mui/material/Grid";
 import Box from "@mui/material/Box";
-import Alert from "@mui/material/Alert";
+import InlineError from "@/shared/components/feedback/InlineError";
 import ChartCard from "./ChartCard";
 import UploadsLineChart from "./UploadsLineChart";
 import UserGrowthChart from "./UserGrowthChart";
@@ -19,9 +19,13 @@ export default function AnalyticsSection() {
 
   if (resources.isError || growth.isError) {
     return (
-      <Alert severity="error">
-        Failed to load analytics data. Please refresh.
-      </Alert>
+      <InlineError
+        message="Failed to load analytics data."
+        onRetry={() => {
+          void resources.refetch();
+          void growth.refetch();
+        }}
+      />
     );
   }
 

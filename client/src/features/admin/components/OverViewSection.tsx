@@ -1,19 +1,15 @@
 // features/admin/components/OverviewSection.tsx
 import Grid from "@mui/material/Grid";
-import Alert from "@mui/material/Alert";
+import InlineError from "@/shared/components/feedback/InlineError";
 import { People as PeopleIcon, School as SchoolIcon, LibraryBooks as LibraryBooksIcon, Forum as ForumIcon } from "@/shared/icons";
 import StatCard from "./StatCard";
 import { useOverviewStats } from "../hooks/admin-hooks";
 
 export default function OverviewSection() {
-  const { data, isLoading, isError } = useOverviewStats();
+  const { data, isLoading, isError, refetch } = useOverviewStats();
 
   if (isError) {
-    return (
-      <Alert severity="error" sx={{ mb: 2 }}>
-        Failed to load overview stats.
-      </Alert>
-    );
+    return <InlineError message="Failed to load overview stats." onRetry={refetch} />;
   }
 
   const cards = [

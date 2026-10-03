@@ -1,11 +1,11 @@
 import { useCallback, useRef, useState } from 'react';
-import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import Stack from '@mui/material/Stack';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
+import InlineError from '@/shared/components/feedback/InlineError';
 import { useAdminReports } from '@/features/moderation/hooks/moderation.hooks';
 import { ReportReviewCard } from '@/features/moderation/components/ReportReviewCard';
 import type { ReportStatus } from '@/features/moderation/types/moderation.dto';
@@ -20,7 +20,7 @@ const STATUSES: { value: ReportStatus; label: string }[] = [
 /** Moderation queue (BACKLOG.md E16): review reports, then dismiss, warn or suspend. */
 export default function ReportsTab() {
   const [status, setStatus] = useState<ReportStatus>('open');
-  const { data, isLoading, isError, hasNextPage, isFetchingNextPage, fetchNextPage } =
+  const { data, isLoading, isError, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } =
     useAdminReports(status);
 
   const observer = useRef<IntersectionObserver | null>(null);
@@ -61,7 +61,7 @@ export default function ReportsTab() {
         </Box>
       )}
 
-      {isError && <Alert severity="error">Failed to load reports.</Alert>}
+      {isError && <InlineError message="Failed to load reports." onRetry={refetch} />}
 
       {!isLoading && !isError && reports.length === 0 && (
         <Typography color="text.secondary" sx={{ py: 6, textAlign: 'center' }}>

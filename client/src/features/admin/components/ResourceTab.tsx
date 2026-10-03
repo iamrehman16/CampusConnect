@@ -2,14 +2,14 @@
 import { useRef, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import InlineError from '@/shared/components/feedback/InlineError';
 import CircularProgress from '@mui/material/CircularProgress';
-import Alert from '@mui/material/Alert';
 import { CheckCircle as CheckCircleIcon } from "@/shared/icons";
 import { useAdminPendingResources } from '@/features/resources/hooks/resource.hooks';
 import ResourceModerationCard from './ResourceModerationCard';
 
 export default function ResourcesTab() {
-  const { data, isLoading, isError, hasNextPage, isFetchingNextPage, fetchNextPage } =
+  const { data, isLoading, isError, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } =
     useAdminPendingResources({});
 
   // Infinite scroll sentinel
@@ -38,7 +38,7 @@ export default function ResourcesTab() {
   }
 
   if (isError) {
-    return <Alert severity="error">Failed to load pending resources.</Alert>;
+    return <InlineError message="Failed to load pending resources." onRetry={refetch} />;
   }
 
   if (resources.length === 0) {
