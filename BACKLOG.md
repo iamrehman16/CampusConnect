@@ -27,9 +27,15 @@ epics are summarized below; their detail lives in `git log`.
   impact panel + leaderboard, block/report/admin moderation.
 - **G — Quick fixes & resilience (G1–G5).** Debug logs and dead theme removed,
   UI sweep, server boots with Qdrant down, password change requires current password.
+- **F — Google OAuth sign-in (F1–F3).** Any Google account can sign in; a verified email links to
+  an existing local account; one-time-code redirect, so no tokens in URLs. Verified end to end 2026-10-03.
 - **H1 — Demo database + seed script** (`npm run seed:demo`, `campusconnect_demo`).
 
 ### Open follow-ups carried over (not scheduled)
+- Google sign-in shortcuts: exchange codes are in memory (single instance only; use Redis to
+  scale), no OAuth `state` parameter, case-sensitive email lookup. On the host, set
+  `CLIENT_ID`, `CLIENT_SECRET`, `GOOGLE_CALLBACK_URL`, `FRONTEND_URL`, and register the
+  deployed callback URL in Google Cloud.
 - Audit every `@Prop({ type: Types.ObjectId })` (Mixed path, no casting):
   `Post.author`, `Message.sender`, etc. Fix with `SchemaTypes.ObjectId` + migration.
 - Rating counters (E11) aren't transactional with the rating write; no recompute job.
@@ -41,27 +47,7 @@ epics are summarized below; their detail lives in `git log`.
 
 ---
 
-## Epic F — Google OAuth (code DONE 2026-10-03, live check pending)
-
-Any Google account may sign in (no domain restriction). A Google email matching
-an existing local account is linked only when Google reports it verified; otherwise
-sign-in is refused. New Google users go through onboarding. Server: schema + user
-lookup (F1), strategy, callback and one-time code exchange (F2). Client: button on
-login/signup, callback page (F3). Credentials: `CLIENT_ID`, `CLIENT_SECRET`
-(+ optional `GOOGLE_CALLBACK_URL`) in `server/.env`.
-
-**Remaining:**
-- Real end-to-end sign-in in a browser (new Google account, linking, denied consent).
-- Google Cloud: redirect URI `http://localhost:3100/api/auth/google/callback` and the
-  deployed `https://<server>/api/auth/google/callback`; publish the consent screen (or
-  add test users); set `GOOGLE_CALLBACK_URL`, `FRONTEND_URL`, `CLIENT_ID`,
-  `CLIENT_SECRET` on the host.
-- Shortcuts flagged: exchange codes are in-memory (single instance only; use Redis to
-  scale); no OAuth `state` parameter (no sessions); email lookup is case-sensitive.
-
----
-
-## Epic H — Demo readiness (H2, H3 open)
+## Epic H — Demo readiness (H2, H3 open — the only active work)
 
 ### H2 — Empty, loading and error states pass
 **Effort:** 5
