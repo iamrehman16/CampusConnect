@@ -16,6 +16,7 @@ export interface UpdateUserDto{
     mentorBio?:string;
     mentorTopics?:string[];
     maxActiveMentees?:number;
+    showOnLeaderboard?:boolean;
 }
 
 export interface UpdateUserStatusDto{

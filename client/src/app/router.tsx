@@ -69,6 +69,10 @@ const OnboardingPage = lazy(
   () => import("@/features/auth/pages/OnboardingPage"),
 );
 
+const LeaderboardPage = lazy(
+  () => import("@/features/reputation/pages/LeaderboardPage"),
+);
+
 const FaqPage = lazy(
   () => import("@/features/info/pages/FAQPage"),
 );
@@ -186,6 +190,16 @@ const router = createBrowserRouter([
             element: (
               <SuspenseWrapper>
                 <CommunityPage />
+              </SuspenseWrapper>
+            ),
+          },
+
+          // Leaderboard (BACKLOG.md E15)
+          {
+            path: ROUTES.LEADERBOARD,
+            element: (
+              <SuspenseWrapper>
+                <LeaderboardPage />
               </SuspenseWrapper>
             ),
           },

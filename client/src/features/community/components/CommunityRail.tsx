@@ -73,6 +73,12 @@ export function CommunityRail({ posts, onOpenPost }: { posts: Post[]; onOpenPost
             </ButtonBase>
           ))
         )}
+        <ButtonBase
+          onClick={() => navigate(ROUTES.LEADERBOARD)}
+          sx={{ ...rowSx, color: "primary.main", fontWeight: 600, fontSize: "0.8125rem" }}
+        >
+          See the leaderboard
+        </ButtonBase>
       </RailCard>
 
       {active.length > 0 && (

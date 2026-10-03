@@ -8,6 +8,7 @@ import { TierChip } from "@/features/reputation/components/TierChip";
 import { TIER_DISPLAY } from "@/features/reputation/utils/tier-display";
 import { MentorRating } from "@/features/mentorship/components/MentorRating";
 import { useMyImpact } from "../hooks/dashboard.hooks";
+import { ROUTES } from "@/shared/constants/routes";
 import { HomeSection } from "./HomeSection";
 
 function Stat({ label, value, hint }: { label: string; value: React.ReactNode; hint?: string }) {
@@ -48,7 +49,7 @@ export function MyImpactWidget() {
   if (isError) return null; // Home still works without it; the failure toasts globally.
 
   return (
-    <HomeSection title="Your impact">
+    <HomeSection title="Your impact" action={{ label: "Leaderboard", to: ROUTES.LEADERBOARD }}>
       {isLoading || !data ? (
         <Skeleton variant="rounded" height={180} />
       ) : (

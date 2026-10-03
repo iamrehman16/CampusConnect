@@ -56,6 +56,7 @@ const ProfileSettingsForm: React.FC<ProfileSettingsFormProps> = ({
     mentorBio: user?.mentorBio ?? "",
     mentorTopics: user?.mentorTopics ?? ([] as string[]),
     maxActiveMentees: user?.maxActiveMentees ?? DEFAULT_MAX_ACTIVE_MENTEES,
+    showOnLeaderboard: user?.showOnLeaderboard ?? true,
   });
   // Tracks which user id `form` was last synced from, so the form resets
   // once the initially-null user data loads (adjusting state during render,
@@ -73,6 +74,7 @@ const ProfileSettingsForm: React.FC<ProfileSettingsFormProps> = ({
       mentorBio: user.mentorBio ?? "",
       mentorTopics: user.mentorTopics,
       maxActiveMentees: user.maxActiveMentees,
+      showOnLeaderboard: user.showOnLeaderboard,
     });
   }
 
@@ -85,7 +87,8 @@ const ProfileSettingsForm: React.FC<ProfileSettingsFormProps> = ({
     form.mentorBio !== (user?.mentorBio ?? "") ||
     !sameTopics(form.mentorTopics, user?.mentorTopics ?? []) ||
     form.maxActiveMentees !==
-      (user?.maxActiveMentees ?? DEFAULT_MAX_ACTIVE_MENTEES);
+      (user?.maxActiveMentees ?? DEFAULT_MAX_ACTIVE_MENTEES) ||
+    form.showOnLeaderboard !== (user?.showOnLeaderboard ?? true);
 
   const handleChange =
     (field: keyof typeof form) =>
@@ -117,6 +120,9 @@ const ProfileSettingsForm: React.FC<ProfileSettingsFormProps> = ({
       (user?.maxActiveMentees ?? DEFAULT_MAX_ACTIVE_MENTEES)
     ) {
       dto.maxActiveMentees = form.maxActiveMentees;
+    }
+    if (form.showOnLeaderboard !== (user?.showOnLeaderboard ?? true)) {
+      dto.showOnLeaderboard = form.showOnLeaderboard;
     }
     onSave(dto);
   };
@@ -193,6 +199,24 @@ const ProfileSettingsForm: React.FC<ProfileSettingsFormProps> = ({
             )}
           />
         </Stack>
+      </Card>
+
+      <Card sx={{ p: { xs: 2, sm: 3 } }}>
+        <SectionTitle
+          title="Leaderboard"
+          subtitle="Your reputation, tier and profile are unaffected either way."
+        />
+        <FormControlLabel
+          control={
+            <Switch
+              checked={form.showOnLeaderboard}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, showOnLeaderboard: e.target.checked }))
+              }
+            />
+          }
+          label="Show me on the leaderboard and in Top contributors"
+        />
       </Card>
 
       <Card sx={{ p: { xs: 2, sm: 3 } }}>

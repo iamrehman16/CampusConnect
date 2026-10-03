@@ -20,6 +20,7 @@ export interface ProfileUserViewModel {
   activeMenteeCount: number;
   ratingAverage: number | null;
   ratingCount: number;
+  showOnLeaderboard: boolean;
   createdAt: string;
 }
 
@@ -69,6 +70,7 @@ export const toProfileUserViewModel = (
     activeMenteeCount: user.activeMenteeCount ?? 0,
     ratingAverage: user.ratingAverage ?? null,
     ratingCount: user.ratingCount ?? 0,
+    showOnLeaderboard: user.showOnLeaderboard ?? true,
     createdAt: user.createdAt,
   };
 };

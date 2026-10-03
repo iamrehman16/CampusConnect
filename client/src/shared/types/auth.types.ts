@@ -24,6 +24,8 @@ export interface User {
   contributionScore?: number;
   tier?: ReputationTier;
   accountStatus?: string;
+  /** Opt-out for the public leaderboard (BACKLOG.md E15); absent means visible. */
+  showOnLeaderboard?: boolean;
   /** Mentor rating (BACKLOG.md E11); null until rated. */
   ratingAverage?: number | null;
   ratingCount?: number;

@@ -13,6 +13,7 @@ export const ROUTES = {
   AI_CHAT: "/ai",
   CHAT: "/chat",
   COMMUNITY: "/community",
+  LEADERBOARD: "/leaderboard",
   PROFILE: "/profile",
   PUBLIC_PROFILE: "/profile/:userId",
   ADMIN: "/admin",

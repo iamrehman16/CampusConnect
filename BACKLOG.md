@@ -32,7 +32,7 @@ Work top to bottom:
 | 2 | Design foundation | D4, D5 (+D3 folded in) ✅ | Tokens + app shell every page redesign builds on |
 | 3 | Page redesigns | D6–D10 (D6, D7 ✅) | In demo-walkthrough order |
 | 4 | Integration features | E13 ✅, E14 ✅, E16 ✅ | The "resource → AI → human" story; safety before any public use |
-| 5 | Mentorship depth | **E12 ✅, E11 ✅, E15** | Builds on E10 + reputation. **E12 moved first (2026-10-03):** E14's mentor matcher is an interim stand-in for it, and "Recommended for you" is more demo-visible than E11's ratings |
+| 5 | Mentorship depth | **E12 ✅, E11 ✅, E15 ✅** | Builds on E10 + reputation. **E12 moved first (2026-10-03):** E14's mentor matcher is an interim stand-in for it, and "Recommended for you" is more demo-visible than E11's ratings |
 | 6 | Google sign-in | F1–F3 | Independent; can slot in anywhere if needed |
 | 7 | Demo polish | H2, H3 | States, walkthrough, final pass |
 
@@ -59,6 +59,18 @@ Work top to bottom:
   contribution score ledger (E5), contributor applications (E6), tiers &
   badges (E7), mentor profile fields (E8), mentor directory (E9), mentorship
   request lifecycle (E10).
+- **Epic E, E11–E16 — integration, mentorship depth, safety** (DONE
+  2026-10-03, roadmap Phases 4–5). Resource→AI→human loop: ask-the-author chat
+  cards (E13), contributor-attributed AI citations + "ask a human" + reputation
+  for citations (E14), block / report / admin moderation with real account
+  suspension (E16); mentor ratings, endorsements and recommended mentors (E11,
+  E12), and a contributor impact panel + opt-out leaderboard (E15).
+- **Found & fixed along the way:** suspension was never enforced in auth;
+  `me/stats` read the request object (zeros for everyone); a resource's
+  `uploadedBy` was stored as a string, silently breaking owner edits, badges,
+  the admin top-contributors chart and stats (migrated); admin Overview never
+  hid; `availableMentors` counted contributors. Still open: audit the other
+  `@Prop({ type: Types.ObjectId })` paths (Mixed) — see E15.
 
 ---
 
@@ -791,9 +803,9 @@ retention lever for the supply side.
   respected; reuses existing top-contributors aggregation where possible.
 - Follows the dataviz conventions already used in admin charts (Recharts).
 
-**E15 status: IN PROGRESS (2026-10-03).** Order: (1) "My impact" endpoint,
-(2) leaderboard + opt-out on the server, (3) impact panel UI, (4) leaderboard
-UI + opt-out toggle.
+**E15 status: DONE (2026-10-03).** Four commits: impact endpoint, leaderboard +
+opt-out (server), impact panel, leaderboard page + Settings toggle. Verified
+live and in a browser.
 
 **Decisions — "My impact" (commit 1), verified live:**
 - **One endpoint, `GET /dashboard/me/impact`,** built by an `ImpactService`
@@ -873,6 +885,22 @@ commit):**
 - "AI citations" is labelled with the unit ("resource-days") because it counts
   rewarded credits, not raw citations.
 
+**Decisions — leaderboard UI + opt-out toggle (commit 4), verified in a browser:**
+- **A `/leaderboard` page** (This month / All time, top 20, your row
+  highlighted "(you)", rows link to profiles), reached from the Community
+  "Top contributors" rail ("See the leaderboard") and from the impact panel's
+  header. It is not a new sidebar destination — the nav was deliberately cut
+  down in D5.
+- **Opt-out lives in Settings** ("Show me on the leaderboard and in Top
+  contributors"), with the page footer linking to it and stating that
+  reputation and profile are unaffected. Verified end to end: Hamza toggled it
+  off in the UI, it persisted across a reload, and he toggled it back.
+- **Other viewers can see the change up to ~60s late** (the board is cached
+  for a minute client-side); the server-side exclusion itself is immediate.
+- **Empty states are explicit** ("No one has earned points this month yet").
+  **Demo note (for H2/H3):** on the demo DB this month's board is empty because
+  the seeded reputation events predate October — re-run the seed close to the
+  demo date (or give it current-month events) so "This month" isn't blank.
 
 ---
 ### Safety (roadmap Phase 4)
