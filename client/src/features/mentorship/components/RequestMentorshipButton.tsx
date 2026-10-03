@@ -13,6 +13,8 @@ interface Props {
   slotsLeft: number;
   defaultTopic?: string;
   size?: ButtonProps["size"];
+  /** Style of the request action; use `outlined` next to a primary action. */
+  variant?: "contained" | "outlined";
 }
 
 /**
@@ -27,6 +29,7 @@ export function RequestMentorshipButton({
   slotsLeft,
   defaultTopic,
   size = "small",
+  variant = "contained",
 }: Props) {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -71,7 +74,7 @@ export function RequestMentorshipButton({
 
   return (
     <>
-      <Button {...common} variant="contained" onClick={() => setDialogOpen(true)}>
+      <Button {...common} variant={variant} onClick={() => setDialogOpen(true)}>
         Request mentorship
       </Button>
       <RequestMentorshipDialog

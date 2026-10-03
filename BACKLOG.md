@@ -560,10 +560,38 @@ items), client context card in the bubble, composer attachment chip,
 "Ask the author" on resource detail and post cards (hidden for your own
 items), retry keeps the context. Verified in a browser and against the
 demo DB over a real socket: card stored, `clientId` de-dup intact, dangling ref rejected.
-**Remaining:** offer "Request mentorship" instead of a plain DM when the
-author is a mentor with capacity (needs mentor fields on the resource
-`uploadedBy` populate); posts link to `/community?post=<id>`, which is the
-only post "detail" that exists.
+**E13 status: DONE (2026-10-03).**
+
+**Decisions (and why):**
+- **The server resolves the context; the client only sends `kind` + id.**
+  `MessageContextService` looks the item up and stores `{refId,title,subtitle}`,
+  so a client can't forge card text, and a missing/unapproved resource or a
+  deleted post is rejected. Trade-off: the card is a snapshot (a later
+  rename isn't reflected in old messages); a click-through still opens the
+  live item.
+- **Validation:** `contextId` is required exactly when `kind` isn't `text`
+  (class-validator `ValidateIf`). A violation gets no `chat_error` ack — the
+  same as every existing WS validation failure; the client never sends that
+  shape. Not changed here.
+- **`clientId` de-dup untouched** (CLAUDE.md §4): the context is resolved
+  before the insert and a duplicate still returns the stored message.
+- **Attachment travels as router state, then is dropped.** "Ask the author"
+  opens the existing conversation with a removable "About: …" chip. State is
+  tied to its conversation id and cleared after it's read — found in a
+  browser check: a reload otherwise re-seeded the chip.
+- **Retry keeps the context** (`kind`/`contextId` are part of the retry DTO,
+  not just the text).
+- **Posts have no detail page,** so a post card links to
+  `/community?post=<id>` (scroll + open replies, which already existed).
+- **Mentorship is offered *alongside* "Ask the author", not instead of it**
+  (a deliberate deviation from the criterion's wording). Asking about one
+  file isn't a mentorship commitment, so removing the quick question would
+  push people into the heavier flow. The button only appears when the author
+  is open to mentoring, and reuses `RequestMentorshipButton` (so it shows
+  request-sent / open-chat / no-free-slots), pre-filled with the resource's
+  subject. No server change: capacity comes from the author's cached public
+  profile instead of widening the `uploadedBy` populate on every resource
+  list. It's outlined so "Download" stays the one primary action.
 
 ### E14 — Contributor attribution + AI "ask a human" handoff
 **Effort:** 5

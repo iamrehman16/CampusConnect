@@ -33,6 +33,9 @@ import resourceService from "../services/resource.service";
 import { formatRelativeTime } from "@/shared/utils/format";
 import { PageContainer } from "@/shared/components/PageContainer";
 import UserAvatar from "@/shared/components/UserAvatar";
+import { useUserProfile } from "@/features/user/hooks/profile-hooks";
+import { toProfileUserViewModel } from "@/features/user/types/profile.types";
+import { RequestMentorshipButton } from "@/features/mentorship/components/RequestMentorshipButton";
 import { useChatTrigger } from "@/features/chat/hooks/chat-hooks";
 import { TierChip } from "@/features/reputation/components/TierChip";
 import type { Resource } from "../types/resource.dto";
@@ -111,6 +114,9 @@ export default function ResourceDetailPage() {
   const [previewFailed, setPreviewFailed] = useState(false);
 
   const { data: resource, isLoading, isError } = useResource(id!);
+  // Is the author open to mentoring? (E13) Reuses the cached public profile.
+  const { data: authorRaw } = useUserProfile(resource?.uploadedBy._id ?? "");
+  const authorProfile = toProfileUserViewModel(authorRaw);
   const { mutate: deleteResource } = useDeleteResource();
 
   if (isLoading) {
@@ -229,7 +235,7 @@ export default function ResourceDetailPage() {
           )}
 
           {isApproved && (
-            <Stack direction={{ xs: "column", sm: "row" }} gap={1}>
+            <Stack direction={{ xs: "column", sm: "row" }} flexWrap="wrap" gap={1}>
               <Button variant="contained" startIcon={<DownloadIcon />} onClick={handleDownload} disabled={downloading}>
                 {downloading ? "Preparing…" : "Download"}
               </Button>
@@ -240,6 +246,16 @@ export default function ResourceDetailPage() {
                 <Button variant="outlined" startIcon={<ChatBubbleOutline />} onClick={askAuthor} disabled={startingChat}>
                   Ask the author
                 </Button>
+              )}
+              {authorProfile?.isOpenToMentor && (
+                <RequestMentorshipButton
+                  mentorId={resource.uploadedBy._id}
+                  mentorName={resource.uploadedBy.name}
+                  slotsLeft={Math.max(0, authorProfile.maxActiveMentees - authorProfile.activeMenteeCount)}
+                  defaultTopic={resource.subject}
+                  size="medium"
+                  variant="outlined"
+                />
               )}
             </Stack>
           )}
