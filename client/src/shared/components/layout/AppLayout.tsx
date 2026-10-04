@@ -12,6 +12,7 @@ import { getRouteConfig } from "@/app/routeConfig";
 import { useChatPresenceSync } from "@/features/chat/hooks/useChatPresenceSync";
 import { useNotificationSync } from "@/features/notifications/hooks/useNotificationSync";
 import { useChatUnreadSync } from "@/features/chat/hooks/useChatUnreadSync";
+import { useSocketResync } from "@/features/chat/hooks/useSocketResync";
 import { PageErrorBoundary } from "@/shared/components/feedback/PageErrorBoundary";
 
 /**
@@ -24,6 +25,7 @@ export default function AppLayout() {
   const theme = useTheme();
   useChatUnreadSync();
   useChatPresenceSync();
+  useSocketResync();
   useNotificationSync();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const [accountOpen, setAccountOpen] = useState(false);

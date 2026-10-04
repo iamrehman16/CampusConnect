@@ -1,7 +1,9 @@
 import toast from "react-hot-toast";
 import { io, Socket } from "socket.io-client";
 import type { Notification } from "@/features/notifications/types/notification.dto";
+import api from "@/shared/api/axios.instance";
 import { config } from "@/shared/constants/config";
+import { tokenStorage } from "@/shared/utils/storage";
 import type {
   CreateMessageDto,
   DeleteMessageDto,
@@ -21,15 +23,19 @@ interface ChatErrorPayload {
   conversationId?: string;
 }
 
+// Backoff for re-authenticating after the server drops us (BACKLOG.md J4).
+const REAUTH_DELAY_MS = 1000;
+const MAX_REAUTH_ATTEMPTS = 3;
+
 class ChatSocketService {
   private socket: Socket | null = null;
+  private reauthAttempts = 0;
+  private reauthenticating = false;
 
   // ─── Lifecycle ────────────────────────────────────────────────────────────
 
   connect(token: string): Socket {
     if (this.socket) {
-      this.socket.auth = { token };
-
       if (!this.socket.connected) {
         this.socket.connect();
       }
@@ -38,13 +44,29 @@ class ChatSocketService {
     }
 
     this.socket = io(`${config.socketUrl}/chat`, {
-      auth: { token },
+      // A function, evaluated on every (re)connection attempt: after a token
+      // refresh the stored access token is newer than the one this socket was
+      // created with, and a fixed object would keep presenting the expired one.
+      auth: (cb) => cb({ token: tokenStorage.getAccessToken() ?? token }),
       transports: ["polling", "websocket"],
       reconnection: true,
     });
 
+    this.socket.on("connect", () => {
+      this.reauthAttempts = 0;
+    });
+
     this.socket.on("connect_error", (err) => {
       console.error("[ChatSocket] connection error:", err.message);
+      void this.recoverFromAuthFailure();
+    });
+
+    // The server disconnects sockets whose token it rejects; socket.io does
+    // not auto-reconnect after a server-initiated disconnect.
+    this.socket.on("disconnect", (reason) => {
+      if (reason === "io server disconnect") {
+        void this.recoverFromAuthFailure();
+      }
     });
 
     this.socket.on("chat_error", (err: ChatErrorPayload) => {
@@ -63,6 +85,31 @@ class ChatSocketService {
   disconnect(): void {
     this.socket?.disconnect();
     this.socket = null;
+  }
+
+  /**
+   * An expired access token makes the handshake fail. Any authenticated API
+   * call refreshes it through the axios interceptor, after which the socket
+   * can reconnect with the new token. Bounded, so a genuinely invalid
+   * session doesn't loop.
+   */
+  private async recoverFromAuthFailure(): Promise<void> {
+    const socket = this.socket;
+    if (!socket || this.reauthenticating) return;
+    if (this.reauthAttempts >= MAX_REAUTH_ATTEMPTS) return;
+    if (!tokenStorage.getAccessToken()) return;
+
+    this.reauthenticating = true;
+    this.reauthAttempts += 1;
+    try {
+      await new Promise((resolve) => setTimeout(resolve, REAUTH_DELAY_MS));
+      await api.get("/users/profile");
+      if (this.socket === socket && !socket.connected) socket.connect();
+    } catch (err) {
+      console.error("[ChatSocket] re-authentication failed:", err);
+    } finally {
+      this.reauthenticating = false;
+    }
   }
 
   // ─── Emitters ─────────────────────────────────────────────────────────────

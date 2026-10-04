@@ -119,6 +119,7 @@ blank frames or layout jumps.
 - Verified with DevTools offline after warming the cache; no stale-cache leak across logout/user switch.
 
 ### J4 — Realtime resilience
+**Status: DONE 2026-10-04, verified on the demo stack.** The socket now presents the freshest access token on every reconnect, and re-authenticates through the API (token refresh) when the server drops it, bounded to 3 attempts; the composer shows "Reconnecting…" and can't send while the socket is down; on reconnect, chat, unread counts and notifications are refetched (`useSocketResync`). Verified with Chrome offline/online: a message another user sent meanwhile appeared 0.6 s after reconnect; reconnect with an expired access token recovered via refresh. Not done: a visible "connected" indicator beyond the composer placeholder; deployed-origin socket CORS check (needs the live app).
 **Effort:** 3
 **Where:** Socket.IO client/gateway, `features/chat`
 **Acceptance criteria:**

@@ -2,6 +2,7 @@ import { Box, Chip, IconButton, TextField } from "@mui/material";
 import { Send } from "@/shared/icons";
 import { useState, useCallback } from "react";
 import { useNetworkStatus } from "@/shared/hooks/useNetworkStatus";
+import { useChatSocketContext } from "@/shared/hooks/useChatSocketContext";
 import type { ChatAttachment, MessageContext, SendMessageDto } from "../types/chat-dto";
 
 interface Props {
@@ -28,10 +29,14 @@ export function MessageInput({
   const [content, setContent] = useState("");
   // Sending needs the connection; offline the draft is kept but not sendable (BACKLOG.md J3).
   const { isOnline } = useNetworkStatus();
+  // Messages go over the socket: while it is (re)connecting, sending would
+  // just fail after the timeout (BACKLOG.md J4).
+  const { isConnected } = useChatSocketContext();
+  const canReachServer = isOnline && isConnected;
 
   const handleSend = useCallback(() => {
     const trimmed = content.trim();
-    if (!trimmed || !isOnline) return;
+    if (!trimmed || !canReachServer) return;
     if (attachment) {
       sendMessage(
         {
@@ -48,7 +53,7 @@ export function MessageInput({
     }
     setContent("");
     onStopTyping?.();
-  }, [content, isOnline, conversationId, sendMessage, attachment, onClearAttachment, onStopTyping]);
+  }, [content, canReachServer, conversationId, sendMessage, attachment, onClearAttachment, onStopTyping]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -57,7 +62,7 @@ export function MessageInput({
     }
   };
 
-  const canSend = content.trim().length > 0 && isOnline;
+  const canSend = content.trim().length > 0 && canReachServer;
 
   // Same single composer surface as Ask AI's ChatInput (BACKLOG.md D8).
   return (
@@ -96,7 +101,9 @@ export function MessageInput({
         placeholder={
           !isOnline
             ? "You're offline"
-            : attachment
+            : !isConnected
+              ? "Reconnecting…"
+              : attachment
               ? "Ask your question…"
               : "Write a message…"
         }
