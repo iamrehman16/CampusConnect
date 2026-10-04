@@ -138,22 +138,16 @@ Two workflows in `.github/workflows/`, one per app (`client-ci.yml`,
 filters, deliberately: a path-filtered required check that never fires for
 a PR outside that path leaves the PR stuck "pending" forever.
 
-- **Hard gate (required status check):** `client-typecheck-and-build` and
-  `server-typecheck-and-build`. Build already fails on a type error
-  (`tsc -b` / `tsc -p tsconfig.build.json`), so this is typecheck+build in
-  one step. Branch protection on `main` requires both, blocks force-push and
-  branch deletion.
-- **Client and server `lint` are both clean** (BACKLOG.md A10/A11,
-  2026-09-18) — neither `client-ci.yml` nor `server-ci.yml`'s `lint` job
-  has `continue-on-error` anymore, but branch protection on `main` hasn't
-  been updated yet to add either to `required_status_checks` (a manual
-  GitHub admin step).
-- **Still advisory, not yet gating:** `test` (server). It runs and reports
-  on every PR so regressions are visible, but a failure doesn't block
-  merge. This is temporary, not a policy choice — as of Sept 2026, 9/10
-  server test suites fail on DI setup, predating the CI setup
-  (`BACKLOG.md` A12). Once that job is clean, remove its
-  `continue-on-error: true` to make it required.
+- **Required status checks on `main` (verified 2026-10-04 via the branch
+  protection API):** `client-typecheck-and-build`, `server-typecheck-and-build`,
+  `client-lint`, `server-lint` and `server-test`. Build fails on a type error
+  (`tsc -b` / `tsc -p tsconfig.build.json`), so typecheck+build is one step.
+  Branch protection blocks force-push and branch deletion. All server suites
+  pass (BACKLOG.md A12 resolved).
+- **Deploys:** Render auto-deploys only after the checks pass
+  (`autoDeployTrigger: checksPass` in `render.yaml`); Vercel deploys on push and
+  cannot be gated by CI. Post-deploy checks live in `docs/deploy-smoke-test.md`;
+  `scripts/warm-demo.sh` wakes the stack before a demo.
 - Don't add more required checks casually — each one is a thing that can
   block you at 2am before the open house. Promote a check to required only
   once it's actually green.

@@ -42,8 +42,7 @@ epics are summarized below; their detail lives in `git log`.
 - "Ask a human" (E14) doesn't exclude blocked / already-mentoring mentors.
 - Reports: no rate limit, no reporter notification, no reporting from community posts.
 - Seed data: re-run the seed close to the demo date so "This month" leaderboard isn't empty.
-- `CLAUDE.md` §5 still says 9/10 server suites fail (A12); all 52 now pass. Review the
-  advisory `test` CI job and make it required.
+- ~~`CLAUDE.md` §5 stale CI notes~~ fixed 2026-10-04; all five checks are required.
 
 ---
 
@@ -212,6 +211,13 @@ easy it is to miss a variable (`FRONTEND_URL`, `GOOGLE_CALLBACK_URL`).
 - Google Cloud: production redirect URI registered; consent screen published.
 
 ### I3 — Deploy gating, health check and smoke test
+**Status: code and docs DONE 2026-10-04; two dashboard steps remain.** `GET /api/health` is now a dependency
+report (Mongo, Redis, Qdrant with latencies; `ok` / `degraded` (200) / `down` (503 only for Mongo); errors logged,
+not leaked; 10 s cache) and `GET /api/health/live` is the cheap probe. `render.yaml` uses `/api/health/live` and
+`autoDeployTrigger: checksPass`; `docs/deploy-smoke-test.md` is the checklist; `scripts/warm-demo.sh <api-origin>`
+wakes the stack. **Manual:** in Render, set Health Check Path to `/api/health/live` and Auto-Deploy to "After CI
+checks pass" (the blueprint only applies if synced). Vercel has no equivalent gate and deploys on push; since
+pushes go straight to `main`, CI cannot block a Vercel deploy (accepted).
 **Effort:** 3
 **Where:** `.github/workflows/*`, a `GET /api/health` endpoint, Render/Vercel settings
 **Acceptance criteria:**

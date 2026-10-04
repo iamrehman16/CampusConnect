@@ -10,7 +10,11 @@ services:
     # which makes a plain `npm ci` skip @types/* and breaks the compiled output.
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run start:prod
-    healthCheckPath: /api/health
+    # Liveness only: touches no dependency, so an Atlas/Redis/Qdrant blip can't
+    # make Render restart a healthy process. /api/health is the deep report.
+    healthCheckPath: /api/health/live
+    # Deploy only after the GitHub checks (typecheck+build, lint, tests) pass.
+    autoDeployTrigger: checksPass
     envVars:
       - key: NODE_ENV
         value: production
