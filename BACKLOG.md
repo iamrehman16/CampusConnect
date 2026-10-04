@@ -79,6 +79,11 @@ robustness. Offline scope decided: **read-only offline** (no write queue).
 ## Epic J — UX polish & robustness (new, 2026-10-04)
 
 ### J1 — Skeleton and perceived-performance audit
+**Status: DONE 2026-10-04 (4f743d2).** Shared `ListSkeleton`/`MessagesSkeleton` replaced every
+list/conversation spinner (Ask AI, Messages, mentorship, notifications, admin tabs). Optimistic
+updates already existed for post upvote, AI feedback and messenger send; there is no resource
+like/follow. Routes are already lazy-loaded. Visual check of skeleton/layout match still needs a
+browser pass (with H2/J2).
 **Effort:** 3
 **Where:** every list/page in `client/src/features/*`
 **Why:** 20 files use skeletons already; the gaps are lists that still show spinners,
