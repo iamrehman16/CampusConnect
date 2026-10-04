@@ -222,7 +222,19 @@ easy it is to miss a variable (`FRONTEND_URL`, `GOOGLE_CALLBACK_URL`).
 **Effort:** 5–8 (design pass first)
 **Where:** `ai.controller.ts` / `ai-chat.service.ts` (generation vs. connection), the client
 streaming hooks (`useStreamMessage`, `useDrainQueue`, `useStreamRefs`), `useConversation`
-**Problem:** if you send a message, navigate away and come back, the reply is gone. The stream
+**Status: code DONE 2026-10-04 (d17259c server, ff2b450 client), live verification pending.**
+Corrected diagnosis: the server already kept generating after a disconnect, but saved the
+question and reply only at the very end, so nothing was visible meanwhile; and the client
+hook was never aborted on unmount, so an abandoned stream committed a truncated reply to
+the persisted cache that never refetched. Implemented: user message + `generating`
+assistant placeholder saved first (`AiMessage.status`), filled or marked `failed` at the
+end; 120 s generation cap; stale `generating` rows reported failed after 3 min; 409 on a
+second send into a generating thread; `retryOfMessageId` replaces a failed exchange; the
+client aborts on unmount without committing, polls a `generating` reply every 2 s, shows a
+failed one with Retry. **Known limits:** the 409 check isn't atomic (two simultaneous sends
+could both pass); a user who leaves loses live token streaming and sees the finished reply
+instead.
+**Problem (original report):** if you send a message, navigate away and come back, the reply is gone. The stream
 is tied to the page: leaving unmounts it, the fetch is aborted, and the server unsubscribes on
 `req.on('close')`, so the answer is never finished or saved.
 **Direction (to confirm in the design pass):** decouple generation from the connection.
