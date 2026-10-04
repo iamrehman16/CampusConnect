@@ -13,6 +13,15 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+/** True when the refresh failed because the credentials are no good. */
+function isSessionRejected(error: unknown): boolean {
+  if (axios.isAxiosError(error)) {
+    return error.response?.status === 401 || error.response?.status === 403;
+  }
+  // 'No refresh token' (our own throw): nothing to retry with.
+  return error instanceof Error && error.message === 'No refresh token';
+}
+
 // ── Request Interceptor ──────────────────────────────────────────────
 api.interceptors.request.use(
   (config) => {
@@ -101,11 +110,17 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        // Clear tokens and let AuthProvider handle redirect
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        queryClient.clear();
-        window.location.href = '/auth';
+        // Only end the session when the server actually rejected the refresh
+        // token (or there is none). A network failure or a 5xx means we
+        // couldn't ask, not that the session is invalid; keep the tokens so
+        // the app recovers when the API is reachable again (BACKLOG.md J3).
+        if (isSessionRejected(refreshError)) {
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('cc-user');
+          queryClient.clear();
+          window.location.href = '/auth';
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

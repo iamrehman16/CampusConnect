@@ -40,5 +40,32 @@ export const tokenStorage = {
   clearTokens(): void {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    // The cached profile belongs to the session it came from.
+    localStorage.removeItem(USER_CACHE_KEY);
+  },
+} as const;
+
+const USER_CACHE_KEY = 'cc-user';
+
+/**
+ * Last known profile, so a reload while the API is unreachable can still
+ * show the app (read-only offline mode, BACKLOG.md J3). Cleared with the
+ * tokens, never trusted for authorisation (the server still decides).
+ */
+export const userCache = {
+  get<T>(): T | null {
+    try {
+      const raw = localStorage.getItem(USER_CACHE_KEY);
+      return raw ? (JSON.parse(raw) as T) : null;
+    } catch {
+      return null;
+    }
+  },
+  set(user: unknown): void {
+    try {
+      localStorage.setItem(USER_CACHE_KEY, JSON.stringify(user));
+    } catch {
+      // Storage full or blocked: the cache is a convenience, not required.
+    }
   },
 } as const;
