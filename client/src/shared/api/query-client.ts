@@ -24,7 +24,13 @@ export const queryClient = new QueryClient({
     queries: {
       gcTime: 1000 * 60 * 60 * 24, // keep cache for 24h (must match persister maxAge)
       staleTime: 1000 * 60 * 5,
-      retry: 2,
+      // Offline, the default networkMode pauses a query with nothing cached:
+      // it is neither loading nor failed, so pages fell through to their
+      // "nothing here yet" empty state. offlineFirst runs the first request
+      // anyway so it fails fast into the designed error state (with Retry),
+      // and retries only while online. Cached data still renders (BACKLOG.md J3).
+      networkMode: "offlineFirst",
+      retry: (failureCount) => !isOffline() && failureCount < 2,
     },
     mutations: {
       retry: 0,
