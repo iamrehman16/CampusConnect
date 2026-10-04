@@ -6,6 +6,8 @@ import {
   RetrievalStatus,
 } from '../interfaces/retrieved-context.interface';
 
+export type MessageStatus = 'generating' | 'complete' | 'failed';
+
 export type AiMessageDocument = AiMessage & Document;
 
 /**
@@ -28,8 +30,20 @@ export class AiMessage {
   @Prop({ type: String, enum: ['user', 'assistant'], required: true })
   role: MessageRole;
 
-  @Prop({ required: true })
+  // Empty while an assistant reply is still being generated (see status).
+  @Prop({ type: String, default: '' })
   content: string;
+
+  // BACKLOG.md D12 — the assistant placeholder is inserted before generation
+  // starts, so a client that left (or refreshed) mid-answer can see the reply
+  // is in progress, and pick up the finished text. Absent on legacy docs,
+  // which are all complete.
+  @Prop({
+    type: String,
+    enum: ['generating', 'complete', 'failed'],
+    default: 'complete',
+  })
+  status: MessageStatus;
 
   // BACKLOG.md C1 — user rating on an assistant reply. Absent means no
   // feedback given yet; not modeled as a default so "no opinion" and "not

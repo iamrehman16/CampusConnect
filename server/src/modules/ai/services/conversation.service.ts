@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
@@ -32,6 +33,10 @@ export class ConversationService implements OnModuleInit {
   private readonly logger = new Logger(ConversationService.name);
   private readonly RECENT_LIMIT = 6;
   private readonly SUMMARIZE_BATCH = 3;
+  // A reply still "generating" after this long belongs to a crashed or
+  // restarted server; it is reported as failed. Must exceed the generation
+  // cap in AiChatService.
+  private readonly STALE_GENERATION_MS = 3 * 60 * 1000;
 
   constructor(
     @InjectModel(AiConversation.name)
@@ -176,6 +181,137 @@ export class ConversationService implements OnModuleInit {
     };
   }
 
+  /**
+   * BACKLOG.md D12 — persists the user's message and an empty assistant
+   * placeholder (status "generating") BEFORE generation starts, so the
+   * exchange survives the client leaving and is visible to a returning one.
+   *
+   * `retryOfMessageId` is a failed assistant reply being retried: it and the
+   * user message it answered are removed first, so a retry doesn't leave a
+   * duplicate question in the history.
+   */
+  async startExchange(
+    conversation: AiConversationDocument,
+    userMessage: string,
+    retryOfMessageId?: string,
+  ): Promise<{ assistantMessageId: string }> {
+    await this.reapStaleGenerations(conversation._id);
+
+    if (retryOfMessageId) {
+      await this.discardFailedExchange(conversation, retryOfMessageId);
+    }
+
+    const inFlight = await this.messageModel.exists({
+      conversationId: conversation._id,
+      status: 'generating',
+    });
+    if (inFlight) {
+      throw new ConflictException(
+        'An answer is still being generated in this conversation.',
+      );
+    }
+
+    // Explicit, ordered timestamps: the two docs are inserted together and
+    // history is sorted by createdAt.
+    const now = Date.now();
+    const [, assistantDoc] = await this.messageModel.insertMany([
+      {
+        conversationId: conversation._id,
+        role: 'user',
+        content: userMessage,
+        createdAt: new Date(now),
+      },
+      {
+        conversationId: conversation._id,
+        role: 'assistant',
+        content: '',
+        status: 'generating',
+        createdAt: new Date(now + 1),
+      },
+    ]);
+    return { assistantMessageId: assistantDoc._id.toString() };
+  }
+
+  /** Fills the placeholder with the finished reply and folds the exchange into the thread's context window. */
+  async completeExchange(
+    conversation: AiConversationDocument,
+    assistantMessageId: string,
+    userMessage: string,
+    assistantMessage: string,
+    summarizeFn: (content: string) => Promise<string>,
+    assistantMeta: { citations: Citation[]; retrievalStatus: RetrievalStatus },
+  ): Promise<void> {
+    conversation.recentMessages.push(
+      { role: 'user', content: userMessage, timestamp: new Date() },
+      { role: 'assistant', content: assistantMessage, timestamp: new Date() },
+    );
+    await this.maybeCompressSummary(conversation, summarizeFn);
+
+    await this.messageModel.updateOne(
+      { _id: assistantMessageId },
+      {
+        content: assistantMessage,
+        status: 'complete',
+        citations: assistantMeta.citations,
+        retrievalStatus: assistantMeta.retrievalStatus,
+      },
+    );
+    await conversation.save();
+  }
+
+  /**
+   * Marks the placeholder failed (keeping any partial text). The exchange is
+   * deliberately NOT added to recentMessages, so a failed answer never
+   * becomes context for the next one.
+   */
+  async failExchange(
+    assistantMessageId: string,
+    partialContent: string,
+  ): Promise<void> {
+    await this.messageModel.updateOne(
+      { _id: assistantMessageId, status: 'generating' },
+      { status: 'failed', content: partialContent },
+    );
+  }
+
+  private async discardFailedExchange(
+    conversation: AiConversationDocument,
+    failedMessageId: string,
+  ): Promise<void> {
+    const failed = await this.messageModel.findOne({
+      _id: failedMessageId,
+      conversationId: conversation._id,
+      role: 'assistant',
+      status: 'failed',
+    });
+    if (!failed) {
+      throw new NotFoundException('Failed reply to retry was not found');
+    }
+    const question = await this.messageModel
+      .findOne({
+        conversationId: conversation._id,
+        role: 'user',
+        createdAt: { $lt: failed.createdAt },
+      })
+      .sort({ createdAt: -1 });
+    await this.messageModel.deleteMany({
+      _id: { $in: [failed._id, ...(question ? [question._id] : [])] },
+    });
+  }
+
+  private async reapStaleGenerations(
+    conversationId: AiConversationDocument['_id'],
+  ): Promise<void> {
+    await this.messageModel.updateMany(
+      {
+        conversationId,
+        status: 'generating',
+        createdAt: { $lt: new Date(Date.now() - this.STALE_GENERATION_MS) },
+      },
+      { status: 'failed' },
+    );
+  }
+
   private async maybeCompressSummary(
     conversation: AiConversationDocument,
     summarizeFn: (content: string) => Promise<string>,
@@ -318,6 +454,8 @@ export class ConversationService implements OnModuleInit {
     if (!conversation) {
       throw new NotFoundException('Conversation not found');
     }
+
+    await this.reapStaleGenerations(conversation._id);
 
     return this.paginationService.paginate(
       this.messageModel,

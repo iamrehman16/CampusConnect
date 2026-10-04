@@ -35,6 +35,7 @@ export class AiController {
         req.user.id,
         chatMessageDto.message,
         chatMessageDto.conversationId,
+        chatMessageDto.retryOfMessageId,
       );
     } catch (err: unknown) {
       // Headers are already flushed, so the global filter can't send a JSON

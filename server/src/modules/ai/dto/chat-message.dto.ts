@@ -10,4 +10,10 @@ export class ChatMessageDto {
   @IsOptional()
   @IsMongoId()
   conversationId?: string;
+
+  // A failed assistant reply being retried (BACKLOG.md D12): it and the
+  // question it answered are replaced rather than duplicated.
+  @IsOptional()
+  @IsMongoId()
+  retryOfMessageId?: string;
 }

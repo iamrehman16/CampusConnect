@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Model, Types } from 'mongoose';
 import { ConversationService } from './conversation.service';
 import {
@@ -32,6 +32,9 @@ type MockMessageModel = {
   deleteMany: jest.Mock;
   insertMany: jest.Mock;
   updateOne: jest.Mock;
+  updateMany: jest.Mock;
+  exists: jest.Mock;
+  findOne: jest.Mock;
 };
 
 type MockLegacySessionModel = {
@@ -48,6 +51,8 @@ function buildConversationService(
   messageModel: Partial<MockMessageModel> = {
     deleteMany: jest.fn().mockResolvedValue({ acknowledged: true }),
     insertMany: jest.fn().mockResolvedValue([]),
+    updateMany: jest.fn().mockResolvedValue({ acknowledged: true }),
+    exists: jest.fn().mockResolvedValue(null),
   },
   paginationService: Partial<PaginationService> = {
     paginate: jest.fn(),
@@ -804,5 +809,115 @@ describe('ConversationService#getMessages', () => {
     ];
     expect(queryBuilder.build()).toEqual({ conversationId });
     expect(sortBuilder.build()).toEqual({ createdAt: -1 });
+  });
+});
+
+describe('ConversationService exchange lifecycle (D12)', () => {
+  const conversation = {
+    _id: new Types.ObjectId(),
+    userId: 'user-1',
+    recentMessages: [],
+  } as unknown as AiConversationDocument;
+
+  it('startExchange inserts the user message and a generating placeholder', async () => {
+    const assistantId = new Types.ObjectId();
+    const messageModel: Partial<MockMessageModel> = {
+      updateMany: jest.fn().mockResolvedValue({}),
+      exists: jest.fn().mockResolvedValue(null),
+      insertMany: jest
+        .fn()
+        .mockResolvedValue([
+          { _id: new Types.ObjectId() },
+          { _id: assistantId },
+        ]),
+    };
+    const service = buildConversationService({}, undefined, messageModel);
+
+    const result = await service.startExchange(conversation, 'hello');
+
+    expect(result.assistantMessageId).toBe(assistantId.toString());
+    expect(messageModel.insertMany).toHaveBeenCalledWith([
+      expect.objectContaining({ role: 'user', content: 'hello' }),
+      expect.objectContaining({
+        role: 'assistant',
+        content: '',
+        status: 'generating',
+      }),
+    ]);
+  });
+
+  it('startExchange rejects with a conflict while another reply is generating', async () => {
+    const messageModel: Partial<MockMessageModel> = {
+      updateMany: jest.fn().mockResolvedValue({}),
+      exists: jest.fn().mockResolvedValue({ _id: new Types.ObjectId() }),
+      insertMany: jest.fn(),
+    };
+    const service = buildConversationService({}, undefined, messageModel);
+
+    await expect(service.startExchange(conversation, 'hello')).rejects.toThrow(
+      ConflictException,
+    );
+    expect(messageModel.insertMany).not.toHaveBeenCalled();
+  });
+
+  it('startExchange on retry removes the failed reply and its question first', async () => {
+    const failedId = new Types.ObjectId();
+    const questionId = new Types.ObjectId();
+    const createdAt = new Date();
+    const messageModel: Partial<MockMessageModel> = {
+      updateMany: jest.fn().mockResolvedValue({}),
+      exists: jest.fn().mockResolvedValue(null),
+      deleteMany: jest.fn().mockResolvedValue({}),
+      insertMany: jest
+        .fn()
+        .mockResolvedValue([
+          { _id: new Types.ObjectId() },
+          { _id: new Types.ObjectId() },
+        ]),
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce({ _id: failedId, createdAt })
+        .mockReturnValueOnce({
+          sort: jest.fn().mockResolvedValue({ _id: questionId }),
+        }),
+    };
+    const service = buildConversationService({}, undefined, messageModel);
+
+    await service.startExchange(conversation, 'hello', failedId.toString());
+
+    expect(messageModel.deleteMany).toHaveBeenCalledWith({
+      _id: { $in: [failedId, questionId] },
+    });
+  });
+
+  it('startExchange on retry throws when the failed reply does not exist', async () => {
+    const messageModel: Partial<MockMessageModel> = {
+      updateMany: jest.fn().mockResolvedValue({}),
+      findOne: jest.fn().mockResolvedValue(null),
+      insertMany: jest.fn(),
+    };
+    const service = buildConversationService({}, undefined, messageModel);
+
+    await expect(
+      service.startExchange(
+        conversation,
+        'hello',
+        new Types.ObjectId().toString(),
+      ),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('failExchange keeps partial text and does not touch the context window', async () => {
+    const messageModel: Partial<MockMessageModel> = {
+      updateOne: jest.fn().mockResolvedValue({}),
+    };
+    const service = buildConversationService({}, undefined, messageModel);
+
+    await service.failExchange('msg-1', 'partial');
+
+    expect(messageModel.updateOne).toHaveBeenCalledWith(
+      { _id: 'msg-1', status: 'generating' },
+      { status: 'failed', content: 'partial' },
+    );
   });
 });

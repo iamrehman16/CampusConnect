@@ -14,7 +14,11 @@ import {
 } from '../interfaces/retrieved-context.interface';
 
 type CitationsSseData = { type: 'citations'; citations: Citation[] };
-type MessageSavedSseData = { type: 'message-saved'; messageId: string };
+type MessageSavedSseData = {
+  type: 'message-saved';
+  messageId: string;
+  conversationId: string;
+};
 
 function chunk(
   resourceId: string,
@@ -57,6 +61,11 @@ function buildService(
       userMessageId: 'user-msg-id',
       assistantMessageId: 'assistant-msg-id',
     }),
+    startExchange: jest
+      .fn()
+      .mockResolvedValue({ assistantMessageId: 'assistant-msg-id' }),
+    completeExchange: jest.fn().mockResolvedValue(undefined),
+    failExchange: jest.fn().mockResolvedValue(undefined),
     maybeGenerateTitle: jest.fn().mockResolvedValue(undefined),
   };
   const retrievalService: Partial<RetrievalService> = {
@@ -78,7 +87,11 @@ function buildService(
     contributorLookup as ContributorLookupService,
     eventEmitter as unknown as EventEmitter2,
   );
-  return Object.assign(service, { emitSpy: eventEmitter.emit });
+  return Object.assign(service, {
+    emitSpy: eventEmitter.emit,
+    conversationMock: conversationService,
+    groqMock: groqService,
+  });
 }
 
 describe('AiChatService — citation deduplication', () => {
@@ -172,31 +185,53 @@ describe('AiChatService — citation deduplication', () => {
     expect(messageId).toBe('assistant-msg-id');
   });
 
-  it('streamChatResponse emits a message-saved event with the persisted id after done (C1)', async () => {
+  it('streamChatResponse announces the persisted reply id before generating, then completes the exchange (D12)', async () => {
     const service = buildService([]);
 
     const observable = await service.streamChatResponse('user-1', 'query');
 
     const events: string[] = [];
-    const messageSavedEvent = await new Promise<MessageSavedSseData>(
-      (resolve, reject) => {
-        observable.subscribe({
-          next: (event: MessageEvent) => {
-            const data = event.data as { type: string };
-            events.push(data.type);
-            if (data.type === 'message-saved') {
-              resolve(data as MessageSavedSseData);
-            }
-          },
-          error: reject,
-        });
-      },
+    let messageSaved: MessageSavedSseData | undefined;
+    await new Promise<void>((resolve, reject) => {
+      observable.subscribe({
+        next: (event: MessageEvent) => {
+          const data = event.data as { type: string };
+          events.push(data.type);
+          if (data.type === 'message-saved') {
+            messageSaved = data as MessageSavedSseData;
+          }
+        },
+        error: reject,
+        complete: resolve,
+      });
+    });
+
+    expect(messageSaved?.messageId).toBe('assistant-msg-id');
+    expect(events.indexOf('message-saved')).toBeLessThan(
+      events.indexOf('done'),
+    );
+    expect(service.conversationMock.completeExchange).toHaveBeenCalledTimes(1);
+    expect(service.conversationMock.failExchange).not.toHaveBeenCalled();
+  });
+
+  it('streamChatResponse marks the exchange failed when generation throws (D12)', async () => {
+    const service = buildService([]);
+    (service.groqMock.generateStream as jest.Mock).mockRejectedValue(
+      new Error('groq down'),
     );
 
-    expect(messageSavedEvent.messageId).toBe('assistant-msg-id');
-    expect(events.indexOf('done')).toBeLessThan(
-      events.indexOf('message-saved'),
+    const observable = await service.streamChatResponse('user-1', 'query');
+
+    await expect(
+      new Promise<void>((resolve, reject) => {
+        observable.subscribe({ error: reject, complete: resolve });
+      }),
+    ).rejects.toThrow('groq down');
+    expect(service.conversationMock.failExchange).toHaveBeenCalledWith(
+      'assistant-msg-id',
+      '',
     );
+    expect(service.conversationMock.completeExchange).not.toHaveBeenCalled();
   });
 });
 
@@ -212,6 +247,11 @@ function buildServiceWithConversation(recentMessages: unknown[]) {
       userMessageId: 'user-msg-id',
       assistantMessageId: 'assistant-msg-id',
     }),
+    startExchange: jest
+      .fn()
+      .mockResolvedValue({ assistantMessageId: 'assistant-msg-id' }),
+    completeExchange: jest.fn().mockResolvedValue(undefined),
+    failExchange: jest.fn().mockResolvedValue(undefined),
     maybeGenerateTitle: jest.fn().mockResolvedValue(undefined),
   };
   const groqService: Partial<GroqService> = {

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { GroqService } from './groq.service';
 import { ConversationService } from './conversation.service';
 import { RetrievalService } from './retrieval.service';
@@ -17,6 +17,12 @@ import {
 
 @Injectable()
 export class AiChatService {
+  private readonly logger = new Logger(AiChatService.name);
+  // Hard cap on one reply's generation, which keeps running after a client
+  // disconnect (BACKLOG.md D12). Must stay below ConversationService's
+  // STALE_GENERATION_MS.
+  private readonly MAX_GENERATION_MS = 120_000;
+
   constructor(
     private readonly groqService: GroqService,
     private readonly conversationService: ConversationService,
@@ -143,6 +149,7 @@ export class AiChatService {
     userId: string,
     message: string,
     conversationId?: string,
+    retryOfMessageId?: string,
   ): Promise<Observable<MessageEvent>> {
     const conversation = await this.conversationService.getOrCreateConversation(
       userId,
@@ -169,6 +176,18 @@ export class AiChatService {
       this.buildCitations(context),
     );
 
+    // BACKLOG.md D12 — persist the exchange (user message + a "generating"
+    // placeholder) before generating. The generation below is deliberately
+    // not tied to the client connection: unsubscribing only stops events
+    // being delivered, the loop still runs to completion (bounded by
+    // MAX_GENERATION_MS) and fills the placeholder, so a client that left or
+    // refreshed finds the finished reply in the thread history.
+    const { assistantMessageId } = await this.conversationService.startExchange(
+      conversation,
+      message,
+      retryOfMessageId,
+    );
+
     return new Observable<MessageEvent>((observer) => {
       // The Observable executor must be synchronous, so this async IIFE is
       // deliberately not awaited — its own try/catch below routes every
@@ -176,6 +195,16 @@ export class AiChatService {
       void (async () => {
         let fullAnswer = '';
         try {
+          // Lets the client address this reply (retry, feedback) and, for a
+          // new thread, learn the id before generation finishes.
+          observer.next({
+            data: {
+              type: 'message-saved',
+              messageId: assistantMessageId,
+              conversationId: conversation._id.toString(),
+            },
+          } as MessageEvent);
+          const startedAt = Date.now();
           // Started inside the observable executor (not awaited above) so
           // that a Groq failure here — e.g. a 429/5xx from generateStream —
           // reaches observer.error() below and becomes a graceful SSE
@@ -184,6 +213,9 @@ export class AiChatService {
           const stream = await this.groqService.generateStream(messages);
 
           for await (const chunk of stream) {
+            if (Date.now() - startedAt > this.MAX_GENERATION_MS) {
+              throw new Error('AI generation exceeded its time limit');
+            }
             const token = chunk.choices[0]?.delta?.content ?? '';
             if (token) {
               fullAnswer += token;
@@ -206,26 +238,18 @@ export class AiChatService {
           } as MessageEvent);
           observer.next({ data: { type: 'done' } } as MessageEvent);
 
-          // Persist to conversation history after full answer is assembled
-          const { assistantMessageId } =
-            await this.conversationService.appendMessages(
-              conversation,
-              message,
-              fullAnswer,
-              (content: string) => this.groqService.summarize(content),
-              { citations, retrievalStatus },
-            );
+          // Fill the placeholder after 'done' is flushed, so 'done' still
+          // means "stop waiting on tokens" without waiting on the DB write.
+          await this.conversationService.completeExchange(
+            conversation,
+            assistantMessageId,
+            message,
+            fullAnswer,
+            (content: string) => this.groqService.summarize(content),
+            { citations, retrievalStatus },
+          );
 
           this.emitCitations(userId, citations);
-
-          // BACKLOG.md C1 — the client has no real message id until now
-          // (appendMessages runs after 'done' is already flushed, by
-          // design — see the comment above). Sent as its own event rather
-          // than folded into 'done' so 'done' still means "stop waiting on
-          // tokens" without being delayed by the DB write.
-          observer.next({
-            data: { type: 'message-saved', messageId: assistantMessageId },
-          } as MessageEvent);
 
           // Fire-and-forget (BACKLOG.md B4) — see getChatResponse for why
           // this can't block or error the response.
@@ -239,6 +263,17 @@ export class AiChatService {
 
           observer.complete();
         } catch (err) {
+          try {
+            await this.conversationService.failExchange(
+              assistantMessageId,
+              fullAnswer,
+            );
+          } catch (failErr) {
+            this.logger.error(
+              `Could not mark AI message ${assistantMessageId} as failed`,
+              failErr instanceof Error ? failErr.stack : String(failErr),
+            );
+          }
           observer.error(err);
         }
       })();
