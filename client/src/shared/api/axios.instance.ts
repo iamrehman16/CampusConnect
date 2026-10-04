@@ -81,9 +81,16 @@ api.interceptors.response.use(
           throw new Error('No refresh token');
         }
 
-        const { data } = await axios.post('/api/auth/refresh', null, {
-          headers: { Authorization: `Bearer ${refreshToken}` },
-        });
+        // Absolute URL on the API origin. A relative '/api/auth/refresh' hits
+        // the *app's* origin, which only works behind the Vite dev proxy; on
+        // a split deploy (Vercel app, Render API) it never reaches the server
+        // and every expired access token ended the session (BACKLOG.md J3).
+        // Plain axios, not `api`, so this call skips the interceptors.
+        const { data } = await axios.post(
+          `${api.defaults.baseURL}/auth/refresh`,
+          null,
+          { headers: { Authorization: `Bearer ${refreshToken}` } },
+        );
 
         localStorage.setItem('accessToken', data.accessToken);
         localStorage.setItem('refreshToken', data.refreshToken);
