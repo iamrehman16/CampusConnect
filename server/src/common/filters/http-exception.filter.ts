@@ -61,6 +61,13 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
       );
     }
 
+    // Streaming responses (SSE) flush headers early; a JSON error can't be
+    // sent after that and would throw ERR_HTTP_HEADERS_SENT.
+    if (response.headersSent) {
+      if (!response.writableEnded) response.end();
+      return;
+    }
+
     response.status(status).json(errorResponse);
   }
 
