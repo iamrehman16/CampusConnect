@@ -2,8 +2,12 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Box, Button, Stack, Typography } from "@mui/material";
 import { useRouteError } from "react-router-dom";
 import { ErrorOutline } from "@/shared/icons";
+import { useNetworkStatus } from "@/shared/hooks/useNetworkStatus";
 
 function ErrorPanel({ fullScreen }: { fullScreen?: boolean }) {
+  // A page that fails to load while offline isn't broken, it just isn't
+  // available without a connection (BACKLOG.md J3).
+  const { isOnline } = useNetworkStatus();
   return (
     <Box
       role="alert"
@@ -19,10 +23,12 @@ function ErrorPanel({ fullScreen }: { fullScreen?: boolean }) {
       <Stack alignItems="center" spacing={1.5} sx={{ maxWidth: 380, textAlign: "center" }}>
         <ErrorOutline sx={{ fontSize: 32, color: "text.tertiary" }} />
         <Typography variant="subtitle1" fontWeight={600}>
-          This page hit a problem
+          {isOnline ? "This page hit a problem" : "You're offline"}
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Something went wrong while showing this page. Reloading usually fixes it.
+          {isOnline
+            ? "Something went wrong while showing this page. Reloading usually fixes it."
+            : "This page isn't available offline yet. Reconnect and try again."}
         </Typography>
         <Stack direction="row" spacing={1} sx={{ pt: 1 }}>
           <Button variant="contained" onClick={() => window.location.reload()}>

@@ -1,6 +1,7 @@
 import { Box, Chip, IconButton, TextField } from "@mui/material";
 import { Send } from "@/shared/icons";
 import { useState, useCallback } from "react";
+import { useNetworkStatus } from "@/shared/hooks/useNetworkStatus";
 import type { ChatAttachment, MessageContext, SendMessageDto } from "../types/chat-dto";
 
 interface Props {
@@ -25,10 +26,12 @@ export function MessageInput({
   onStopTyping,
 }: Props) {
   const [content, setContent] = useState("");
+  // Sending needs the connection; offline the draft is kept but not sendable (BACKLOG.md J3).
+  const { isOnline } = useNetworkStatus();
 
   const handleSend = useCallback(() => {
     const trimmed = content.trim();
-    if (!trimmed) return;
+    if (!trimmed || !isOnline) return;
     if (attachment) {
       sendMessage(
         {
@@ -45,7 +48,7 @@ export function MessageInput({
     }
     setContent("");
     onStopTyping?.();
-  }, [content, conversationId, sendMessage, attachment, onClearAttachment, onStopTyping]);
+  }, [content, isOnline, conversationId, sendMessage, attachment, onClearAttachment, onStopTyping]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -54,7 +57,7 @@ export function MessageInput({
     }
   };
 
-  const canSend = content.trim().length > 0;
+  const canSend = content.trim().length > 0 && isOnline;
 
   // Same single composer surface as Ask AI's ChatInput (BACKLOG.md D8).
   return (
@@ -90,7 +93,13 @@ export function MessageInput({
         fullWidth
         multiline
         maxRows={5}
-        placeholder={attachment ? "Ask your question…" : "Write a message…"}
+        placeholder={
+          !isOnline
+            ? "You're offline"
+            : attachment
+              ? "Ask your question…"
+              : "Write a message…"
+        }
         value={content}
         onChange={(e) => {
           setContent(e.target.value);

@@ -297,7 +297,11 @@ function ResourcePage({ initialSearch }: { initialSearch: string }) {
       {/* ── Result summary + active filters ── */}
       <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap" sx={{ minHeight: 32, mb: 2 }}>
         <Typography variant="body2" color="text.secondary" aria-live="polite" sx={{ mr: 0.5 }}>
-          {isLoading ? "Loading…" : `${total} ${total === 1 ? "resource" : "resources"}`}
+          {isLoading
+            ? "Loading…"
+            : isError && !data
+              ? "" // a failed request has no count; "0 resources" would be a lie
+              : `${total} ${total === 1 ? "resource" : "resources"}`}
         </Typography>
         {chips.map((c) => (
           <Chip key={c.key} label={c.label} onDelete={c.onDelete} variant="outlined" />

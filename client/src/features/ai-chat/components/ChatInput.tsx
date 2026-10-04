@@ -1,5 +1,6 @@
 // src/features/ai-chat/components/ChatInput.tsx
 import { useState, useRef, useEffect } from 'react';
+import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
 import { Box, IconButton, Typography, TextField } from '@mui/material';
 import { Send as SendIcon, Stop as StopIcon } from "@/shared/icons";
 
@@ -54,9 +55,13 @@ export function ChatInput({
     setValue(e.target.value);
   };
 
+  // Asking needs the server; offline the composer is locked (BACKLOG.md J3).
+  const { isOnline } = useNetworkStatus();
+  const locked = disabled || !isOnline;
+
   const handleSend = () => {
     const trimmed = value.trim();
-    if (!trimmed || disabled || isOverLimit) return;
+    if (!trimmed || locked || isOverLimit) return;
     onSend(trimmed);
     setValue('');
     textareaRef.current?.focus();
@@ -74,7 +79,7 @@ export function ChatInput({
   const charCount = value.length;
   const isOverLimit = charCount > MAX_CHARS;
   const showCounter = charCount > MAX_CHARS * 0.8;
-  const canSend = value.trim().length > 0 && !disabled && !isOverLimit;
+  const canSend = value.trim().length > 0 && !locked && !isOverLimit;
 
   return (
     <Box>
@@ -92,7 +97,7 @@ export function ChatInput({
           borderRadius: `${t.radius.lg}px`,
           border: '1px solid',
           borderColor: isOverLimit ? 'error.main' : 'border.default',
-          bgcolor: disabled ? 'surface.subtle' : 'surface.card',
+          bgcolor: locked ? 'surface.subtle' : 'surface.card',
           boxShadow: t.palette.mode === 'dark' ? 'none' : '0 1px 2px rgba(28, 25, 23, 0.04)',
           transition: t.transitions.create(['border-color', 'box-shadow', 'background-color']),
           '&:focus-within': {
@@ -105,8 +110,14 @@ export function ChatInput({
           fullWidth
           multiline
           maxRows={6}
-          disabled={disabled}
-          placeholder={isStreaming ? 'Responding…' : 'Ask about any course topic…'}
+          disabled={locked}
+          placeholder={
+            !isOnline
+              ? "You're offline"
+              : isStreaming
+                ? 'Responding…'
+                : 'Ask about any course topic…'
+          }
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
