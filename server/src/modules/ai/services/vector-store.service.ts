@@ -53,6 +53,11 @@ export class VectorStoreService implements OnModuleInit {
     });
   }
 
+  /** Cheap reachability probe for the health check; throws the Qdrant error if unreachable. */
+  async ping(): Promise<void> {
+    await this.client.getCollections();
+  }
+
   /** Throws the underlying Qdrant error if the collection still can't be ensured. */
   private ready(): Promise<void> {
     return this.collectionInit.ensure();

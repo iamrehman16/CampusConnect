@@ -62,6 +62,6 @@ import { VectorCleanupListener } from './vector-cleanup.listener';
     MemoryService,
     VectorCleanupListener,
   ],
-  exports: [AiChatService, IngestionService],
+  exports: [AiChatService, IngestionService, VectorStoreService],
 })
 export class AiModule {}
