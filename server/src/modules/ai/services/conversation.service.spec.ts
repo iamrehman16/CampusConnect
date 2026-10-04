@@ -162,6 +162,53 @@ describe('ConversationService#maybeGenerateTitle', () => {
     );
   });
 
+  it.each([
+    [
+      'a multi-line answer',
+      "Let's walk through quicksort.\n\n### Example\n`[7, 2, 5]`",
+    ],
+    ['an overlong single line', 'x'.repeat(61)],
+  ])(
+    'falls back to the first words of the message when the model returns %s instead of a title',
+    async (_label, modelOutput) => {
+      const conversation = buildConversation(DEFAULT_CONVERSATION_TITLE);
+      const conversationModel: Partial<MockConversationModel> = {
+        updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),
+      };
+      const service = buildConversationService(conversationModel);
+
+      await service.maybeGenerateTitle(
+        conversation,
+        'explain quicksort partitioning step by step with an example',
+        jest.fn().mockResolvedValue(modelOutput),
+      );
+
+      expect(conversationModel.updateOne).toHaveBeenCalledWith(
+        { _id: conversation._id, title: DEFAULT_CONVERSATION_TITLE },
+        { title: 'explain quicksort partitioning step by step' },
+      );
+    },
+  );
+
+  it('strips markdown and trailing punctuation from a valid title', async () => {
+    const conversation = buildConversation(DEFAULT_CONVERSATION_TITLE);
+    const conversationModel: Partial<MockConversationModel> = {
+      updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),
+    };
+    const service = buildConversationService(conversationModel);
+
+    await service.maybeGenerateTitle(
+      conversation,
+      'q',
+      jest.fn().mockResolvedValue('**Quicksort Partitioning.**'),
+    );
+
+    expect(conversationModel.updateOne).toHaveBeenCalledWith(
+      { _id: conversation._id, title: DEFAULT_CONVERSATION_TITLE },
+      { title: 'Quicksort Partitioning' },
+    );
+  });
+
   it('does nothing when the thread already has a non-default title (user renamed it)', async () => {
     const conversation = buildConversation('My custom title');
     const conversationModel: Partial<MockConversationModel> = {

@@ -385,8 +385,26 @@ export class ConversationService implements OnModuleInit {
 
     await this.conversationModel.updateOne(
       { _id: conversation._id, title: DEFAULT_CONVERSATION_TITLE },
-      { title: title || this.fallbackTitle(userMessage) },
+      {
+        title: this.sanitizeTitle(title) || this.fallbackTitle(userMessage),
+      },
     );
+  }
+
+  /**
+   * The title model occasionally answers the user's question instead of
+   * naming it, and the whole answer became the thread title. A real title is
+   * one short line; anything else is discarded so the caller falls back to
+   * the first words of the user's message.
+   */
+  private sanitizeTitle(raw: string): string {
+    const MAX_TITLE_LENGTH = 60;
+    if (raw.includes('\n')) return '';
+    const cleaned = raw
+      .replace(/[*_`#>"]/g, '')
+      .trim()
+      .replace(/[.!?:]+$/, '');
+    return cleaned.length <= MAX_TITLE_LENGTH ? cleaned : '';
   }
 
   private fallbackTitle(userMessage: string): string {
