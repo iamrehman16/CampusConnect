@@ -117,6 +117,27 @@ blank frames or layout jumps.
 - Queries refetch automatically on reconnect.
 - Verified with DevTools offline after warming the cache; no stale-cache leak across logout/user switch.
 
+### J5 — Mobile polish and PWA install (next session, reported 2026-10-04 on the live app)
+**Effort:** 3
+**Where:** landing page (`features/info` or `pages/Landing*`), `features/ai-chat/components/AiChatHeader.tsx`,
+`shared/hooks/usePwaInstall.ts`, `shared/components/layout/topbar/StandardBar.tsx`
+**Findings from real-device use (my 390px headless audit missed both):**
+- Landing page, mobile: the **"Get started" button looks bloated** (oversized/stretched). Inspect on a real phone width;
+  likely the theme's coarse-pointer `minHeight`/padding added in J2 (`82c1fba`) or a full-width/flex rule on the header button.
+- Ask AI header, mobile: the **hamburger (thread list) button is partly cut off on the right.** The J2 touch-target change
+  (`IconButton` min 40px) or the new `noWrap` subtitle (`d7f...`/J2) may have pushed the row wider than the viewport;
+  check the header's flex row (`minWidth: 0`, padding) at 360-390px.
+- **PWA install is not discoverable.** `usePwaInstall` exists and only the mobile top bar uses it. Show an obvious
+  "Install CampusConnect" action for users who haven't installed it: landing page, Home or Settings, and the account
+  menu, hidden when already installed (`display-mode: standalone`) or not installable; include iOS Safari guidance
+  ("Share, then Add to Home Screen") since it has no `beforeinstallprompt`.
+**Acceptance criteria:**
+- Both layout bugs fixed and checked on a real phone and in Chrome device emulation at 360, 390 and 430px.
+- An install entry point is visible on first visit when installable, disappears after install, and has an iOS variant.
+- The manifest/icons pass Chrome's installability check (Lighthouse "Installable").
+**Also queued:** replace the "Checking authentication…" cold-load spinner with the app shell; `@Prop` ObjectId audit;
+login 404-vs-401 leak; H3 walkthrough on the deployed build.
+
 ### J4 — Realtime resilience
 **Status: DONE 2026-10-04, verified on the demo stack.** The socket now presents the freshest access token on every reconnect, and re-authenticates through the API (token refresh) when the server drops it, bounded to 3 attempts; the composer shows "Reconnecting…" and can't send while the socket is down; on reconnect, chat, unread counts and notifications are refetched (`useSocketResync`). Verified with Chrome offline/online: a message another user sent meanwhile appeared 0.6 s after reconnect; reconnect with an expired access token recovered via refresh. Not done: a visible "connected" indicator beyond the composer placeholder; deployed-origin socket CORS check (needs the live app).
 **Effort:** 3
