@@ -72,6 +72,30 @@ describe('AiController', () => {
     expect(res.write).not.toHaveBeenCalled();
   });
 
+  it('sends an SSE error event and ends the stream when setup fails after headers are flushed', async () => {
+    (aiChatService.streamChatResponse as jest.Mock).mockRejectedValue(
+      new Error('AI assistant is temporarily unavailable'),
+    );
+    const req = createMockRequest();
+    const res = createMockResponse();
+
+    await expect(
+      controller.stream(
+        req as unknown as AuthenticatedRequest,
+        { message: 'hi' } as ChatMessageDto,
+        res as unknown as Response,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(res.write).toHaveBeenCalledWith(
+      `data: ${JSON.stringify({
+        type: 'error',
+        message: 'AI assistant is temporarily unavailable',
+      })}\n\n`,
+    );
+    expect(res.end).toHaveBeenCalledTimes(1);
+  });
+
   it('does not double-end the response when close fires after complete', async () => {
     const req = createMockRequest();
     const res = createMockResponse();

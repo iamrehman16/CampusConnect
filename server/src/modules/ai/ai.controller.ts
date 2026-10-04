@@ -1,4 +1,12 @@
-import { Body, Controller, Delete, Post, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Logger,
+  Post,
+  Req,
+  Res,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { ChatMessageDto } from './dto/chat-message.dto';
 import { AiChatService } from './services/ai-chat.service';
@@ -6,6 +14,8 @@ import type { AuthenticatedRequest } from '../auth/types/authenticated-request';
 
 @Controller('ai')
 export class AiController {
+  private readonly logger = new Logger(AiController.name);
+
   constructor(private readonly aiChatService: AiChatService) {}
 
   @Post('chat/stream')
@@ -19,11 +29,28 @@ export class AiController {
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders();
 
-    const observable = await this.aiChatService.streamChatResponse(
-      req.user.id,
-      chatMessageDto.message,
-      chatMessageDto.conversationId,
-    );
+    let observable: Awaited<ReturnType<AiChatService['streamChatResponse']>>;
+    try {
+      observable = await this.aiChatService.streamChatResponse(
+        req.user.id,
+        chatMessageDto.message,
+        chatMessageDto.conversationId,
+      );
+    } catch (err: unknown) {
+      // Headers are already flushed, so the global filter can't send a JSON
+      // error; report it in-band as an SSE error event and close the stream.
+      this.logger.error(
+        `AI stream setup failed for user ${req.user.id}`,
+        err instanceof Error ? err.stack : String(err),
+      );
+      if (!res.writableEnded) {
+        const message =
+          err instanceof Error ? err.message : 'AI request failed';
+        res.write(`data: ${JSON.stringify({ type: 'error', message })}\n\n`);
+        res.end();
+      }
+      return;
+    }
 
     const subscription = observable.subscribe({
       next: (event: MessageEvent) => {
