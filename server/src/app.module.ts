@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { validateEnv } from './config/env.validation';
 import { MongooseModule } from '@nestjs/mongoose';
 import { UserModule } from './modules/user/user.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -45,6 +46,7 @@ import { QueuesModule } from './modules/queues/queues.module';
     }),
     ConfigModule.forRoot({
       isGlobal: true,
+      validate: validateEnv,
     }),
     MongooseModule.forRootAsync({
       inject: [ConfigService],
