@@ -67,7 +67,7 @@ export function AiChatHeader({
           >
             {title || "Study assistant"}
           </Typography>
-          <Typography variant="caption" sx={{ color: "text.secondary" }}>
+          <Typography variant="caption" noWrap sx={{ color: "text.secondary", display: "block" }}>
             {isStreaming ? "Responding…" : "Answers from CampusConnect resources"}
           </Typography>
         </Box>
