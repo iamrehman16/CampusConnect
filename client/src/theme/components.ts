@@ -50,8 +50,18 @@ export const componentOverrides: Components<Theme> = {
           { duration: theme.transitions.duration.shortest },
         ),
       }),
-      sizeSmall: { padding: '4px 12px', fontSize: '0.8125rem', minHeight: 32 },
-      sizeMedium: { padding: '7px 16px', minHeight: 38 },
+      // Touch devices get a 40px minimum hit area (BACKLOG.md J2).
+      sizeSmall: {
+        padding: '4px 12px',
+        fontSize: '0.8125rem',
+        minHeight: 32,
+        '@media (pointer: coarse)': { minHeight: 40 },
+      },
+      sizeMedium: {
+        padding: '7px 16px',
+        minHeight: 38,
+        '@media (pointer: coarse)': { minHeight: 40 },
+      },
       sizeLarge: { padding: '10px 22px', fontSize: '0.9375rem', minHeight: 46 },
       contained: ({ theme }) => ({
         '&:hover': { backgroundColor: theme.palette.primary.dark },
@@ -89,9 +99,12 @@ export const componentOverrides: Components<Theme> = {
           backgroundColor: theme.palette.action.hover,
           color: theme.palette.text.primary,
         },
-        '@media (pointer: coarse)': { padding: 10 },
+        '@media (pointer: coarse)': { padding: 10, minWidth: 40, minHeight: 40 },
       }),
-      sizeSmall: { padding: 6 },
+      sizeSmall: {
+        padding: 6,
+        '@media (pointer: coarse)': { padding: 8, minWidth: 40, minHeight: 40 },
+      },
     },
   },
 
@@ -109,6 +122,7 @@ export const componentOverrides: Components<Theme> = {
         fontWeight: 600,
         borderColor: theme.palette.border.default,
         color: theme.palette.text.secondary,
+        '@media (pointer: coarse)': { minWidth: 40, minHeight: 40 },
         '&.Mui-selected': {
           backgroundColor: theme.palette.surface.subtle,
           color: theme.palette.text.primary,

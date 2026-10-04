@@ -37,7 +37,7 @@ export default function StandardBar({ title, onAvatarClick }: StandardBarProps) 
   return (
     <AppBar position="fixed" sx={{ display: { xs: "flex", md: "none" }, zIndex: (t) => t.zIndex.appBar }}>
       <Toolbar sx={{ px: 1.5, minHeight: 56, gap: 1 }}>
-        <ButtonBase onClick={onAvatarClick} aria-label="Account menu" sx={{ borderRadius: "50%" }}>
+        <ButtonBase onClick={onAvatarClick} aria-label="Account menu" sx={{ borderRadius: "50%", p: 0.5 }}>
           <UserAvatar name={user?.name} avatar={user?.avatar} size={32} />
         </ButtonBase>
 
