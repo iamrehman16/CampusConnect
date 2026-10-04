@@ -5,6 +5,7 @@ import type { Queue } from 'bullmq';
 import type { Connection } from 'mongoose';
 import { QUEUES } from '../queues/queue.constants';
 import { VectorStoreService } from '../ai/services/vector-store.service';
+import { GroqService } from '../ai/services/groq.service';
 
 export type DependencyState = 'up' | 'down';
 
@@ -16,7 +17,7 @@ export interface DependencyCheck {
 export interface HealthReport {
   /**
    * ok: everything reachable. degraded: the API works but Redis (ingestion
-   * queue) or Qdrant (AI) is down. down: MongoDB is unreachable, so nothing
+   * queue), Qdrant or Groq (AI) is down or misconfigured. down: MongoDB is unreachable, so nothing
    * useful works.
    */
   status: 'ok' | 'degraded' | 'down';
@@ -26,6 +27,7 @@ export interface HealthReport {
     mongo: DependencyCheck;
     redis: DependencyCheck;
     qdrant: DependencyCheck;
+    groq: DependencyCheck;
   };
 }
 
@@ -42,6 +44,7 @@ export class HealthService {
     @InjectConnection() private readonly mongo: Connection,
     @InjectQueue(QUEUES.RAG_INGESTION) private readonly ingestionQueue: Queue,
     private readonly vectorStore: VectorStoreService,
+    private readonly groq: GroqService,
   ) {}
 
   /** Liveness only: the process is up and serving. Touches no dependency. */
@@ -60,7 +63,7 @@ export class HealthService {
       return this.cached.report;
     }
 
-    const [mongo, redis, qdrant] = await Promise.all([
+    const [mongo, redis, qdrant, groq] = await Promise.all([
       this.probe('mongo', async () => {
         if (!this.mongo.db) throw new Error('MongoDB is not connected');
         await this.mongo.db.admin().ping();
@@ -70,12 +73,15 @@ export class HealthService {
         await client.ping();
       }),
       this.probe('qdrant', () => this.vectorStore.ping()),
+      this.probe('groq', () => this.groq.ping()),
     ]);
 
     const status =
       mongo.status === 'down'
         ? 'down'
-        : redis.status === 'down' || qdrant.status === 'down'
+        : redis.status === 'down' ||
+            qdrant.status === 'down' ||
+            groq.status === 'down'
           ? 'degraded'
           : 'ok';
 
@@ -83,7 +89,7 @@ export class HealthService {
       status,
       uptimeSeconds: Math.round(process.uptime()),
       timestamp: new Date(now).toISOString(),
-      checks: { mongo, redis, qdrant },
+      checks: { mongo, redis, qdrant, groq },
     };
     this.cached = { at: now, report };
     return report;

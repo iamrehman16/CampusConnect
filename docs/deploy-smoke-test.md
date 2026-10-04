@@ -32,5 +32,8 @@ broken, API still up) or `down` (MongoDB unreachable, HTTP 503).
 - **CORS error / blocked preflight:** `FRONTEND_URL` on Render must be the exact Vercel origin (no trailing slash).
 - **`/api/api/...` in network calls:** `VITE_API_BASE_URL` on Vercel must be the server origin only, no `/api`.
 - **Server won't boot / deploy fails:** the boot check lists every missing or malformed variable in the Render log.
-- **AI errors immediately:** health shows `qdrant: down`: check `QDRANT_URL`/`QDRANT_API_KEY` and that the cluster isn't dormant; `degraded` + `redis: down` means uploads won't ingest.
+- **AI errors immediately:** read `GET /api/health`.
+  - `qdrant: down`: `QDRANT_URL` must be `https://<cluster>.cloud.qdrant.io` (plain `http://` is reset, shows as ECONNRESET) with that cluster's `QDRANT_API_KEY`; also check the cluster isn't dormant.
+  - `groq: down`: the API key is wrong or a configured model was retired (the Render log says `model_not_found`). A dashboard value overrides the code default, so set `GROQ_REASONING_MODEL=openai/gpt-oss-120b` and `GROQ_FAST_MODEL=qwen/qwen3.8-27b`, or delete the variables to use the defaults. Current ids: `GET https://api.groq.com/openai/v1/models`.
+  - `redis: down`: uploads won't ingest.
 - **First request very slow:** cold start; run the warm script earlier.

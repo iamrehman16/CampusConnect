@@ -43,6 +43,23 @@ export class GroqService {
     this.groq = new Groq({ apiKey: this.aiCfg.groqApiKey });
   }
 
+  /**
+   * Health probe: the API key works and both configured models are still
+   * served. Groq retires model ids without warning, and a retired id only
+   * shows up as a 404 on the first user question. Throws naming the models
+   * that are missing. `models.list` consumes no tokens.
+   */
+  async ping(): Promise<void> {
+    const { data } = await this.groq.models.list();
+    const served = new Set(data.map((m) => m.id));
+    const missing = [
+      ...new Set([this.aiCfg.models.reasoning, this.aiCfg.models.fast]),
+    ].filter((id) => !served.has(id));
+    if (missing.length > 0) {
+      throw new Error(`Groq models not available: ${missing.join(', ')}`);
+    }
+  }
+
   private handleGroqError(operation: string, err: unknown): never {
     const status: number | undefined =
       err instanceof Groq.APIError && typeof err.status === 'number'
