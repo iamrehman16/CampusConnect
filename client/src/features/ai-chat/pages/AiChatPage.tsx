@@ -6,7 +6,7 @@ import { useConversation, useThreadsQuery } from "../hooks/ai-chat.hooks";
 import { useStreamMessage } from "../hooks/useStreamMessage";
 import { useChatScroll } from "../hooks/useChatScroll";
 import { useChatPageInit } from "../hooks/useChatPageInit";
-import { moveConversationCache } from "../utils/ai-chat.cache";
+import { moveConversationCache, setConversation } from "../utils/ai-chat.cache";
 import { aiChatKeys, NEW_THREAD_KEY } from "../hooks/ai-chat.keys";
 import { AiChatHeader } from "../components/AiChatHeader";
 import { AiChatMessageList } from "../components/AiChatMessageList";
@@ -77,6 +77,28 @@ export default function AiChatPage() {
     sendMessage({ message, conversationId: routeConversationId });
   };
 
+  // BACKLOG.md D12: the tail of the saved history says whether a reply is
+  // still being produced (possibly by a stream this page didn't start) or
+  // failed on the server.
+  const tail = messages?.[messages.length - 1];
+  const replyGenerating = tail?.status === "generating";
+  const failedReply = tail?.role === "assistant" && tail.status === "failed";
+
+  const handleRetryFailed = () => {
+    if (!failedReply || !tail) return;
+    const question = messages?.[messages.length - 2];
+    if (question?.role !== "user") return;
+    // Drop both from the cache; the server replaces them on retry and the
+    // send below re-adds the question.
+    setConversation(queryClient, conversationId, (prev) =>
+      prev.filter((m) => m.id !== tail.id && m.id !== question.id),
+    );
+    void sendMessage(
+      { message: question.content, conversationId: routeConversationId },
+      { retryOfMessageId: tail.id },
+    );
+  };
+
   return (
     <Box
       sx={{
@@ -135,6 +157,14 @@ export default function AiChatPage() {
         }}
       >
         <Box sx={{ maxWidth: 760, mx: "auto" }}>
+        {failedReply && !streamError && !isStreaming && (
+          <Box sx={{ mb: 1 }}>
+            <InlineError
+              message="This answer couldn't be completed."
+              onRetry={handleRetryFailed}
+            />
+          </Box>
+        )}
         {streamError && (
           <Box sx={{ mb: 1 }}>
             <InlineError message={streamError} onRetry={retry} />
@@ -142,7 +172,7 @@ export default function AiChatPage() {
         )}
         <ChatInput
           onSend={handleSend}
-          disabled={isStreaming} // input disabled for full duration
+          disabled={isStreaming || replyGenerating} // input disabled for full duration
           isStreaming={isFetching} // stop button visible only while fetch is live
           onStop={stop}
           prefillValue={prefill}

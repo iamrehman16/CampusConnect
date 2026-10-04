@@ -161,7 +161,7 @@ export function MessageBubble({ message, conversationId }: MessageBubbleProps) {
             </Box>
           )}
 
-        {!isUser && !message.isPending && (
+        {!isUser && !message.isPending && message.status !== "failed" && (
           <MessageActionToolbar
             message={message}
             conversationId={conversationId}

@@ -4,6 +4,9 @@ export interface ChatMessageDto {
   // Omitted on the first message of a new thread — the server creates one
   // and returns its id on ChatResponseDto/the SSE citations event (B7).
   conversationId?: string;
+  // A failed reply being retried: the server replaces it (and the question
+  // it answered) instead of duplicating the question (BACKLOG.md D12).
+  retryOfMessageId?: string;
 }
 
 export type RetrievalStatus = "ok" | "no-matches" | "below-threshold";
@@ -63,5 +66,10 @@ export interface ConversationMessage {
   citations?: Citation[];
   retrievalStatus?: RetrievalStatus;
   isPending?: boolean;
+  // Server-side state of an assistant reply (BACKLOG.md D12). Locally
+  // committed bubbles leave it unset, meaning complete.
+  status?: MessageStatus;
   feedback?: MessageFeedback | null;
 }
+
+export type MessageStatus = "generating" | "complete" | "failed";

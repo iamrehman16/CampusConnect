@@ -2,7 +2,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { aiChatService, StreamStallError } from "../services/ai-chat.service";
-import { setConversation, updateMessageId } from "../utils/ai-chat.cache";
+import {
+  clearConversation,
+  setConversation,
+  updateMessageId,
+} from "../utils/ai-chat.cache";
+import { aiChatKeys, NEW_THREAD_KEY } from "./ai-chat.keys";
 import { generateId } from "../utils/generate-id";
 import { useStreamRefs } from "./useStreamRefs";
 import { useDrainQueue } from "./useDrainQueue";
@@ -41,6 +46,7 @@ export function useStreamMessage({
   // page can show a message with a retry instead of the reply just vanishing.
   const [streamError, setStreamError] = useState<string | null>(null);
   const lastDtoRef = useRef<ChatMessageDto | null>(null);
+  const failedMessageIdRef = useRef<string | null>(null);
 
   const refs = useStreamRefs();
   const { accRef, queueRef, fetchCompleteRef } = refs;
@@ -75,6 +81,20 @@ export function useStreamMessage({
     realMessageIdRef,
   });
 
+  // BACKLOG.md D12 — leaving the page abandons this stream, it does not
+  // finish it here. The server keeps generating and saves the reply, and the
+  // thread history is the source of truth when the user comes back, so a
+  // half-streamed bubble must never be committed to the cache as the answer
+  // (it used to stay there as a truncated reply forever).
+  const unmountedRef = useRef(false);
+  useEffect(() => {
+    unmountedRef.current = false;
+    return () => {
+      unmountedRef.current = true;
+      abortRef.current?.abort();
+    };
+  }, []);
+
   // Bug 1 fix: when tab becomes visible, instantly flush any frozen queue
   // so the user sees the full response immediately rather than a slow catch-up
   useEffect(() => {
@@ -100,9 +120,15 @@ export function useStreamMessage({
   }, [abortRef, fetchCompleteRef, flushAndCommit]);
 
   const sendMessage = useCallback(
-    async (dto: ChatMessageDto, options?: { isRetry?: boolean }) => {
+    async (
+      dtoInput: ChatMessageDto,
+      options?: { isRetry?: boolean; retryOfMessageId?: string },
+    ) => {
+      const dto: ChatMessageDto = options?.retryOfMessageId
+        ? { ...dtoInput, retryOfMessageId: options.retryOfMessageId }
+        : dtoInput;
       abortRef.current?.abort();
-      lastDtoRef.current = dto;
+      lastDtoRef.current = dtoInput;
       setStreamError(null);
       const controller = new AbortController();
       abortRef.current = controller;
@@ -132,6 +158,17 @@ export function useStreamMessage({
       startDrainInterval();
 
       const handleAbort = () => {
+        if (unmountedRef.current) {
+          refs.pollCancelRef.current = true;
+          cleanup();
+          // A brand-new thread's optimistic bubble must not greet the next
+          // "new chat"; the thread itself now exists server-side.
+          if (conversationIdRef.current === NEW_THREAD_KEY) {
+            clearConversation(queryClient, NEW_THREAD_KEY);
+          }
+          void queryClient.invalidateQueries({ queryKey: aiChatKeys.threads() });
+          return;
+        }
         commitOnAbort(assistantBubbleId);
       };
       controller.signal.addEventListener("abort", handleAbort);
@@ -193,6 +230,7 @@ export function useStreamMessage({
           err instanceof DOMException && err.name === "AbortError";
         if (!isAbort) {
           cleanup();
+          failedMessageIdRef.current = realMessageIdRef.current;
           setStreamError(describeStreamError(err));
         }
         setIsFetching(false);
@@ -216,9 +254,13 @@ export function useStreamMessage({
   );
 
   const retry = useCallback(() => {
-    if (lastDtoRef.current) {
-      void sendMessage(lastDtoRef.current, { isRetry: true });
-    }
+    if (!lastDtoRef.current) return;
+    // If the server had already persisted this exchange it marked it failed;
+    // retrying must replace it, not add a second copy of the question.
+    void sendMessage(lastDtoRef.current, {
+      isRetry: true,
+      retryOfMessageId: failedMessageIdRef.current ?? undefined,
+    });
   }, [sendMessage]);
 
   return {

@@ -30,12 +30,18 @@ import type {
 // refetch that thread stayed missing its reply forever, even though the
 // server had saved it. Such an entry is refetched once on mount.
 // ---------------------------------------------------------------------------
+const GENERATING_POLL_MS = 2000;
+
 export function useConversation(conversationId: string) {
   const queryClient = useQueryClient();
   const isNewThread = conversationId === NEW_THREAD_KEY;
 
   const cached = getConversation(queryClient, conversationId);
-  const replyMissing = cached[cached.length - 1]?.role === "user";
+  const last = cached[cached.length - 1];
+  // BACKLOG.md D12: a "generating" reply came from the server (this page or
+  // another one is still producing it), so history must be re-read until it
+  // settles, not just once.
+  const replyMissing = last?.role === "user" || last?.status === "generating";
 
   return useQuery<ConversationMessage[]>({
     queryKey: aiChatKeys.conversation(conversationId),
@@ -45,7 +51,18 @@ export function useConversation(conversationId: string) {
     // page streaming it is already mounted, so it never triggers this.
     refetchOnMount: (query) => {
       const data = query.state.data;
-      return data?.[data.length - 1]?.role === "user" ? "always" : false;
+      const tail = data?.[data.length - 1];
+      return tail?.role === "user" || tail?.status === "generating"
+        ? "always"
+        : false;
+    },
+    // Poll only for a server-side generating reply, never for the optimistic
+    // user bubble of a send this page is streaming itself.
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      return data?.[data.length - 1]?.status === "generating"
+        ? GENERATING_POLL_MS
+        : false;
     },
     staleTime: Infinity,
     gcTime: Infinity,

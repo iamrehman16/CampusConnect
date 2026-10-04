@@ -9,6 +9,7 @@ import type {
   ConversationMessage,
   MentorSuggestion,
   MessageFeedback,
+  MessageStatus,
   RetrievalStatus,
 } from "../types/ai-chat.dto";
 
@@ -24,7 +25,11 @@ export type SseDoneEvent = { type: "done" };
 // BACKLOG.md C1 — arrives after "done", once the server has persisted the
 // assistant reply and knows its real AiMessage id (see ai-chat.service.ts
 // on the server for why this can't be folded into "done" or "citations").
-export type SseMessageSavedEvent = { type: "message-saved"; messageId: string };
+export type SseMessageSavedEvent = {
+  type: "message-saved";
+  messageId: string;
+  conversationId?: string;
+};
 export type SseErrorEvent = { type: "error"; message: string };
 export type SseEvent =
   | SseTokenEvent
@@ -56,6 +61,7 @@ type RawMessage = {
   feedback?: MessageFeedback;
   citations?: Citation[];
   retrievalStatus?: RetrievalStatus;
+  status?: MessageStatus;
 };
 
 function normalizeMessage(message: RawMessage): ConversationMessage {
@@ -66,6 +72,9 @@ function normalizeMessage(message: RawMessage): ConversationMessage {
     feedback: message.feedback ?? null,
     citations: message.citations,
     retrievalStatus: message.retrievalStatus,
+    status: message.status,
+    // A reply still being generated on the server renders as "thinking".
+    isPending: message.status === "generating",
   };
 }
 
