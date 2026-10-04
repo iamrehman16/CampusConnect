@@ -14,6 +14,11 @@ export default defineConfig(({ mode }) => {
         includeAssets: ["icons/*"],
         manifest: false,
         workbox: {
+          // On a first visit the worker installs and precaches but would not
+          // control the already-open page until a reload, so going offline
+          // right away broke every not-yet-loaded route chunk (BACKLOG.md J3).
+          // Safe with registerType "prompt": updates still wait for the user.
+          clientsClaim: true,
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
           runtimeCaching: [
             {
