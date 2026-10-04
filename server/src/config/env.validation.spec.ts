@@ -64,6 +64,36 @@ describe('checkEnv', () => {
     ]);
   });
 
+  it('rejects a non-https QDRANT_URL in production', () => {
+    expect(
+      checkEnv({
+        ...productionEnv,
+        QDRANT_URL: 'http://abc.cloud.qdrant.io:6333',
+      }).errors,
+    ).toEqual([
+      'QDRANT_URL must use https:// (plain http connections to Qdrant Cloud are reset)',
+    ]);
+  });
+
+  it('rejects a QDRANT_URL that is not a URL (e.g. the scheme is missing)', () => {
+    expect(
+      checkEnv({ ...productionEnv, QDRANT_URL: 'abc.cloud.qdrant.io' })
+        .errors[0],
+    ).toMatch(/valid URL/);
+  });
+
+  it('allows an http QDRANT_URL outside production (local Qdrant)', () => {
+    expect(
+      checkEnv({
+        NODE_ENV: 'development',
+        JWT_SECRET: 's',
+        REFRESH_JWT_SECRET: 's',
+        MONGO_URI_Local: 'mongodb://localhost/x',
+        QDRANT_URL: 'http://localhost:6333',
+      }).errors,
+    ).toEqual([]);
+  });
+
   it('only warns about missing Google variables in production', () => {
     const result = checkEnv({ ...productionEnv, CLIENT_ID: '' });
 

@@ -69,6 +69,24 @@ export function checkEnv(config: Record<string, unknown>): EnvValidationResult {
     }
   }
 
+  // Qdrant Cloud only speaks TLS. Plain http:// (the Qdrant quickstart's
+  // default) doesn't fail clearly: the connection is reset, which the app
+  // reports as "AI assistant temporarily unavailable" (BACKLOG.md I4).
+  const qdrantUrl = config.QDRANT_URL;
+  if (isProduction && !isBlank(qdrantUrl)) {
+    try {
+      if (new URL(String(qdrantUrl)).protocol !== 'https:') {
+        errors.push(
+          'QDRANT_URL must use https:// (plain http connections to Qdrant Cloud are reset)',
+        );
+      }
+    } catch {
+      errors.push(
+        'QDRANT_URL must be a valid URL such as https://<cluster>.cloud.qdrant.io',
+      );
+    }
+  }
+
   if (isProduction) {
     for (const key of PRODUCTION_RECOMMENDED) {
       if (isBlank(config[key])) {
