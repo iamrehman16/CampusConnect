@@ -1,0 +1,62 @@
+# Render Blueprint for the API (BACKLOG.md I2). Secrets are declared with
+# `sync: false`: Render prompts for them on first sync and never stores values
+# here. The full variable contract is in server/.env.example.
+services:
+  - type: web
+    name: CampusConnect-Server
+    runtime: node
+    rootDir: server
+    # devDependencies are required for the build: Render sets NODE_ENV=production,
+    # which makes a plain `npm ci` skip @types/* and breaks the compiled output.
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_URL # bare origin, e.g. https://campus-connect-client-two.vercel.app
+        sync: false
+      - key: MONGO_URI
+        sync: false
+      - key: REDIS_UPSTASH_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: REFRESH_JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 1h
+      - key: REFRESH_JWT_EXPIRES_IN
+        value: 7d
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_REASONING_MODEL
+        value: openai/gpt-oss-120b
+      - key: GROQ_FAST_MODEL
+        value: qwen/qwen3.8-27b
+      - key: GROQ_TIMEOUT_MS
+        value: "30000"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_EMBEDDING_MODEL
+        value: gemini-embedding-001
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: QDRANT_COLLECTION_SUFFIX # `_demo` on the demo deployment
+        sync: false
+      - key: LLAMA_CLOUD_API_KEY
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLIENT_ID
+        sync: false
+      - key: CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_CALLBACK_URL # https://<render-host>/api/auth/google/callback
+        sync: false
