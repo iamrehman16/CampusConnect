@@ -54,8 +54,15 @@ export default function AiChatPage() {
     [queryClient, navigate],
   );
 
-  const { sendMessage, stop, isStreaming, isFetching, streamingBubble } =
-    useStreamMessage({ conversationId, onThreadResolved });
+  const {
+    sendMessage,
+    stop,
+    retry,
+    isStreaming,
+    isFetching,
+    streamingBubble,
+    streamError,
+  } = useStreamMessage({ conversationId, onThreadResolved });
 
   const { scrollContainerRef, bottomRef, showScrollBtn, scrollToBottom } =
     useChatScroll({
@@ -128,6 +135,11 @@ export default function AiChatPage() {
         }}
       >
         <Box sx={{ maxWidth: 760, mx: "auto" }}>
+        {streamError && (
+          <Box sx={{ mb: 1 }}>
+            <InlineError message={streamError} onRetry={retry} />
+          </Box>
+        )}
         <ChatInput
           onSend={handleSend}
           disabled={isStreaming} // input disabled for full duration

@@ -1,7 +1,7 @@
 // useStreamMessage.ts — full updated file
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { aiChatService } from "../services/ai-chat.service";
+import { aiChatService, StreamStallError } from "../services/ai-chat.service";
 import { setConversation, updateMessageId } from "../utils/ai-chat.cache";
 import { generateId } from "../utils/generate-id";
 import { useStreamRefs } from "./useStreamRefs";
@@ -18,6 +18,16 @@ interface UseStreamMessageOptions {
   onThreadResolved?: (conversationId: string) => void;
 }
 
+// Server error events carry a readable message; transport failures
+// ("Stream failed: 503", fetch TypeErrors) get a generic one.
+function describeStreamError(err: unknown): string {
+  if (err instanceof StreamStallError) return err.message;
+  if (err instanceof Error && !err.message.startsWith("Stream failed")) {
+    if (!(err instanceof TypeError)) return err.message;
+  }
+  return "Couldn't reach the AI assistant.";
+}
+
 export function useStreamMessage({
   conversationId,
   onThreadResolved,
@@ -27,6 +37,10 @@ export function useStreamMessage({
     useState<ConversationMessage | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isFetching, setIsFetching] = useState(false); // fetch specifically live
+  // Set when a send fails (server error event, network failure, stall) so the
+  // page can show a message with a retry instead of the reply just vanishing.
+  const [streamError, setStreamError] = useState<string | null>(null);
+  const lastDtoRef = useRef<ChatMessageDto | null>(null);
 
   const refs = useStreamRefs();
   const { accRef, queueRef, fetchCompleteRef } = refs;
@@ -86,8 +100,10 @@ export function useStreamMessage({
   }, [abortRef, fetchCompleteRef, flushAndCommit]);
 
   const sendMessage = useCallback(
-    async (dto: ChatMessageDto) => {
+    async (dto: ChatMessageDto, options?: { isRetry?: boolean }) => {
       abortRef.current?.abort();
+      lastDtoRef.current = dto;
+      setStreamError(null);
       const controller = new AbortController();
       abortRef.current = controller;
 
@@ -96,10 +112,13 @@ export function useStreamMessage({
       currentBubbleIdRef.current = assistantBubbleId;
       realMessageIdRef.current = null;
 
-      setConversation(queryClient, conversationIdRef.current, (prev) => [
-        ...prev,
-        { id: userBubbleId, role: "user", content: dto.message },
-      ]);
+      // A retry re-sends a message whose user bubble is already in the thread.
+      if (!options?.isRetry) {
+        setConversation(queryClient, conversationIdRef.current, (prev) => [
+          ...prev,
+          { id: userBubbleId, role: "user", content: dto.message },
+        ]);
+      }
 
       refs.reset(); // resets fetchCompleteRef, pollCancelRef, acc, queue, render
       setStreamingBubble({
@@ -174,6 +193,7 @@ export function useStreamMessage({
           err instanceof DOMException && err.name === "AbortError";
         if (!isAbort) {
           cleanup();
+          setStreamError(describeStreamError(err));
         }
         setIsFetching(false);
       } finally {
@@ -195,5 +215,19 @@ export function useStreamMessage({
     ],
   );
 
-  return { sendMessage, stop, isStreaming, isFetching, streamingBubble };
+  const retry = useCallback(() => {
+    if (lastDtoRef.current) {
+      void sendMessage(lastDtoRef.current, { isRetry: true });
+    }
+  }, [sendMessage]);
+
+  return {
+    sendMessage,
+    stop,
+    retry,
+    isStreaming,
+    isFetching,
+    streamingBubble,
+    streamError,
+  };
 }

@@ -76,6 +76,16 @@ function normalizeMessage(message: RawMessage): ConversationMessage {
 // convention); reversed here for chronological display.
 const HISTORY_PAGE_LIMIT = 100;
 
+// Longest silence tolerated from the stream before it's treated as hung.
+const STREAM_STALL_MS = 45_000;
+
+export class StreamStallError extends Error {
+  constructor() {
+    super("The assistant stopped responding.");
+    this.name = "StreamStallError";
+  }
+}
+
 export class AiChatService {
   async sendMessage(dto: ChatMessageDto): Promise<ChatResponseDto> {
     const { data } = await api.post<ChatResponseDto>("ai/chat", dto);
@@ -141,84 +151,120 @@ export class AiChatService {
 
   async *streamMessage(
     dto: ChatMessageDto,
-    signal: AbortSignal,
+    callerSignal: AbortSignal,
   ): AsyncGenerator<SseEvent> {
     const baseURL = (
       (import.meta.env.VITE_API_BASE_URL as string) ?? ""
     ).replace(/\/$/, "");
     const token = localStorage.getItem("accessToken") ?? "";
 
-    const response = await fetch(`${baseURL}/api/ai/chat/stream`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(dto),
-      signal,
-    });
-
-    if (!response.ok || !response.body) {
-      throw new Error(`Stream failed: ${response.status}`);
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    const onAbort = () => {
-      reader.cancel().catch(() => {});
+    // Second line of defense (BACKLOG.md I4): if the server sends nothing for
+    // STREAM_STALL_MS, abort and surface a StreamStallError instead of leaving
+    // the UI on "Thinking" forever. The timer is re-armed on every chunk.
+    const link = new AbortController();
+    const signal = link.signal;
+    let stalled = false;
+    let stallTimer: ReturnType<typeof setTimeout> | undefined;
+    const armStallTimer = () => {
+      clearTimeout(stallTimer);
+      stallTimer = setTimeout(() => {
+        stalled = true;
+        link.abort();
+      }, STREAM_STALL_MS);
     };
-
-    if (signal.aborted) {
-      onAbort();
-    } else {
-      signal.addEventListener("abort", onAbort);
-    }
+    const forwardAbort = () => link.abort();
+    if (callerSignal.aborted) link.abort();
+    else callerSignal.addEventListener("abort", forwardAbort);
 
     try {
-      while (true) {
-        if (signal.aborted) {
-          throw new DOMException("Aborted", "AbortError");
-        }
-        
-        // Wrap reader.read() to ensure it aggressively rejects immediately on abort.
-        // Some environments/polyfills do not immediately unblock reader.read() when cancel() is called.
-        const { done, value } = await new Promise<ReadableStreamReadResult<Uint8Array>>((resolve, reject) => {
-          const abortHandler = () => reject(new DOMException("Aborted", "AbortError"));
-          
+      armStallTimer();
+      const response = await fetch(`${baseURL}/api/ai/chat/stream`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(dto),
+        signal,
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error(`Stream failed: ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      const onAbort = () => {
+        reader.cancel().catch(() => {});
+      };
+
+      if (signal.aborted) {
+        onAbort();
+      } else {
+        signal.addEventListener("abort", onAbort);
+      }
+
+      try {
+        while (true) {
           if (signal.aborted) {
-            abortHandler();
-            return;
+            throw new DOMException("Aborted", "AbortError");
           }
-          
-          signal.addEventListener("abort", abortHandler);
-          
-          reader.read().then(resolve, reject).finally(() => {
-            signal.removeEventListener("abort", abortHandler);
+
+          // Wrap reader.read() to ensure it aggressively rejects immediately on abort.
+          // Some environments/polyfills do not immediately unblock reader.read() when cancel() is called.
+          const { done, value } = await new Promise<
+            ReadableStreamReadResult<Uint8Array>
+          >((resolve, reject) => {
+            const abortHandler = () =>
+              reject(new DOMException("Aborted", "AbortError"));
+
+            if (signal.aborted) {
+              abortHandler();
+              return;
+            }
+
+            signal.addEventListener("abort", abortHandler);
+
+            reader
+              .read()
+              .then(resolve, reject)
+              .finally(() => {
+                signal.removeEventListener("abort", abortHandler);
+              });
           });
-        });
-        
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const parts = buffer.split("\n\n");
-        buffer = parts.pop() ?? "";
-        for (const part of parts) {
-          const line = part.trim();
-          if (!line.startsWith("data:")) continue;
-          const raw = line.slice(5).trim();
-          try {
-            yield JSON.parse(raw) as SseEvent;
-          } catch {
-            // malformed chunk — skip
+
+          if (done) break;
+          armStallTimer();
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() ?? "";
+          for (const part of parts) {
+            const line = part.trim();
+            if (!line.startsWith("data:")) continue;
+            const raw = line.slice(5).trim();
+            try {
+              yield JSON.parse(raw) as SseEvent;
+            } catch {
+              // malformed chunk — skip
+            }
           }
         }
+      } catch (err) {
+        reader.cancel().catch(() => {});
+        throw err; // re-throw so for await catch in the hook sees it
+      } finally {
+        signal.removeEventListener("abort", onAbort);
       }
     } catch (err) {
-      reader.cancel().catch(() => {});
-      throw err; // re-throw so for await catch in the hook sees it
+      // Our own timeout aborted the request: report it as a stall, not as a
+      // user-initiated abort (which the hook deliberately treats as silent).
+      if (stalled && !callerSignal.aborted) throw new StreamStallError();
+      throw err;
     } finally {
-      signal.removeEventListener("abort", onAbort);
+      clearTimeout(stallTimer);
+      callerSignal.removeEventListener("abort", forwardAbort);
     }
   }
 }
