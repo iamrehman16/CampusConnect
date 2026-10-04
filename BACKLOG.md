@@ -65,11 +65,58 @@ drawer); the app rail collapses to icons on these routes.
 
 ## Roadmap (2026-10-03)
 
+Reprioritized 2026-10-04: features are enough; remaining work is UX polish and
+robustness. Offline scope decided: **read-only offline** (no write queue).
+
 | # | Phase | PBIs | Why this order |
 |---|-------|------|----------------|
-| 1 | Deploy on the monorepo | **I1–I3** | The demo runs on the deployed app, which is still wired to the two archived repos |
-| 1b | Live AI fixes | **I4, D12** | The AI is the demo's centerpiece and currently hangs on the deployed app |
-| 2 | Demo readiness | H2 verification, H3 | Walkthrough and screenshots must be taken on the deployed build |
+| 0 | Demo blockers | **I4**, I1/I2 leftovers (Render env, fail-fast env check), **D12** | The AI is the demo's centerpiece and hangs on the deployed app; answers vanish on navigation |
+| 1 | Visible polish | H2 verification, D11, **J1** skeleton audit, **J2** mobile pass | What the examiners see first |
+| 2 | Robustness | **J3** read-only offline, **J4** realtime resilience, login 404→401, `@Prop` ObjectId audit | Graceful failure instead of broken screens |
+| 3 | Close-out | I3 (health, gating, smoke), H3, CLAUDE.md §5 test gate | Walkthrough and screenshots last, on the final deployed build |
+
+## Epic J — UX polish & robustness (new, 2026-10-04)
+
+### J1 — Skeleton and perceived-performance audit
+**Effort:** 3
+**Where:** every list/page in `client/src/features/*`
+**Why:** 20 files use skeletons already; the gaps are lists that still show spinners,
+blank frames or layout jumps.
+**Acceptance criteria:**
+- No primary list or page shows a bare spinner or blank area while loading; each skeleton
+  matches the final layout (no jump on load).
+- Optimistic updates for like, follow and message send, with rollback and a toast on failure.
+- Route-level code splitting checked; no visible flash on navigation.
+
+### J2 — Mobile pass (390px)
+**Effort:** 5
+**Where:** app shell, every route, `features/chat`, `features/ai-chat`
+**Acceptance criteria:**
+- Every route audited at 390px in both themes; no horizontal scroll, clipped text or overlaps.
+- Bottom nav / shell respects safe-area insets; composers aren't covered by the on-screen keyboard.
+- Tap targets ≥ 44px; two-pane screens (D11) show one pane at a time with a clear back action.
+- Findings fixed or logged.
+
+### J3 — Read-only offline mode
+**Effort:** 5
+**Where:** `vite.config.ts` (workbox), `shared/lib/queryPersister.ts`, `shared/hooks/useNetworkStatus.ts`
+**Decision:** read-only. No write queue or sync engine.
+**Acceptance criteria:**
+- A persistent "You're offline" indicator; clears on reconnect.
+- Previously viewed Home, Library, resource details, AI threads and conversations render from cache
+  with a "last updated" hint.
+- Write actions (upload, send, like, apply) are disabled offline with a reason, not failing silently.
+- Uncached screens show a designed offline empty state, not an error or blank.
+- Queries refetch automatically on reconnect.
+- Verified with DevTools offline after warming the cache; no stale-cache leak across logout/user switch.
+
+### J4 — Realtime resilience
+**Effort:** 3
+**Where:** Socket.IO client/gateway, `features/chat`
+**Acceptance criteria:**
+- Connection state is visible in Messages; sending while disconnected is blocked with a clear message.
+- On reconnect, conversations and unread counts resync (no missed messages).
+- Socket CORS/handshake verified on the deployed origin.
 
 ---
 
