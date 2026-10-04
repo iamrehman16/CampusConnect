@@ -3,8 +3,8 @@ import {
   ButtonBase,
   IconButton,
   Typography,
-  CircularProgress,
 } from "@mui/material";
+import { MessagesSkeleton } from "@/shared/components/feedback/ListSkeleton";
 import { ArrowBack } from "@/shared/icons";
 import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useMediaQuery, useTheme } from "@mui/material";
@@ -146,15 +146,8 @@ export default function ConversationPage() {
   // Cold cache — user navigated directly via URL before conversation list loaded
   if (!conversation) {
     return (
-      <Box
-        sx={{
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <CircularProgress size={24} />
+      <Box sx={{ height: "100%", overflow: "hidden" }}>
+        <MessagesSkeleton />
       </Box>
     );
   }

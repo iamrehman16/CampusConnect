@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
+import { MessagesSkeleton } from "@/shared/components/feedback/ListSkeleton";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Box, CircularProgress, Drawer, useMediaQuery, useTheme } from "@mui/material";
+import { Box, Drawer, useMediaQuery, useTheme } from "@mui/material";
 import { useConversation, useThreadsQuery } from "../hooks/ai-chat.hooks";
 import { useStreamMessage } from "../hooks/useStreamMessage";
 import { useChatScroll } from "../hooks/useChatScroll";
@@ -119,15 +120,8 @@ export default function AiChatPage() {
       />
 
       {isHistoryLoading ? (
-        <Box
-          sx={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <CircularProgress size={28} />
+        <Box sx={{ flex: 1, overflow: "hidden" }}>
+          <MessagesSkeleton />
         </Box>
       ) : isHistoryError && !messages?.length ? (
         // A failed load must not fall through to the "new chat" empty state.

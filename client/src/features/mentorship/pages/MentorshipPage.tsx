@@ -1,4 +1,5 @@
 import InlineError from "@/shared/components/feedback/InlineError";
+import { ListSkeleton } from "@/shared/components/feedback/ListSkeleton";
 import { useCallback, useRef } from "react";
 import {
   Alert,
@@ -80,11 +81,7 @@ function MentorshipList({
   const items = data?.pages.flatMap((p) => p.data) ?? [];
 
   if (isLoading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
-        <CircularProgress size={28} />
-      </Box>
-    );
+    return <ListSkeleton count={4} />;
   }
   if (isError) return <InlineError message="Couldn't load this list." onRetry={refetch} />;
   if (items.length === 0) {

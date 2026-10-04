@@ -50,6 +50,7 @@ epics are summarized below; their detail lives in `git log`.
 ## Epic D (continued) — D11 comes before H2/H3
 
 ### D11 — Coherent two-pane layout for Ask AI and Messages
+**Status: DONE (5e917e3 shared list pane, 27745f2 rail collapse); noted 2026-10-04.**
 **Effort:** 5
 **Where:** `shared/components/layout/*`, `features/ai-chat/*`, `features/chat/*`
 **Why:** Both screens put a thread/conversation list directly beside the app's

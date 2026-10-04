@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Box, CircularProgress, List, Typography } from "@mui/material";
+import { ListSkeleton } from "@/shared/components/feedback/ListSkeleton";
+import { Box, List, Typography } from "@mui/material";
 import {
   ChatBubbleOutline as ChatBubbleOutlineIcon,
   EditOutlined as EditOutlinedIcon,
@@ -61,8 +62,8 @@ export function ThreadSidebar({ onNavigate }: ThreadSidebarProps) {
       />
 
       {isLoading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", pt: 4 }}>
-          <CircularProgress size={24} />
+        <Box sx={{ px: 2 }}>
+          <ListSkeleton count={6} avatar={false} compact />
         </Box>
       ) : isError && !threads ? (
         <Box sx={{ pt: 2 }}>

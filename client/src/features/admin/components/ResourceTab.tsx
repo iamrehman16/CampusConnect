@@ -1,5 +1,6 @@
 // features/admin/components/ResourcesTab.tsx
 import { useRef, useCallback } from 'react';
+import { ListSkeleton } from "@/shared/components/feedback/ListSkeleton";
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import InlineError from '@/shared/components/feedback/InlineError';
@@ -30,11 +31,7 @@ export default function ResourcesTab() {
   const resources = data?.pages.flatMap((p) => p.data) ?? [];
 
   if (isLoading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress size={32} />
-      </Box>
-    );
+    return <ListSkeleton count={6} />;
   }
 
   if (isError) {

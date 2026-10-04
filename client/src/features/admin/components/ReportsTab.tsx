@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import { ListSkeleton } from "@/shared/components/feedback/ListSkeleton";
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import Stack from '@mui/material/Stack';
@@ -55,11 +56,7 @@ export default function ReportsTab() {
         ))}
       </ToggleButtonGroup>
 
-      {isLoading && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-          <CircularProgress size={32} />
-        </Box>
-      )}
+      {isLoading && <ListSkeleton count={4} />}
 
       {isError && <InlineError message="Failed to load reports." onRetry={refetch} />}
 

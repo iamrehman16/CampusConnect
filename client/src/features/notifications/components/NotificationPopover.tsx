@@ -1,8 +1,8 @@
 import InlineError from "@/shared/components/feedback/InlineError";
+import { ListSkeleton } from "@/shared/components/feedback/ListSkeleton";
 import {
   Box,
   Button,
-  CircularProgress,
   Divider,
   List,
   ListItemButton,
@@ -72,8 +72,8 @@ export function NotificationPopover({
       <Divider />
 
       {isLoading && (
-        <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-          <CircularProgress size={22} />
+        <Box sx={{ px: 2 }}>
+          <ListSkeleton count={4} compact />
         </Box>
       )}
 
