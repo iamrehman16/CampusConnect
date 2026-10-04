@@ -53,6 +53,12 @@ export class AuthController {
     return this.authService.login(req.user.id);
   }
 
+  // Public to the global access-token guard: the caller's access token is
+  // expired by definition, and the credential here is the refresh token,
+  // which RefreshAuthGuard validates. Without this the global JwtAuthGuard
+  // rejected every refresh with 401, so sessions ended when the access token
+  // expired.
+  @Public()
   @UseGuards(RefreshAuthGuard)
   @Post('refresh')
   async refreshToken(@Req() req: { user: CurrentUser }) {
