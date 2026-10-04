@@ -95,6 +95,7 @@ blank frames or layout jumps.
 - Route-level code splitting checked; no visible flash on navigation.
 
 ### J2 — Mobile pass (390px)
+**Status: DONE 2026-10-04.** Every route audited at 390px in light and dark: no horizontal overflow anywhere. Fixed: 40px minimum touch targets on touch devices (theme-level), Ask AI header subtitle wrapping. Remaining sub-40px items are text links inside larger tappable cards and 39px text inputs (accepted). Not checked: the on-screen keyboard overlapping composers (needs a real device).
 **Effort:** 5
 **Where:** app shell, every route, `features/chat`, `features/ai-chat`
 **Acceptance criteria:**
@@ -104,6 +105,7 @@ blank frames or layout jumps.
 - Findings fixed or logged.
 
 ### J3 — Read-only offline mode
+**Status: DONE 2026-10-04, verified in a production build with the service worker.** Cached screens (Library, Ask AI, Messages, Community, Home) render offline; composers lock; writes fail fast with one toast; uncached screens show the error state with Retry; routes load from the service worker even on a first visit. **Auth bugs found and fixed on the way (these affected production, not only offline):** (1) `POST /auth/refresh` was not `@Public()`, so the global JWT guard rejected every refresh: sessions ended when the 1 h access token expired; (2) the client refresh used a relative URL, so on Vercel it never reached the API (masked by the Vite dev proxy); (3) any network failure or 5xx on reload cleared the session and sent the user to the landing page. Known limit: two tabs refreshing at once can race on the rotated refresh token.
 **Effort:** 5
 **Where:** `vite.config.ts` (workbox), `shared/lib/queryPersister.ts`, `shared/hooks/useNetworkStatus.ts`
 **Decision:** read-only. No write queue or sync engine.
@@ -228,7 +230,7 @@ easy it is to miss a variable (`FRONTEND_URL`, `GOOGLE_CALLBACK_URL`).
 **Effort:** 5–8 (design pass first)
 **Where:** `ai.controller.ts` / `ai-chat.service.ts` (generation vs. connection), the client
 streaming hooks (`useStreamMessage`, `useDrainQueue`, `useStreamRefs`), `useConversation`
-**Status: code DONE 2026-10-04 (d17259c server, ff2b450 client), live verification pending.**
+**Status: DONE and verified locally 2026-10-04 (d17259c server, ff2b450 client).** Verified on the demo stack: dropping the stream mid-generation leaves a `generating` reply that completes server-side; a thread opened meanwhile shows the question + "Thinking" with the composer locked, then the reply; hard refresh keeps the answer.
 Corrected diagnosis: the server already kept generating after a disconnect, but saved the
 question and reply only at the very end, so nothing was visible meanwhile; and the client
 hook was never aborted on unmount, so an abandoned stream committed a truncated reply to
@@ -259,10 +261,20 @@ and the token budget (B9).
   (the existing refetch-on-mount for history ending in a user message is the starting point).
 - No duplicate messages (`clientId` de-dup still holds).
 
-## Epic H — Demo readiness (H2, H3 open)
+### Findings from the 2026-10-04 verification pass (not yet scheduled)
+- **Latency from this machine to Atlas is 200-700 ms per round trip** (4-8 s per request locally). Check
+  that the Render service and the Atlas cluster are in the same region; otherwise the live demo will feel
+  slow however polished the UI is. Also measure Render cold start and warm it before the demo (I3).
+- Cold page load shows a full-screen "Checking authentication..." spinner until `/users/profile`
+  returns; with slow links that's many seconds. Render the app shell (with skeletons) from the cached
+  profile instead (the cache now exists, `userCache`).
+- `mongoose.set('debug', true)` is on in `main.ts` for every environment; log noise and a small cost in prod.
+- Seeded demo threads have "8 days ago" timestamps; re-seed close to the demo date (also leaderboard).
+
+## Epic H — Demo readiness (H2 done, H3 open)
 
 ### H2 — Empty, loading and error states pass
-**Status: code DONE 2026-10-03, manual verification pending.** New shared
+**Status: DONE 2026-10-03; verified 2026-10-04.** Empty user (desktop + mobile) and stopped-API passes ran against the demo DB: every list shows a designed empty state or an inline error with Retry. Fixed from the pass: Library showed "0 resources" beside a load error; an uncached screen offline showed "No mentors yet" (false); a reload with the API down logged the user out (see J3). New shared
 `InlineError` (message + Retry) and a flat `EmptyState` (title, message, next
 action). Applied to Home widgets, Messages and Ask AI (lists, history, feed),
 Community rail and comments, admin panels, both profile pages and tabs,
