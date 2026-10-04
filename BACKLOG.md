@@ -125,7 +125,7 @@ blank frames or layout jumps.
 - Landing page, mobile: the **"Get started" button looks bloated** (oversized/stretched). Inspect on a real phone width;
   likely the theme's coarse-pointer `minHeight`/padding added in J2 (`82c1fba`) or a full-width/flex rule on the header button.
 - Ask AI header, mobile: the **hamburger (thread list) button is partly cut off on the right.** The J2 touch-target change
-  (`IconButton` min 40px) or the new `noWrap` subtitle (`d7f...`/J2) may have pushed the row wider than the viewport;
+  (`IconButton` min 40px) or the new `noWrap` subtitle may have pushed the row wider than the viewport;
   check the header's flex row (`minWidth: 0`, padding) at 360-390px.
 - **PWA install is not discoverable.** `usePwaInstall` exists and only the mobile top bar uses it. Show an obvious
   "Install CampusConnect" action for users who haven't installed it: landing page, Home or Settings, and the account
