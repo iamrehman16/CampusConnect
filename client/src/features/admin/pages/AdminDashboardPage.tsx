@@ -50,8 +50,11 @@ export default function AdminDashboardPage() {
         <Tabs
           value={tab}
           onChange={(_, v) => setTab(v)}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
           sx={{
-            '& .MuiTab-root': { textTransform: 'none', fontWeight: 500, minHeight: 44 },
+            '& .MuiTab-root': { textTransform: 'none', fontWeight: 500, minHeight: 44, pr: 3 },
           }}
         >
           <Tab
