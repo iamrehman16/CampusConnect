@@ -7,7 +7,8 @@ import { GlobalHttpExceptionFilter } from './common/filters/http-exception.filte
 dotenv.config();
 import mongoose from 'mongoose';
 
-mongoose.set('debug', true);
+// Query logging is noisy and costs time; opt in locally with MONGOOSE_DEBUG=true.
+mongoose.set('debug', process.env.MONGOOSE_DEBUG === 'true');
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
