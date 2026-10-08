@@ -217,7 +217,12 @@ an error event or an end of stream and waits indefinitely.
 - The client also times out a stream that sends nothing for a set period (for example 45 s) with
   a retry option, as a second line of defense.
 
-### I5 — Drop Redis: in-process ingestion queue (proposed 2026-10-08)
+### I5 — Drop Redis: in-process ingestion queue
+**Status: code DONE 2026-10-08; not yet verified end to end** (475 server tests pass, incl. queue retry/backoff,
+recovery, concurrency; no live approve → Qdrant → citation run, no kill-and-restart run). **Manual on Render:**
+delete `REDIS_UPSTASH_URL` (now ignored). **Not done:** a retry button in the admin UI (the endpoint is
+`PATCH /admin/resources/:id/retry-ingestion`). Resources approved before this change have no `ingestionStatus`
+and aren't recovered. Delete this PBI's detail once verified.
 **Effort:** 5
 **Where:** `server/src/modules/queues/*`, `resource.service.ts`, `health.service.ts`, `app.module.ts`,
 `env.validation.ts`, `render.yaml`, `.env.example`, `docs/deploy-smoke-test.md`
