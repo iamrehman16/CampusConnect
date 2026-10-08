@@ -311,15 +311,13 @@ export class UserService {
     return user.toObject();
   }
 
+  /** Null when no such user: the login path must answer 401, not 404. */
   async findByEmail(email: string) {
     const user = await this.userModel
       .findOne({ email })
       .select('+password')
       .exec();
-    if (!user) {
-      throw new NotFoundException(`User with id ${email} not found`);
-    }
-    return user.toObject();
+    return user ? user.toObject() : null;
   }
 
   async updateUserByAdmin(id: string, dto: AdminUpdateUserDto) {

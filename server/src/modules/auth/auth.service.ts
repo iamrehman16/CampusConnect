@@ -61,7 +61,9 @@ export class AuthService {
 
   async validateUser(email: string, password: string) {
     const user = await this.userService.findByEmail(email);
-    if (!user) throw new UnauthorizedException('User not found!');
+    // Same message as a wrong password, so login can't be used to probe
+    // which emails have accounts.
+    if (!user) throw new UnauthorizedException('Invalid Credentials');
     // Google-created accounts have no password (BACKLOG.md F1).
     if (!user.password)
       throw new UnauthorizedException(

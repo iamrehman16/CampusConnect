@@ -41,6 +41,21 @@ describe('AuthService', () => {
     expect(build({})).toBeDefined();
   });
 
+  describe('unknown email', () => {
+    it('answers 401 with the same message as a wrong password', async () => {
+      const service = build({ findByEmail: jest.fn().mockResolvedValue(null) });
+
+      const err: unknown = await service
+        .validateUser('nobody@b.c', 'pw')
+        .catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(UnauthorizedException);
+      expect((err as UnauthorizedException).message).toBe(
+        'Invalid Credentials',
+      );
+    });
+  });
+
   describe('account suspension', () => {
     beforeEach(() => {
       (compare as jest.Mock).mockResolvedValue(true);
