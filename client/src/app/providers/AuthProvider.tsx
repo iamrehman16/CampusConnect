@@ -12,12 +12,19 @@ interface AuthProviderProps {
 }
 
 export default function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<User | null>(null);
-  // Whether we're loading is knowable synchronously at first render: if
-  // there's no stored token there's nothing to fetch, so start non-loading
-  // instead of flashing true->false once the effect below fires.
+  // With a stored token and a cached profile, start authenticated on the
+  // cached profile and revalidate in the background, so a cold load renders
+  // the app shell instead of a full-screen spinner while /users/profile is
+  // in flight. The cache is cleared with the tokens;
+  // the server still decides authorisation, and a 401/403 on revalidation
+  // clears the session below.
+  const [user, setUser] = useState<User | null>(() =>
+    tokenStorage.getAccessToken() ? userCache.get<User>() : null,
+  );
+  // Whether we're loading is knowable synchronously at first render: with no
+  // stored token, or a cached profile to show, there's nothing to wait for.
   const [isLoading, setIsLoading] = useState(
-    () => !!tokenStorage.getAccessToken(),
+    () => !!tokenStorage.getAccessToken() && !userCache.get<User>(),
   );
   const queryClient = useQueryClient();
 
