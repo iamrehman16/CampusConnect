@@ -535,9 +535,26 @@ describe('ConversationService#appendMessages', () => {
     );
 
     expect(messageModel.insertMany).toHaveBeenCalledWith([
-      { conversationId, role: 'user', content: 'user question' },
-      { conversationId, role: 'assistant', content: 'assistant answer' },
+      {
+        conversationId,
+        role: 'user',
+        content: 'user question',
+        createdAt: expect.any(Date) as Date,
+      },
+      {
+        conversationId,
+        role: 'assistant',
+        content: 'assistant answer',
+        createdAt: expect.any(Date) as Date,
+      },
     ]);
+    const [[docs]] = (messageModel.insertMany as jest.Mock).mock.calls as [
+      [{ createdAt: Date }[]],
+    ];
+    // The question must sort strictly before its answer.
+    expect(docs[1].createdAt.getTime()).toBeGreaterThan(
+      docs[0].createdAt.getTime(),
+    );
   });
 
   it('persists citations and retrieval status on the assistant message', async () => {
@@ -573,11 +590,17 @@ describe('ConversationService#appendMessages', () => {
     });
 
     expect(messageModel.insertMany).toHaveBeenCalledWith([
-      { conversationId, role: 'user', content: 'q' },
+      {
+        conversationId,
+        role: 'user',
+        content: 'q',
+        createdAt: expect.any(Date) as Date,
+      },
       {
         conversationId,
         role: 'assistant',
         content: 'a',
+        createdAt: expect.any(Date) as Date,
         citations,
         retrievalStatus: 'ok',
       },

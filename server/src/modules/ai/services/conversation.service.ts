@@ -158,12 +158,22 @@ export class ConversationService implements OnModuleInit {
     // spliced out of recentMessages into summaryBuffer — that splice
     // bounds Groq's context window (CLAUDE.md §4), it doesn't govern what's
     // retrievable for scroll-back (BACKLOG.md B3).
+    // Explicit, ordered timestamps: both docs are inserted in one call and
+    // would otherwise share a millisecond, making the history sort a tie
+    // that can render the question below its answer.
+    const now = Date.now();
     const [userDoc, assistantDoc] = await this.messageModel.insertMany([
-      { conversationId: conversation._id, role: 'user', content: userMessage },
+      {
+        conversationId: conversation._id,
+        role: 'user',
+        content: userMessage,
+        createdAt: new Date(now),
+      },
       {
         conversationId: conversation._id,
         role: 'assistant',
         content: assistantMessage,
+        createdAt: new Date(now + 1),
         ...(assistantMeta && {
           citations: assistantMeta.citations,
           retrievalStatus: assistantMeta.retrievalStatus,
