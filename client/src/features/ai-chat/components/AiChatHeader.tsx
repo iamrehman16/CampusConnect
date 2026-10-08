@@ -44,7 +44,7 @@ export function AiChatHeader({
         </IconButton>
       )}
 
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, flexGrow: 1 }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, flexGrow: 1, minWidth: 0 }}>
         <Box
           sx={{
             width: 32,
