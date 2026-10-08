@@ -217,6 +217,32 @@ an error event or an end of stream and waits indefinitely.
 - The client also times out a stream that sends nothing for a set period (for example 45 s) with
   a retry option, as a second line of defense.
 
+### I5 — Drop Redis: in-process ingestion queue (proposed 2026-10-08)
+**Effort:** 5
+**Where:** `server/src/modules/queues/*`, `resource.service.ts`, `health.service.ts`, `app.module.ts`,
+`env.validation.ts`, `render.yaml`, `.env.example`, `docs/deploy-smoke-test.md`
+**Why:** Redis is used for exactly one thing: the BullMQ `RAG_INGESTION` queue (one job type, enqueued on
+resource approval, 3 attempts with exponential backoff from 5 s). Presence and the Google exchange codes are
+already in-memory. A managed Redis (Upstash) is an extra account, secret, health check and failure mode for
+a single low-volume job, on a single-instance deploy.
+**Trade-off to accept:** an in-memory queue loses pending/in-flight jobs on restart or a free-tier sleep, and
+doesn't scale past one instance. Compensate by making ingestion state durable in Mongo instead of Redis.
+**Approach:**
+- Add `ingestionStatus` (`pending | processing | done | failed`, `ingestionAttempts`, `ingestionError`) to
+  `Resource`; approval sets `pending`.
+- Replace BullMQ with a small `IngestionQueueService` (typed, concurrency 1-2, 3 attempts, exponential
+  backoff 5 s, explicit error logging, graceful drain on shutdown), behind an interface so BullMQ/Redis can
+  return if the project goes multi-instance (B2B SaaS ambition).
+- On boot, re-enqueue resources left `pending` or `processing` (recovery replaces Redis persistence).
+- Admin retry for `failed` resources; health report drops Redis; remove `bullmq`, `@nestjs/bullmq`,
+  `REDIS_*`, `BULL_PREFIX`, the `render.yaml` entry and doc references.
+**Acceptance criteria:**
+- Approving a resource still ingests it (Qdrant points exist, citation works), with Redis absent.
+- Killing the server mid-ingestion and restarting completes the ingestion.
+- A failing job retries 3 times, then shows `failed` with the error and can be retried by an admin.
+- No Redis env var is required or checked; tests cover the queue (retry, recovery, concurrency).
+- Re-check `CLAUDE.md` §2 stack list and update it (decision change).
+
 ### I2 — Environment contract and `render.yaml`
 **Effort:** 3
 **Where:** `render.yaml` (repo root), `server/.env.example`, `client/.env.example`, docs
