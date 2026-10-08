@@ -35,7 +35,7 @@ export function LandingNav() {
           <Button component={RouterLink} to={ROUTES.LOGIN} variant="text" sx={{ display: { xs: "none", sm: "inline-flex" } }}>
             Sign in
           </Button>
-          <Button component={RouterLink} to={ROUTES.SIGNUP} variant="contained">
+          <Button component={RouterLink} to={ROUTES.SIGNUP} variant="contained" size="small" sx={{ flexShrink: 0, whiteSpace: "nowrap" }}>
             Get started
           </Button>
         </Stack>

@@ -63,7 +63,7 @@ export default function LandingPage() {
               Seniors share notes, slides and past papers. You ask questions and get answers from them — with the
               source attached. And when you're stuck, a mentor who has taken the course.
             </Typography>
-            <Stack direction={{ xs: "column", sm: "row" }} gap={1.5} justifyContent="center" sx={{ mt: 4 }}>
+            <Stack direction={{ xs: "column", sm: "row" }} gap={1.5} alignItems="center" justifyContent="center" sx={{ mt: 4 }}>
               <Button component={RouterLink} to={ROUTES.SIGNUP} variant="contained" size="large">
                 Create a free account
               </Button>
