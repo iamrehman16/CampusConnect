@@ -124,6 +124,10 @@ code cold might flag them as anti-patterns — they are not.
   directly on the `participants` array would be a MongoDB multikey index,
   enforcing uniqueness per array *element* across the whole collection,
   not per pair — see §8's A9 note for how this was found and fixed.)
+- **No Redis; ingestion runs in an in-process queue** (`IngestionQueueService`) with job state in
+  `Resource.ingestionStatus` in Mongo and re-queue on boot. Single-instance by design. Don't reintroduce
+  BullMQ/Redis without hitting one of the triggers in `docs/decisions/0001-no-redis.md` (multi-instance,
+  heavy/scheduled jobs, several job types).
 - **`DocumentParserService` polls LlamaParse with retry logic and streams
   `FormData` directly**, deliberately avoiding temp file storage during
   ingestion. Don't "simplify" this into a synchronous single-call pattern —
