@@ -9,9 +9,10 @@
  */
 import 'reflect-metadata';
 import mongoose from 'mongoose';
+import type { Connection } from 'mongoose';
+import { IngestionStatus } from '../../src/modules/resource/enums/ingestion-status.enum';
 import { QdrantClient } from '@qdrant/js-client-rest';
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
-import { Queue } from 'bullmq';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
@@ -50,7 +51,6 @@ function configureEnvironment(): string {
   process.env.MONGO_URI = uri;
   process.env.MONGO_URI_Local = uri;
   process.env.QDRANT_COLLECTION_SUFFIX ||= '_demo';
-  process.env.BULL_PREFIX ||= 'bull_demo';
   return dbName;
 }
 
@@ -87,14 +87,6 @@ async function resetExternalState(uri: string): Promise<void> {
     });
   }
   log('deleted previous demo files from Cloudinary');
-
-  const queue = new Queue('rag-ingestion', {
-    connection: { url: process.env.REDIS_LOCAL_URL },
-    prefix: process.env.BULL_PREFIX,
-  });
-  await queue.obliterate({ force: true });
-  await queue.close();
-  log('cleared demo ingestion queue');
 }
 
 function uploadPdf(
@@ -135,7 +127,8 @@ async function main(): Promise<void> {
   // Imported only after the environment is pinned above.
   const { NestFactory } = await import('@nestjs/core');
   const { getConnectionToken } = await import('@nestjs/mongoose');
-  const { getQueueToken } = await import('@nestjs/bullmq');
+  const { IngestionQueueService } =
+    await import('../../src/modules/queues/ingestion-queue.service');
   const { AppModule } = await import('../../src/app.module');
   const { UserService } = await import('../../src/modules/user/user.service');
   const { ResourceService } =
@@ -369,11 +362,14 @@ async function main(): Promise<void> {
     log('backdated timestamps, reputation and notifications');
 
     if (wait) {
-      const queue = app.get<Queue>(getQueueToken('rag-ingestion'));
-      await waitForIngestion(queue, approvedIds.length);
+      await waitForIngestion(
+        app.get(IngestionQueueService),
+        app.get<Connection>(getConnectionToken()),
+        approvedIds,
+      );
     } else {
       log(
-        'skipping ingestion wait (--no-wait): jobs stay queued under BULL_PREFIX until a server with the same prefix runs',
+        'skipping ingestion wait (--no-wait): unfinished resources stay pending in the database and are re-queued by the next server that boots against it',
       );
     }
 
@@ -414,42 +410,51 @@ async function main(): Promise<void> {
 }
 
 /**
- * Polls the demo ingestion queue until it drains. Jobs that exhaust their
- * own BullMQ attempts (3, exponential backoff — ResourceService.approve)
- * are retried for up to MAX_RETRY_ROUNDS extra rounds: on a flaky network
- * a single CDN/Gemini timeout would otherwise leave that resource out of
- * the RAG index for the whole demo.
+ * Polls the resources' ingestion status until none is pending/processing.
+ * Resources that exhaust the queue's own attempts (3, exponential backoff)
+ * are retried for up to MAX_RETRY_ROUNDS extra rounds: on a flaky network a
+ * single CDN/Gemini timeout would otherwise leave that resource out of the
+ * RAG index for the whole demo.
  */
-async function waitForIngestion(queue: Queue, expected: number): Promise<void> {
+async function waitForIngestion(
+  queue: { retryFailed(resourceId: string): Promise<boolean> },
+  connection: Connection,
+  resourceIds: string[],
+): Promise<void> {
   const MAX_RETRY_ROUNDS = 3;
-  log(`waiting for RAG ingestion of ${expected} resources…`);
+  const resources = connection.collection('resources');
+  const _ids = resourceIds.map((rid) => new mongoose.Types.ObjectId(rid));
+  const countBy = (statuses: string[]) =>
+    resources.countDocuments({
+      _id: { $in: _ids },
+      ingestionStatus: { $in: statuses },
+    });
+  log(`waiting for RAG ingestion of ${resourceIds.length} resources…`);
   const started = Date.now();
   let retryRounds = 0;
   for (;;) {
-    const c = await queue.getJobCounts(
-      'waiting',
-      'active',
-      'delayed',
-      'completed',
-      'failed',
-    );
-    const pending = (c.waiting ?? 0) + (c.active ?? 0) + (c.delayed ?? 0);
-    const failed = c.failed ?? 0;
-    log(
-      `ingestion: ${c.completed ?? 0} done, ${pending} pending, ${failed} failed`,
-    );
+    const [done, pending, failed] = await Promise.all([
+      countBy([IngestionStatus.DONE]),
+      countBy([IngestionStatus.PENDING, IngestionStatus.PROCESSING]),
+      countBy([IngestionStatus.FAILED]),
+    ]);
+    log(`ingestion: ${done} done, ${pending} pending, ${failed} failed`);
     if (pending === 0) {
       if (failed === 0) return;
       if (retryRounds >= MAX_RETRY_ROUNDS) {
         throw new Error(
-          `${failed} ingestion job(s) still failing after ${MAX_RETRY_ROUNDS} retry rounds — check the logs above`,
+          `${failed} ingestion(s) still failing after ${MAX_RETRY_ROUNDS} retry rounds — check the logs above`,
         );
       }
       retryRounds++;
       log(
-        `retrying ${failed} failed job(s) (round ${retryRounds}/${MAX_RETRY_ROUNDS})`,
+        `retrying ${failed} failed ingestion(s) (round ${retryRounds}/${MAX_RETRY_ROUNDS})`,
       );
-      for (const job of await queue.getFailed()) await job.retry();
+      const failedDocs = await resources
+        .find({ _id: { $in: _ids }, ingestionStatus: IngestionStatus.FAILED })
+        .project({ _id: 1 })
+        .toArray();
+      for (const d of failedDocs) await queue.retryFailed(String(d._id));
     }
     if (Date.now() - started > INGESTION_TIMEOUT_MS) {
       throw new Error('Timed out waiting for ingestion');

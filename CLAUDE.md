@@ -31,7 +31,7 @@ GitHub, untouched, as read-only archives.
 
 ## 2. Stack
 
-**Backend:** NestJS, TypeScript, MongoDB (Mongoose), BullMQ + Redis (async jobs),
+**Backend:** NestJS, TypeScript, MongoDB (Mongoose), in-process ingestion queue backed by Mongo status (async jobs),
 Socket.IO (real-time), Groq (LLM inference), Qdrant Cloud (vector store),
 Gemini `gemini-embedding-001` (embeddings, 3072 dim), LlamaParse (document parsing),
 Cloudinary (file storage, signed upload flow).

@@ -15,7 +15,6 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { CommonModule } from './common/common.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { ModerationModule } from './modules/moderation/moderation.module';
-import { BullModule } from '@nestjs/bullmq';
 import { NotificationModule } from './modules/notification/notification.module';
 import { ReputationModule } from './modules/reputation/reputation.module';
 import { ContributorApplicationModule } from './modules/contributor-application/contributor-application.module';
@@ -25,26 +24,6 @@ import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
-    BullModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
-        const isProduction =
-          configService.get<string>('NODE_ENV') === 'production';
-
-        return {
-          connection: {
-            url: isProduction
-              ? configService.get<string>('REDIS_UPSTASH_URL')
-              : configService.get<string>('REDIS_LOCAL_URL'),
-          },
-          // Namespaces queue keys so two environments on one Redis (local
-          // dev and the H1 demo seed) don't consume each other's jobs — a
-          // dev worker ingesting a demo resource would write it into the
-          // dev Qdrant collection. Default matches BullMQ's own ('bull').
-          prefix: configService.get<string>('BULL_PREFIX') || 'bull',
-        };
-      },
-    }),
     ConfigModule.forRoot({
       isGlobal: true,
       validate: validateEnv,

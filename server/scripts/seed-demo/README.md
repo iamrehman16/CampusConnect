@@ -8,7 +8,7 @@ reputation and notifications those actions produce.
 
 Everything goes through the real services, so scores, tiers and
 notifications come from the same code as the app. Approved resources are
-ingested through the normal BullMQ → LlamaParse → Gemini → Qdrant pipeline,
+ingested through the normal in-process queue → LlamaParse → Gemini → Qdrant pipeline,
 so the AI assistant can answer from them.
 
 ## Run
@@ -21,15 +21,15 @@ DEMO_MONGO_URI="mongodb+srv://<user>:<pass>@<cluster>/campusconnect_demo?appName
 
 - **The database name must end in `_demo`.** The script drops that whole
   database and refuses to run against anything else.
-- Uses the local Redis (`REDIS_LOCAL_URL`) and the Qdrant, Cloudinary,
+- Uses the Qdrant, Cloudinary,
   LlamaParse, Gemini and Groq credentials from `server/.env`.
 - It is idempotent. Every run drops the demo DB, deletes the demo Qdrant
   collections (`*_demo`), deletes Cloudinary files tagged
-  `campusconnect_demo`, clears the demo queue, and seeds from scratch.
+  `campusconnect_demo`, and seeds from scratch.
 - By default it waits until every approved resource is ingested (about
-  5–15 minutes, depending on LlamaParse). It retries failed jobs up to 3
-  rounds. `--no-wait` skips the wait, and the jobs are then processed by
-  any server started with the same `BULL_PREFIX`.
+  5–15 minutes, depending on LlamaParse). It retries failed ingestions up to 3
+  rounds. `--no-wait` skips the wait; resources left pending in the database
+  are ingested by the next server that boots against it.
 - Use a replica-set MongoDB such as Atlas. Commenting uses a transaction,
   which a standalone `mongod` rejects.
 - If Node's network calls time out intermittently on your machine while
@@ -41,12 +41,12 @@ DEMO_MONGO_URI="mongodb+srv://<user>:<pass>@<cluster>/campusconnect_demo?appName
 
 ## Run the app against the demo DB
 
-The demo uses its own Qdrant collections and BullMQ prefix, so it never
-reads or writes dev data:
+The demo uses its own Qdrant collections, so it never reads or writes dev
+data:
 
 ```bash
 cd server
-MONGO_URI_Local="$DEMO_MONGO_URI" QDRANT_COLLECTION_SUFFIX=_demo BULL_PREFIX=bull_demo \
+MONGO_URI_Local="$DEMO_MONGO_URI" QDRANT_COLLECTION_SUFFIX=_demo \
   npm run start:dev
 ```
 

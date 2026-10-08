@@ -27,4 +27,4 @@ cat /tmp/health.json; echo
 
 grep -q '"status":"ok"' /tmp/health.json \
   && echo "All dependencies up." \
-  || echo "WARNING: degraded. Redis (uploads/ingestion) or Qdrant (AI answers) is down; fix before demoing."
+  || echo "WARNING: degraded. Qdrant or Groq (AI answers) is down; fix before demoing."

@@ -5,7 +5,6 @@ const productionEnv = {
   JWT_SECRET: 's',
   REFRESH_JWT_SECRET: 's',
   MONGO_URI: 'mongodb://x',
-  REDIS_UPSTASH_URL: 'rediss://x',
   FRONTEND_URL: 'https://app.example.com',
   GROQ_API_KEY: 'k',
   GEMINI_API_KEY: 'k',
@@ -31,7 +30,6 @@ describe('checkEnv', () => {
     expect(errors).toEqual(
       expect.arrayContaining([
         'MONGO_URI is required',
-        'REDIS_UPSTASH_URL is required',
         'FRONTEND_URL is required',
         'QDRANT_URL is required',
         'JWT_SECRET is required',

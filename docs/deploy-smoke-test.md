@@ -9,7 +9,7 @@ scripts/warm-demo.sh https://<render-service>.onrender.com
 ```
 Render's free tier sleeps after ~15 minutes idle (30-60 s cold start); the script
 also wakes Qdrant and the database pool, and prints the dependency report.
-`GET /api/health` returns `ok`, `degraded` (Redis or Qdrant down: uploads or AI
+`GET /api/health` returns `ok`, `degraded` (Qdrant or Groq down: AI
 broken, API still up) or `down` (MongoDB unreachable, HTTP 503).
 `GET /api/health/live` is the cheap liveness probe Render uses.
 
@@ -35,5 +35,5 @@ broken, API still up) or `down` (MongoDB unreachable, HTTP 503).
 - **AI errors immediately:** read `GET /api/health`.
   - `qdrant: down`: `QDRANT_URL` must be `https://<cluster>.cloud.qdrant.io` (plain `http://` is reset, shows as ECONNRESET) with that cluster's `QDRANT_API_KEY`; also check the cluster isn't dormant.
   - `groq: down`: the API key is wrong or a configured model was retired (the Render log says `model_not_found`). A dashboard value overrides the code default, so set `GROQ_REASONING_MODEL=openai/gpt-oss-120b` and `GROQ_FAST_MODEL=qwen/qwen3.8-27b`, or delete the variables to use the defaults. Current ids: `GET https://api.groq.com/openai/v1/models`.
-  - `redis: down`: uploads won't ingest.
+- **A resource stays un-citable after approval:** its `ingestionStatus` in Mongo is `failed` (see `ingestionError`) or still `pending`. Unfinished ingestions are re-queued when the server boots; a failed one needs an admin retry.
 - **First request very slow:** cold start; run the warm script earlier.

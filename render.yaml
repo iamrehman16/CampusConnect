@@ -10,7 +10,7 @@ services:
     # which makes a plain `npm ci` skip @types/* and breaks the compiled output.
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run start:prod
-    # Liveness only: touches no dependency, so an Atlas/Redis/Qdrant blip can't
+    # Liveness only: touches no dependency, so an Atlas/Qdrant blip can't
     # make Render restart a healthy process. /api/health is the deep report.
     healthCheckPath: /api/health/live
     # Deploy only after the GitHub checks (typecheck+build, lint, tests) pass.
@@ -21,8 +21,6 @@ services:
       - key: FRONTEND_URL # bare origin, e.g. https://campus-connect-client-two.vercel.app
         sync: false
       - key: MONGO_URI
-        sync: false
-      - key: REDIS_UPSTASH_URL
         sync: false
       - key: JWT_SECRET
         sync: false
