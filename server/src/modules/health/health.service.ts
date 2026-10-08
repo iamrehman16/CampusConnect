@@ -1,9 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
-import { InjectQueue } from '@nestjs/bullmq';
-import type { Queue } from 'bullmq';
 import type { Connection } from 'mongoose';
-import { QUEUES } from '../queues/queue.constants';
 import { VectorStoreService } from '../ai/services/vector-store.service';
 import { GroqService } from '../ai/services/groq.service';
 
@@ -16,8 +13,7 @@ export interface DependencyCheck {
 
 export interface HealthReport {
   /**
-   * ok: everything reachable. degraded: the API works but Redis (ingestion
-   * queue), Qdrant or Groq (AI) is down or misconfigured. down: MongoDB is unreachable, so nothing
+   * ok: everything reachable. degraded: the API works but Qdrant or Groq (AI) is down or misconfigured. down: MongoDB is unreachable, so nothing
    * useful works.
    */
   status: 'ok' | 'degraded' | 'down';
@@ -25,14 +21,13 @@ export interface HealthReport {
   timestamp: string;
   checks: {
     mongo: DependencyCheck;
-    redis: DependencyCheck;
     qdrant: DependencyCheck;
     groq: DependencyCheck;
   };
 }
 
 const CHECK_TIMEOUT_MS = 3000;
-// Render polls health often and Qdrant/Redis calls cost quota: reuse a recent result.
+// Render polls health often and Qdrant/Groq calls cost quota: reuse a recent result.
 const CACHE_TTL_MS = 10_000;
 
 @Injectable()
@@ -42,7 +37,6 @@ export class HealthService {
 
   constructor(
     @InjectConnection() private readonly mongo: Connection,
-    @InjectQueue(QUEUES.RAG_INGESTION) private readonly ingestionQueue: Queue,
     private readonly vectorStore: VectorStoreService,
     private readonly groq: GroqService,
   ) {}
@@ -56,21 +50,17 @@ export class HealthService {
     };
   }
 
-  /** Readiness: probes each dependency (Mongo, Redis, Qdrant) in parallel. */
+  /** Readiness: probes each dependency (Mongo, Qdrant, Groq) in parallel. */
   async check(): Promise<HealthReport> {
     const now = Date.now();
     if (this.cached && now - this.cached.at < CACHE_TTL_MS) {
       return this.cached.report;
     }
 
-    const [mongo, redis, qdrant, groq] = await Promise.all([
+    const [mongo, qdrant, groq] = await Promise.all([
       this.probe('mongo', async () => {
         if (!this.mongo.db) throw new Error('MongoDB is not connected');
         await this.mongo.db.admin().ping();
-      }),
-      this.probe('redis', async () => {
-        const client = await this.ingestionQueue.client;
-        await client.ping();
       }),
       this.probe('qdrant', () => this.vectorStore.ping()),
       this.probe('groq', () => this.groq.ping()),
@@ -79,9 +69,7 @@ export class HealthService {
     const status =
       mongo.status === 'down'
         ? 'down'
-        : redis.status === 'down' ||
-            qdrant.status === 'down' ||
-            groq.status === 'down'
+        : qdrant.status === 'down' || groq.status === 'down'
           ? 'degraded'
           : 'ok';
 
@@ -89,7 +77,7 @@ export class HealthService {
       status,
       uptimeSeconds: Math.round(process.uptime()),
       timestamp: new Date(now).toISOString(),
-      checks: { mongo, redis, qdrant, groq },
+      checks: { mongo, qdrant, groq },
     };
     this.cached = { at: now, report };
     return report;

@@ -29,9 +29,9 @@ import { UploadSignatureResponseDto } from './dto/upload-signature-response.dto'
 import { AllowedMimetype } from './dto/request-upload-signature.dto';
 import resourceConfig from '../storage/config/cloudinary.config';
 import { ConfigType } from '@nestjs/config';
-import { InjectQueue } from '@nestjs/bullmq';
-import { JOBS, QUEUES } from '../queues/queue.constants';
-import { Queue } from 'bullmq';
+import { IngestionQueueService } from '../queues/ingestion-queue.service';
+import { toIngestionPayload } from '../queues/utils/to-ingestion-payload';
+import { IngestionStatus } from './enums/ingestion-status.enum';
 import { populatedId } from '../../common/utils/populated-id';
 import {
   DomainEvents,
@@ -39,7 +39,6 @@ import {
   ResourceRejectedEvent,
   ResourceRemovedEvent,
 } from '../../common/events/domain-events';
-import { IngestResourceJobPayload } from '../queues/interfaces/ingest-resource-job.interface';
 import {
   ApprovalFunnelDto,
   DailyCountDto,
@@ -94,7 +93,7 @@ export class ResourceService implements OnModuleInit {
     @InjectModel(Resource.name) private resourceModel: Model<ResourceDocument>,
     @Inject(resourceConfig.KEY)
     private resourceCfg: ConfigType<typeof resourceConfig>,
-    @InjectQueue(QUEUES.RAG_INGESTION) private readonly ingestionQueue: Queue,
+    private readonly ingestionQueue: IngestionQueueService,
   ) {}
 
   /**
@@ -325,7 +324,10 @@ export class ResourceService implements OnModuleInit {
     const resource = await this.resourceModel
       .findOneAndUpdate(
         { _id: id, isDeleted: false, approvalStatus: ApprovalStatus.PENDING },
-        { approvalStatus: ApprovalStatus.APPROVED },
+        {
+          approvalStatus: ApprovalStatus.APPROVED,
+          ingestionStatus: IngestionStatus.PENDING,
+        },
         { new: true },
       )
       .populate(UPLOADED_BY_POPULATE)
@@ -335,27 +337,7 @@ export class ResourceService implements OnModuleInit {
     if (!resource)
       throw new NotFoundException('Resource not found or not pending');
 
-    const payload: IngestResourceJobPayload = {
-      resourceId: resource._id.toString(),
-      fileUrl: resource.fileUrl,
-      fileType: resource.fileType,
-      cloudinaryResourceType: resource.cloudinaryResourceType,
-      title: resource.title,
-      resourceType: resource.resourceType,
-      semester: resource.semester,
-      course: resource.course,
-      subject: resource.subject,
-    };
-
-    await this.ingestionQueue.add(JOBS.INGEST_RESOURCE, payload, {
-      attempts: 3,
-      backoff: {
-        type: 'exponential',
-        delay: 5000,
-      },
-      removeOnComplete: 100,
-      removeOnFail: 200,
-    });
+    this.ingestionQueue.enqueue(toIngestionPayload(resource));
 
     this.eventEmitter.emit(DomainEvents.RESOURCE_APPROVED, {
       resourceId: resource._id.toString(),

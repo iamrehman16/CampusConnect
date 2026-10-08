@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
 import { ResourceType } from '../enums/resource-types.enum';
 import { ApprovalStatus } from '../enums/approval-status.enum';
+import { IngestionStatus } from '../enums/ingestion-status.enum';
 import { FileType } from '../enums/file-type.enum';
 
 @Schema({ timestamps: true })
@@ -51,6 +52,18 @@ export class Resource {
 
   @Prop()
   rejectionReason?: string;
+
+  // RAG ingestion state (BACKLOG.md I5). Durable here, not in a queue store,
+  // so unfinished work is re-queued after a restart. Unset on resources
+  // approved before this field existed.
+  @Prop({ enum: IngestionStatus })
+  ingestionStatus?: IngestionStatus;
+
+  @Prop({ default: 0 })
+  ingestionAttempts: number;
+
+  @Prop()
+  ingestionError?: string;
 
   @Prop({ default: 0 })
   downloads: number;

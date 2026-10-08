@@ -15,8 +15,8 @@ export class HealthController {
   }
 
   /**
-   * Dependency report. 200 unless MongoDB is unreachable (503): a down Redis
-   * or Qdrant degrades features (ingestion, AI) but doesn't take the API down.
+   * Dependency report. 200 unless MongoDB is unreachable (503): a down Qdrant
+   * or Groq degrades the AI but doesn't take the API down.
    */
   @Get()
   async check(@Res({ passthrough: true }) res: Response) {

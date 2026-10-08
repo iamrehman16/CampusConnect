@@ -1,4 +1,3 @@
-import type { Queue } from 'bullmq';
 import type { Connection } from 'mongoose';
 import type { VectorStoreService } from '../ai/services/vector-store.service';
 import type { GroqService } from '../ai/services/groq.service';
@@ -6,26 +5,20 @@ import { HealthService } from './health.service';
 
 function build(overrides: {
   mongo?: () => Promise<unknown>;
-  redis?: () => Promise<unknown>;
   qdrant?: () => Promise<void>;
   groq?: () => Promise<void>;
 }) {
   const ping = jest.fn(overrides.mongo ?? (() => Promise.resolve({ ok: 1 })));
-  const redisPing = jest.fn(overrides.redis ?? (() => Promise.resolve('PONG')));
   const qdrantPing = jest.fn(overrides.qdrant ?? (() => Promise.resolve()));
   const groqPing = jest.fn(overrides.groq ?? (() => Promise.resolve()));
 
   const mongo = { db: { admin: () => ({ ping }) } } as unknown as Connection;
-  const queue = {
-    client: Promise.resolve({ ping: redisPing }),
-  } as unknown as Queue;
   const vectorStore = { ping: qdrantPing } as unknown as VectorStoreService;
   const groq = { ping: groqPing } as unknown as GroqService;
 
   return {
-    service: new HealthService(mongo, queue, vectorStore, groq),
+    service: new HealthService(mongo, vectorStore, groq),
     ping,
-    redisPing,
     qdrantPing,
   };
 }
@@ -40,7 +33,6 @@ describe('HealthService', () => {
 
     expect(report.status).toBe('ok');
     expect(report.checks.mongo.status).toBe('up');
-    expect(report.checks.redis.status).toBe('up');
     expect(report.checks.qdrant.status).toBe('up');
   });
 
@@ -67,14 +59,6 @@ describe('HealthService', () => {
     expect(report.status).toBe('degraded');
     expect(report.checks.groq.status).toBe('down');
     expect(JSON.stringify(report)).not.toContain('llama-3.3-70b');
-  });
-
-  it('degrades when Redis is down', async () => {
-    const { service } = build({
-      redis: () => Promise.reject(new Error('ENOTFOUND')),
-    });
-
-    expect((await service.check()).status).toBe('degraded');
   });
 
   it('is down when MongoDB is unreachable', async () => {
@@ -119,11 +103,10 @@ describe('HealthService', () => {
   });
 
   it('live() touches no dependency', () => {
-    const { service, ping, redisPing, qdrantPing } = build({});
+    const { service, ping, qdrantPing } = build({});
 
     expect(service.live().status).toBe('ok');
     expect(ping).not.toHaveBeenCalled();
-    expect(redisPing).not.toHaveBeenCalled();
     expect(qdrantPing).not.toHaveBeenCalled();
   });
 });

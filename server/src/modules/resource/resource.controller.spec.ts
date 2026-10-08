@@ -1,3 +1,8 @@
+// ESM-only node-fetch (via DocumentParserService) can't load under Jest.
+jest.mock('../ai/services/ingestion.service', () => ({
+  IngestionService: class {},
+}));
+
 import { ResourceController } from './resource.controller';
 import { ResourceService } from './resource.service';
 import { ResourceQueryDto } from './dto/resource-query.dto';

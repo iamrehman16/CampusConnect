@@ -1,18 +1,17 @@
-import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
-import { QUEUES } from './queue.constants';
+import { MongooseModule } from '@nestjs/mongoose';
 import { AiModule } from '../ai/ai.module';
-import { RagIngestionProcessor } from './processors/rag-ingestion.processor';
+import { Resource, ResourceSchema } from '../resource/schemas/resource.schema';
+import { IngestionQueueService } from './ingestion-queue.service';
 
 @Module({
   imports: [
-    BullModule.registerQueue({
-      name: QUEUES.RAG_INGESTION,
-    }),
+    MongooseModule.forFeature([
+      { name: Resource.name, schema: ResourceSchema },
+    ]),
     AiModule,
   ],
-
-  providers: [RagIngestionProcessor],
-  exports: [BullModule],
+  providers: [IngestionQueueService],
+  exports: [IngestionQueueService],
 })
 export class QueuesModule {}
