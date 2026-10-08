@@ -218,11 +218,13 @@ an error event or an end of stream and waits indefinitely.
   a retry option, as a second line of defense.
 
 ### I5 — Drop Redis: in-process ingestion queue
-**Status: code DONE 2026-10-08; not yet verified end to end** (475 server tests pass, incl. queue retry/backoff,
-recovery, concurrency; no live approve → Qdrant → citation run, no kill-and-restart run). **Manual on Render:**
-delete `REDIS_UPSTASH_URL` (now ignored). **Not done:** a retry button in the admin UI (the endpoint is
-`PATCH /admin/resources/:id/retry-ingestion`). Resources approved before this change have no `ingestionStatus`
-and aren't recovered. Delete this PBI's detail once verified.
+**Status: DONE 2026-10-08; decision recorded in `docs/decisions/0001-no-redis.md`.** 475 server tests pass. Verified against a real
+Mongo (throwaway DB): boot re-queues `pending`/`processing` only, leaves `done`, `failed` and legacy resources alone,
+admin retry re-queues only `failed`, and a failed first attempt retries after the 5 s backoff. The seed script typechecks.
+**Not verified:** a live approve → LlamaParse → Qdrant → citation run, and `npm run seed:demo` (it wipes the shared `_demo`
+Qdrant collections and Cloudinary files, so run it deliberately). **Manual on Render:** delete `REDIS_UPSTASH_URL`.
+**Not done:** a retry button in the admin UI (endpoint: `PATCH /admin/resources/:id/retry-ingestion`); resources approved
+before this change have no `ingestionStatus` and aren't recovered.
 **Effort:** 5
 **Where:** `server/src/modules/queues/*`, `resource.service.ts`, `health.service.ts`, `app.module.ts`,
 `env.validation.ts`, `render.yaml`, `.env.example`, `docs/deploy-smoke-test.md`
