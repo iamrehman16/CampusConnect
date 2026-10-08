@@ -150,3 +150,33 @@ describe('ResourceService moderation events', () => {
     expect(eventEmitter.emit).not.toHaveBeenCalled();
   });
 });
+
+describe('ResourceService retryIngestion', () => {
+  function build(retryFailed: jest.Mock) {
+    return new ResourceService(
+      {} as CloudinaryService,
+      {} as PaginationService,
+      {} as EventEmitter2,
+      {} as Model<ResourceDocument>,
+      { cloudName: 'c', apiKey: 'k', apiSecret: 's' },
+      { retryFailed } as unknown as IngestionQueueService,
+    );
+  }
+
+  it('queues a failed ingestion', async () => {
+    const retryFailed = jest.fn().mockResolvedValue(true);
+
+    await expect(build(retryFailed).retryIngestion('abc')).resolves.toEqual({
+      queued: true,
+    });
+    expect(retryFailed).toHaveBeenCalledWith('abc');
+  });
+
+  it('404s when nothing is eligible for retry', async () => {
+    const retryFailed = jest.fn().mockResolvedValue(false);
+
+    await expect(build(retryFailed).retryIngestion('abc')).rejects.toThrow(
+      'ingestion has not failed',
+    );
+  });
+});

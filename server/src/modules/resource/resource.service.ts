@@ -320,6 +320,15 @@ export class ResourceService implements OnModuleInit {
     );
   }
 
+  async retryIngestion(id: string): Promise<{ queued: true }> {
+    const queued = await this.ingestionQueue.retryFailed(id);
+    if (!queued)
+      throw new NotFoundException(
+        'Resource not found or its ingestion has not failed',
+      );
+    return { queued: true };
+  }
+
   async approve(id: string) {
     const resource = await this.resourceModel
       .findOneAndUpdate(

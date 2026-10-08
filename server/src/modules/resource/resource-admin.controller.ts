@@ -34,4 +34,10 @@ export class ResourceAdminController {
   ) {
     return this.resourceService.reject(id, dto.reason);
   }
+
+  /** Re-queues a resource whose RAG ingestion ended `failed` (BACKLOG.md I5). */
+  @Patch(':id/retry-ingestion')
+  retryIngestion(@Param('id', ParseMongoIdPipe) id: string) {
+    return this.resourceService.retryIngestion(id);
+  }
 }
