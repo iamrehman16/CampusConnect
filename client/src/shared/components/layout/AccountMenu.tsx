@@ -19,6 +19,7 @@ import {
   LightMode,
   Logout,
 } from "@/shared/icons";
+import { InstallAppButton } from "@/shared/components/InstallAppButton";
 import UserAvatar from "@/shared/components/UserAvatar";
 import { useAuth } from "@/shared/hooks/useAuth";
 import { useThemeModeContext } from "@/shared/hooks/useThemeModeContext";
@@ -162,6 +163,7 @@ export function AccountDrawer({ open, onClose }: { open: boolean; onClose: () =>
             />
           </ListItemButton>,
         ])}
+        <InstallAppButton variant="listItem" onDone={onClose} />
       </List>
     </Drawer>
   );

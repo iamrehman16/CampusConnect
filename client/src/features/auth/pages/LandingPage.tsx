@@ -1,4 +1,5 @@
 import { Box, Button, Stack, Typography } from "@mui/material";
+import { InstallAppButton } from "@/shared/components/InstallAppButton";
 import { Link as RouterLink } from "react-router-dom";
 import { ROUTES } from "@/shared/constants/routes";
 import { LandingNav } from "../components/landing/LandingNav";
@@ -71,6 +72,9 @@ export default function LandingPage() {
                 Sign in
               </Button>
             </Stack>
+            <Box sx={{ mt: 2 }}>
+              <InstallAppButton />
+            </Box>
           </Box>
 
           <Box sx={{ mt: { xs: 6, md: 8 } }}>

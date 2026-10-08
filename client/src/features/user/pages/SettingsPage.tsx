@@ -1,6 +1,7 @@
 import InlineError from "@/shared/components/feedback/InlineError";
 import { useState } from "react";
 import { Box, Button, Skeleton, Stack, Typography } from "@mui/material";
+import { InstallAppButton } from "@/shared/components/InstallAppButton";
 import { PageContainer } from "@/shared/components/PageContainer";
 import { PageHeader } from "@/shared/components/PageHeader";
 import UserAvatar from "@/shared/components/UserAvatar";
@@ -59,6 +60,9 @@ export default function SettingsPage() {
       )}
       <Box sx={{ mt: 3 }}>
         <ChangePasswordCard />
+      </Box>
+      <Box sx={{ mt: 3 }}>
+        <InstallAppButton />
       </Box>
       <Box sx={{ mt: 3 }}>
         <BlockedUsersCard />
