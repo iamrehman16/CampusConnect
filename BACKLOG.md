@@ -358,6 +358,20 @@ and errors that say what happened and offer a retry.
   with the API stopped.
 
 ### H3 — Demo walkthrough + final visual QA
+**Status: walkthrough written, screens captured and QA'd 2026-10-08; four items need you.** Script: `docs/demo-walkthrough.md`.
+Screenshots (60+, desktop 1440x900 and mobile 390x844, light and dark): `~/dev/fyp/demo-screenshots/` (outside the repo).
+Captured on the deployed build as student, and as admin for the admin tabs. No horizontal overflow and no page errors on any screen.
+**Fixed from this pass:** admin dashboard tabs weren't scrollable on a phone (Applications/Reports/Users unreachable, badge clipped);
+admin moderation cards ran past the right edge at 390px; an AI question could render below its answer (tied `createdAt`
+in the non-stream save path); the Ask AI hamburger fix (J5) confirmed live.
+**Needs you:**
+1. **Re-seed near the demo date** (`npm run seed:demo`, see its README; it wipes the `_demo` Qdrant collections and Cloudinary files).
+   Timestamps read "12 days ago" / "1 month", and the seeded AI threads still show the question under the answer (old tied rows).
+2. Click through the walkthrough once on a real phone and with a second account for the live-messenger step.
+3. Ask one fresh AI question on the deployed app and confirm the citation shows its contributor.
+4. Render: remove `REDIS_UPSTASH_URL`, set Health Check Path `/api/health/live` and Auto-Deploy "After CI checks pass" (I3/I5).
+**Not verified by me:** the click-through steps (ask a human, mentorship request flow, sending a message, approving a resource) were
+not performed, only the list/detail screens were captured, so as not to write to the live demo data.
 **Effort:** 3
 **Where:** docs outside the repo (FYP docs) + fixes found
 **Why:** The defense is a scripted story; the product should be tuned to it.
