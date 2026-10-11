@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { queryClient } from './query-client';
+import { clearOfflineApiCache } from '@/shared/lib/offlineCache';
 
 /**
  * Pre-configured Axios instance.
@@ -119,6 +120,7 @@ api.interceptors.response.use(
           localStorage.removeItem('refreshToken');
           localStorage.removeItem('cc-user');
           queryClient.clear();
+          void clearOfflineApiCache();
           window.location.href = '/auth';
         }
         return Promise.reject(refreshError);

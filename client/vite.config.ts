@@ -5,6 +5,11 @@ import path from "path";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
+  // Workbox writes each runtimeCaching urlPattern into sw.js as source text, so a
+  // matcher function that reads `env` throws "env is not defined" inside the
+  // worker and API responses are never cached. A RegExp is written out by value.
+  const apiOrigin = env.VITE_API_BASE_URL ?? "";
+  const apiPattern = new RegExp(`^${apiOrigin.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/api/`);
 
   return {
     plugins: [
@@ -22,9 +27,8 @@ export default defineConfig(({ mode }) => {
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
           runtimeCaching: [
             {
-              urlPattern: ({ url, request }) =>
-                url.origin === env.VITE_API_BASE_URL &&
-                request.method === "GET",
+              // RegExp routes match GET requests only (Workbox's default method).
+              urlPattern: apiPattern,
               handler: "StaleWhileRevalidate",
               options: {
                 cacheName: "api-get-cache",

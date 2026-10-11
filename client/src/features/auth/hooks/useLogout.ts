@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"; // Or your preferred router
 import authService from "../services/auth.service";
 import toast from "react-hot-toast";
 import { tokenStorage } from "@/shared/utils/storage";
+import { clearOfflineApiCache } from "@/shared/lib/offlineCache";
 
 export const useLogout = () => {
   const queryClient = useQueryClient();
@@ -12,6 +13,7 @@ export const useLogout = () => {
     mutationFn: () => authService.signout(),
     onSuccess: () => {
       queryClient.clear();
+      void clearOfflineApiCache();
       toast.success("Logged out successfully");
       navigate("/login");
       tokenStorage.clearTokens();

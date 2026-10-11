@@ -5,6 +5,7 @@ import axios from "axios";
 import { tokenStorage, userCache } from "@/shared/utils/storage";
 import type { User, AuthTokens } from "@/shared/types/auth.types";
 import { AuthContext } from "./AuthContext";
+import { clearOfflineApiCache } from "@/shared/lib/offlineCache";
 
 // ── Provider ─────────────────────────────────────────────────────────
 interface AuthProviderProps {
@@ -110,6 +111,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     tokenStorage.clearTokens();
     setUser(null);
     queryClient.clear();
+    void clearOfflineApiCache();
   }, [queryClient]);
 
   // ── Bootstrap: check stored tokens on mount ──────────────────────
