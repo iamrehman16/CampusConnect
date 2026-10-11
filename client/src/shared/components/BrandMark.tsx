@@ -1,16 +1,35 @@
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import type { SxProps, Theme } from "@mui/material/styles";
+import { darken, lighten, type SxProps, type Theme } from "@mui/material/styles";
 
 /**
- * CampusConnect brand mark (BACKLOG.md D5): a "C" whose two ends are nodes —
- * campus + connection. One mark everywhere: sidebar, top bars, landing,
+ * CampusConnect brand mark (BACKLOG.md D5, redrawn for the open-house demo):
+ * a "C" drawn as a small graph — five people on the rim, linked to a shared
+ * hub (the knowledge base). One mark everywhere: sidebar, top bars, landing,
  * favicon and PWA icons (public/icons/favicon.svg uses the same geometry;
  * the PNG/ICO icons are renders of it).
  */
-export const BRAND_MARK_PATH = "M21.66 10.34 A8 8 0 1 0 21.66 21.66";
+const RIM_NODES = [
+  { cx: 22, cy: 10, r: 2.4 },
+  { cx: 13.1, cy: 8, r: 2 },
+  { cx: 7.5, cy: 16, r: 2 },
+  { cx: 13.1, cy: 24, r: 2 },
+  { cx: 22, cy: 22, r: 2.4 },
+] as const;
+const HUB = { cx: 17, cy: 16, r: 2.7 } as const;
+/** Rim nodes linked straight to the hub (the C's two ends stay open). */
+const SPOKES = [RIM_NODES[1], RIM_NODES[2], RIM_NODES[3]] as const;
+const RIM_POINTS = RIM_NODES.map((n) => `${n.cx},${n.cy}`).join(" ");
+/**
+ * Spokes and hub: an opaque tint between the tile and the foreground. Opaque,
+ * not the foreground at reduced opacity, because translucent spokes stacked
+ * over a translucent hub show visible overlap seams.
+ */
+const secondaryFill = (t: Theme) =>
+  t.palette.mode === "dark" ? darken(t.palette.primary.main, 0.6) : lighten(t.palette.primary.main, 0.7);
 
 export function BrandMark({ size = 28, sx }: { size?: number; sx?: SxProps<Theme> }) {
+  const fg = (t: Theme) => t.palette.primary.contrastText;
   return (
     <Box
       component="svg"
@@ -23,17 +42,25 @@ export function BrandMark({ size = 28, sx }: { size?: number; sx?: SxProps<Theme
     >
       <Box component="rect" width={32} height={32} rx={8} sx={{ fill: (t) => t.palette.primary.main }} />
       <Box
-        component="path"
-        d={BRAND_MARK_PATH}
-        sx={{
-          fill: "none",
-          stroke: (t) => t.palette.primary.contrastText,
-          strokeWidth: 3,
-          strokeLinecap: "round",
-        }}
+        component="polyline"
+        points={RIM_POINTS}
+        sx={{ fill: "none", stroke: fg, strokeWidth: 1.6, strokeLinejoin: "round" }}
       />
-      <Box component="circle" cx={21.66} cy={10.34} r={2.4} sx={{ fill: (t) => t.palette.primary.contrastText }} />
-      <Box component="circle" cx={21.66} cy={21.66} r={2.4} sx={{ fill: (t) => t.palette.primary.contrastText }} />
+      {SPOKES.map((n) => (
+        <Box
+          key={`${n.cx}-${n.cy}`}
+          component="line"
+          x1={HUB.cx}
+          y1={HUB.cy}
+          x2={n.cx}
+          y2={n.cy}
+          sx={{ stroke: secondaryFill, strokeWidth: 1.2 }}
+        />
+      ))}
+      {RIM_NODES.map((n) => (
+        <Box key={`${n.cx}-${n.cy}`} component="circle" cx={n.cx} cy={n.cy} r={n.r} sx={{ fill: fg }} />
+      ))}
+      <Box component="circle" cx={HUB.cx} cy={HUB.cy} r={HUB.r} sx={{ fill: secondaryFill }} />
     </Box>
   );
 }
