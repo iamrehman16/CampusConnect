@@ -48,7 +48,14 @@ class ChatSocketService {
       // refresh the stored access token is newer than the one this socket was
       // created with, and a fixed object would keep presenting the expired one.
       auth: (cb) => cb({ token: tokenStorage.getAccessToken() ?? token }),
-      transports: ["polling", "websocket"],
+      // WebSocket first. Starting on HTTP long-polling (socket.io's default)
+      // broke Chrome on Linux against Render: its polling POSTs got 400s
+      // ("transport error" server-side), so the socket reconnected every
+      // ~2 s, while Firefox upgraded to WebSocket at once and was fine.
+      // Polling stays as the fallback for networks that block WebSockets;
+      // tryAllTransports makes socket.io actually fall back on failure.
+      transports: ["websocket", "polling"],
+      tryAllTransports: true,
       reconnection: true,
     });
 
