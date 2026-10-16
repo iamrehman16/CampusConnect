@@ -11,8 +11,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useSearchParams } from "react-router-dom";
-import { useAuth } from "@/shared/hooks/useAuth";
-import { useUserProfile } from "@/features/user/hooks/profile-hooks";
+import { useMyProfile } from "@/features/user/hooks/profile-hooks";
 import { MentorshipCard } from "../components/MentorshipCard";
 import { useMentorships } from "../hooks/mentorship.hooks";
 import {
@@ -114,9 +113,11 @@ function MentorshipList({
  * the tab between the two views.
  */
 export default function MentorshipPage({ view }: { view: MentorshipView }) {
-  const { user } = useAuth();
   const [params, setParams] = useSearchParams();
-  const { data: profile } = useUserProfile(user?._id ?? "");
+  // Own profile (profileKeys.me), which saving Settings writes directly; the
+  // public-profile query for the same id is a separate cache entry that
+  // saving never touched, so it could keep isOpenToMentor false.
+  const { data: profile } = useMyProfile();
   const section: Section =
     params.get("section") === "active" || params.get("section") === "past"
       ? (params.get("section") as Section)
