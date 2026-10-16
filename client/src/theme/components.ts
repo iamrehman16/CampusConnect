@@ -358,7 +358,22 @@ export const componentOverrides: Components<Theme> = {
 
   MuiBadge: {
     styleOverrides: {
-      badge: { fontWeight: 600, fontSize: '0.6875rem', minWidth: 18, height: 18 },
+      // Sizing applies to count badges only: on `variant="dot"` the 18px
+      // min-width/height stretched MUI's 8px dot into a large rounded square.
+      badge: ({ theme }) => ({
+        fontWeight: 600,
+        fontSize: '0.6875rem',
+        minWidth: 18,
+        height: 18,
+        '&.MuiBadge-dot': {
+          minWidth: 0,
+          width: 8,
+          height: 8,
+          padding: 0,
+          // Ring in the surface colour so the dot reads as sitting on the icon.
+          boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
+        },
+      }),
     },
   },
 

@@ -67,7 +67,7 @@ export default function Sidebar() {
           <ListItemIcon sx={{ minWidth: collapsed ? 0 : 36 }}>
             <Badge
               badgeContent={count}
-              color="error"
+              color="primary"
               max={99}
               variant={collapsed ? "dot" : "standard"}
               invisible={!count || !collapsed}
