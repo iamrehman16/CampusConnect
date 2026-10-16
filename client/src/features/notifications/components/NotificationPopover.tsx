@@ -18,6 +18,7 @@ import {
   useUnreadNotificationCount,
 } from "../hooks/notification.hooks";
 import type { Notification } from "../types/notification.dto";
+import { PushPromptBanner } from "./PushPromptBanner";
 
 interface Props {
   anchorEl: HTMLElement | null;
@@ -70,6 +71,7 @@ export function NotificationPopover({
         </Button>
       </Box>
       <Divider />
+      <PushPromptBanner />
 
       {isLoading && (
         <Box sx={{ px: 2 }}>
