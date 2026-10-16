@@ -216,7 +216,10 @@ export class PostService {
     const session = await this.connection.startSession();
     session.startTransaction();
 
-    let created: { comment: Comment; postAuthorId: string | null };
+    let created: {
+      comment: ReturnType<CommentDocument['toObject']>;
+      postAuthorId: string | null;
+    };
     try {
       const [comment] = await this.commentModel.create(
         [
