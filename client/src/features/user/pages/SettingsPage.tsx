@@ -9,6 +9,7 @@ import ProfileAvatarDialog from "../components/ProfileAvatarDialog";
 import ProfileSettingsForm from "../components/ProfileSettingsForm";
 import { ChangePasswordCard } from "../components/ChangePasswordCard";
 import { BlockedUsersCard } from "@/features/moderation/components/BlockedUsersCard";
+import { PushNotificationsCard } from "@/features/notifications/components/PushNotificationsCard";
 import { useMyProfile, useUpdateProfile } from "../hooks/profile-hooks";
 import { toProfileUserViewModel } from "../types/profile.types";
 
@@ -25,7 +26,7 @@ export default function SettingsPage() {
 
   return (
     <PageContainer width="narrow">
-      <PageHeader title="Settings" subtitle="Your profile, mentoring preferences, password and blocked users." />
+      <PageHeader title="Settings" subtitle="Your profile, mentoring preferences, password, notifications and blocked users." />
       {isError && !profile ? (
         <InlineError message="Couldn't load your settings." onRetry={refetch} />
       ) : isLoading || !user ? (
@@ -60,6 +61,9 @@ export default function SettingsPage() {
       )}
       <Box sx={{ mt: 3 }}>
         <ChangePasswordCard />
+      </Box>
+      <Box sx={{ mt: 3 }}>
+        <PushNotificationsCard />
       </Box>
       <Box sx={{ mt: 3 }}>
         <InstallAppButton />

@@ -24,6 +24,8 @@ export default defineConfig(({ mode }) => {
           // right away broke every not-yet-loaded route chunk (BACKLOG.md J3).
           // Safe with registerType "prompt": updates still wait for the user.
           clientsClaim: true,
+          // Push + notification-click handlers (public/push-sw.js).
+          importScripts: ["push-sw.js"],
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
           runtimeCaching: [
             {
