@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsDefined,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -29,6 +30,9 @@ export class PushEndpointDto {
 
 /** Shape of the browser's `PushSubscription.toJSON()`. */
 export class PushSubscriptionDto extends PushEndpointDto {
+  // ValidateNested skips an absent value; without this a body missing
+  // `keys` passes and the service crashes reading keys.p256dh.
+  @IsDefined()
   @ValidateNested()
   @Type(() => PushKeysDto)
   keys: PushKeysDto;
