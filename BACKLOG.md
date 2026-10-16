@@ -19,19 +19,22 @@ verification on the deployed app, manual dashboard steps, and the FYP documents.
    `_demo` Qdrant collections and Cloudinary files, so run it deliberately; it waits for ingestion (5–15 min).
 2. **Render dashboard:** delete `REDIS_UPSTASH_URL` (ignored now); Health Check Path `/api/health/live`; Auto-Deploy "After CI checks pass"
    (the blueprint only applies if synced); confirm Render and the Atlas cluster share a region (local-to-Atlas was 200–700 ms/query).
-3. **Google Cloud:** production redirect URI registered and consent screen published (I2); set `CLIENT_ID`, `CLIENT_SECRET`,
+3. **Web push keys on Render:** run `npx web-push generate-vapid-keys` once and set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`,
+   `VAPID_SUBJECT` (`mailto:…`). Without them the server logs a warning, push stays off and Settings hides the toggle. Then on a phone:
+   Settings → "Notifications on this device", close the app, send it a message from a second account (iOS: installed PWA only).
+4. **Google Cloud:** production redirect URI registered and consent screen published (I2); set `CLIENT_ID`, `CLIENT_SECRET`,
    `GOOGLE_CALLBACK_URL`, `FRONTEND_URL` on Render.
-4. **Run `docs/deploy-smoke-test.md` end to end on the deployed app** and `scripts/warm-demo.sh <api-origin>` 5 minutes before the demo.
-5. **Real-phone pass of `docs/demo-walkthrough.md`** with a second account for the live messenger: ask a human, mentorship
+5. **Run `docs/deploy-smoke-test.md` end to end on the deployed app** and `scripts/warm-demo.sh <api-origin>` 5 minutes before the demo.
+6. **Real-phone pass of `docs/demo-walkthrough.md`** with a second account for the live messenger: ask a human, mentorship
    request, send a message, approve a resource (none of these click-throughs were done; they'd write to demo data), plus one fresh AI
    question confirming the citation shows its contributor. Also check on a phone: the J5 landing "Get started" button (my fix is a
    best guess), PWA install on Android and the iOS "Add to Home Screen" dialog, Lighthouse "Installable", and the on-screen keyboard vs composers (J2).
-6. **I5 live check:** approve a resource and watch it ingest (log "Ingestion complete", then a citation); optionally kill the server
+7. **I5 live check:** approve a resource and watch it ingest (log "Ingestion complete", then a citation); optionally kill the server
    mid-ingestion and confirm it resumes after restart.
 
 ### R2 — FYP documents (outside this repo; status not tracked here)
 SDD, SPMP, test document, UML (`CLAUDE.md` §8), screenshots for the report (`~/dev/fyp/demo-screenshots/`, refresh after the re-seed),
-and the architecture decisions in `docs/decisions/0001-no-redis.md`. Add the test document's evidence from `npm test` (475 server tests) and CI.
+and the architecture decisions in `docs/decisions/0001-no-redis.md`. Add the test document's evidence from `npm test` (508 server tests) and CI.
 
 ### R3 — Code items, optional (none block the demo)
 - **`@Prop({ type: Types.ObjectId })` audit (skipped 2026-10-08).** 9 paths load as `Mixed` (no casting): `Post.author`, `Comment.author/postId`,
@@ -44,6 +47,9 @@ and the architecture decisions in `docs/decisions/0001-no-redis.md`. Add the tes
 - Google sign-in: exchange codes in memory (single instance), no OAuth `state`, case-sensitive email lookup.
 - D12: the 409 "already generating" check isn't atomic; a user who leaves loses live token streaming (sees the finished reply instead).
 - J3/J4: two tabs refreshing at once can race on the rotated refresh token; no visible "connected" indicator beyond the composer; socket CORS not checked on the deployed origin.
+- Notifications (K1, 2026-10-16): no per-type preferences or email digest; un-upvoting and re-upvoting bumps the grouped upvote
+  count again; a session that expires (rather than signing out) leaves that browser subscribed to web push until the next sign-in
+  re-binds it; the "new in your semester" fan-out targets semester only (users have no subject list) and is capped at 2000 recipients.
 - Mongoose `findOneAndUpdate({ new: true })` deprecation warning (use `returnDocument: 'after'`); Qdrant client 1.17 vs server 1.19 version warning.
 
 ### When to revisit
@@ -53,7 +59,7 @@ Redis returns only if the app goes multi-instance, gets heavy/scheduled jobs, or
 
 ## Done (record only)
 
-- **A — Code health & CI gate.** Typecheck+build, lint, tests are required checks on `main`; `any`/error-handling sweep done; 475 server tests pass.
+- **A — Code health & CI gate.** Typecheck+build, lint, tests are required checks on `main`; `any`/error-handling sweep done; 508 server tests pass.
 - **B — Long-term memory chat (RAG).** Named threads, persisted history, auto titles, query contextualization, vector-backed cross-session memory, token budget.
 - **C — AI chat UX polish.** Copy/like/dislike toolbar, composer, resource-card citations (deduped by resource), code-block copy.
 - **D1–D11 — Design system & UI overhaul.** Warm-neutral tokens, Lucide icons, 5-item shell; Home, Library, Ask AI, Messages, Mentors, Profile, Community, landing, auth, onboarding redesigned; shared two-pane list layout.
@@ -66,4 +72,6 @@ Redis returns only if the app goes multi-instance, gets heavy/scheduled jobs, or
 - **I1–I4 — Deployment.** Vercel/Render on the monorepo, env contract + fail-fast boot validation + `render.yaml`, deep `/api/health` + `/health/live` + smoke checklist + warm script, SSE error path fixed (no endless "Thinking").
 - **I5 — Redis removed.** In-process ingestion queue with durable `Resource.ingestionStatus`, boot recovery, admin retry endpoint; decision in `docs/decisions/0001-no-redis.md`.
 - **J1–J5 — UX polish & robustness.** Skeleton audit, 390px mobile pass, read-only offline mode (+ three auth/refresh bugs), socket reconnect/resync, Ask AI header/landing CTA fixes and discoverable PWA install (iOS guidance).
+- **K1 — Notifications completed** (2026-10-16): replies, upvotes, AI citations, mentorship ratings and "new notes for your semester"
+  now notify; opt-in OS-level Web Push per device (VAPID, service worker), verified in Chrome through FCM.
 - **Also shipped:** cold-load shell from the cached profile (no "Checking authentication…" screen), login unknown email answers 401 not 404, Mongoose debug logging opt-in.
