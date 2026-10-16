@@ -75,7 +75,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       await this.announceConnect(socket, user.id);
 
-      this.logger.log(`User ${user.id} connected`);
+      // Reason + transport + client: without them a reconnect loop in
+      // production can't be told apart from normal tab churn.
+      socket.on('disconnect', (reason) => {
+        this.logger.log(
+          `User ${user.id} disconnected socket ${socket.id} (${reason}, ${socket.conn.transport.name})`,
+        );
+      });
+
+      this.logger.log(
+        `User ${user.id} connected socket ${socket.id} (${socket.conn.transport.name}, ${socket.handshake.headers['user-agent'] ?? 'unknown client'})`,
+      );
     } catch (err) {
       this.logger.error('Error in handleConnection:', err);
       socket.disconnect();
@@ -85,8 +95,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleDisconnect(socket: AppSocket) {
     const userId = socket.data.userId;
     if (!userId) return;
-
-    this.logger.log(`User ${userId} disconnected socket ${socket.id}`);
 
     try {
       const lastSeenAt = await this.presence.disconnect(userId, socket.id);
