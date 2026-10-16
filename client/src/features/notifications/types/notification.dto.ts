@@ -8,7 +8,11 @@ export type NotificationType =
   | "mentorship_accepted"
   | "mentorship_declined"
   | "mentorship_completed"
-  | "account_warning";
+  | "account_warning"
+  | "post_commented"
+  | "post_upvoted"
+  | "resource_cited"
+  | "mentorship_rated";
 
 export interface Notification {
   id: string;

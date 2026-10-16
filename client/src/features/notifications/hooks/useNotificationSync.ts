@@ -10,6 +10,15 @@ import { mentorKeys } from "@/features/contributors/hooks/mentor.hooks";
 import { chatKeys } from "@/features/chat/hooks/chat-keys";
 import { profileKeys } from "@/features/user/hooks/profile-keys";
 import { notificationKeys } from "./notification.keys";
+import type { NotificationType } from "../types/notification.dto";
+
+// Surfaced by the messenger badge, or grouped low-urgency feedback (votes,
+// citations): toasting each one would just be noise. They still land in the bell.
+const SILENT_TYPES: ReadonlySet<NotificationType> = new Set([
+  "new_message",
+  "post_upvoted",
+  "resource_cited",
+]);
 
 /**
  * App-wide realtime notification sync. Notifications ride the chat socket
@@ -26,8 +35,6 @@ export function useNotificationSync(): void {
 
     const offNotification = chatSocketService.onNotification((notification) => {
       queryClient.invalidateQueries({ queryKey: notificationKeys.all });
-      // New-message notifications are already surfaced by the messenger
-      // unread badge; toasting each one would just be noise.
       if (notification.type.startsWith("contributor_application_")) {
         // Role may have changed server-side: refresh the session user so
         // contributor-only UI (uploads) appears without a re-login.
@@ -44,7 +51,7 @@ export function useNotificationSync(): void {
           queryClient.invalidateQueries({ queryKey: chatKeys.conversations() });
         }
       }
-      if (notification.type !== "new_message") {
+      if (!SILENT_TYPES.has(notification.type)) {
         toast(`${notification.title}: ${notification.body}`, { icon: "🔔" });
       }
     });

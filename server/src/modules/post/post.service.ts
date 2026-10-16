@@ -22,6 +22,7 @@ import { PostQueryDto } from './dto/post-query.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   DomainEvents,
+  PostCommentedEvent,
   PostUpvotedEvent,
 } from '../../common/events/domain-events';
 import { populatedId } from '../../common/utils/populated-id';
@@ -29,6 +30,15 @@ import { populatedId } from '../../common/utils/populated-id';
 interface PostStatsFacetResult {
   total: Array<{ count: number }>;
   recent: Array<{ count: number }>;
+}
+
+const COMMENT_PREVIEW_LENGTH = 120;
+
+function commentPreview(content: string): string {
+  const flat = content.replace(/\s+/g, ' ').trim();
+  return flat.length > COMMENT_PREVIEW_LENGTH
+    ? `${flat.slice(0, COMMENT_PREVIEW_LENGTH - 1)}…`
+    : flat;
 }
 
 @Injectable()
@@ -206,6 +216,7 @@ export class PostService {
     const session = await this.connection.startSession();
     session.startTransaction();
 
+    let created: { comment: Comment; postAuthorId: string | null };
     try {
       const [comment] = await this.commentModel.create(
         [
@@ -232,7 +243,10 @@ export class PostService {
       if (!post) throw new NotFoundException('Post not found');
 
       await session.commitTransaction();
-      return populatedComment.toObject();
+      created = {
+        comment: populatedComment.toObject(),
+        postAuthorId: populatedId(post.author),
+      };
     } catch (error) {
       await session.abortTransaction();
       throw error instanceof NotFoundException
@@ -241,6 +255,18 @@ export class PostService {
     } finally {
       await session.endSession();
     }
+
+    // After the transaction, so a listener can never see an uncommitted
+    // comment or turn a committed one into an abort.
+    if (created.postAuthorId) {
+      this.eventEmitter.emit(DomainEvents.POST_COMMENTED, {
+        postId,
+        authorId: created.postAuthorId,
+        commenterId: userId,
+        preview: commentPreview(dto.content),
+      } satisfies PostCommentedEvent);
+    }
+    return created.comment;
   }
 
   async getCommentsByPostId(

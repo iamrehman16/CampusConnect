@@ -231,4 +231,96 @@ describe('NotificationListener', () => {
       },
     );
   });
+
+  describe('community and reputation feedback', () => {
+    it('notifies a post author of a reply, with the commenter name', async () => {
+      const { listener, notifications } = build({ senderName: 'Ali' });
+
+      await listener.onPostCommented({
+        postId: 'p1',
+        authorId: 'u1',
+        commenterId: 'u2',
+        preview: 'Great notes',
+      });
+
+      expect(notifications.record).toHaveBeenCalledWith(
+        'u1',
+        NotificationType.POST_COMMENTED,
+        { postId: 'p1', commenterName: 'Ali', preview: 'Great notes' },
+      );
+    });
+
+    it('does not notify authors about their own comments or upvotes', async () => {
+      const { listener, notifications } = build();
+
+      await listener.onPostCommented({
+        postId: 'p1',
+        authorId: 'u1',
+        commenterId: 'u1',
+        preview: 'bump',
+      });
+      await listener.onPostUpvoted({
+        postId: 'p1',
+        authorId: 'u1',
+        voterId: 'u1',
+      });
+
+      expect(notifications.record).not.toHaveBeenCalled();
+    });
+
+    it('notifies an upvoted author with the voter name', async () => {
+      const { listener, notifications } = build({ senderName: 'Hina' });
+
+      await listener.onPostUpvoted({
+        postId: 'p1',
+        authorId: 'u1',
+        voterId: 'u2',
+      });
+
+      expect(notifications.record).toHaveBeenCalledWith(
+        'u1',
+        NotificationType.POST_UPVOTED,
+        { postId: 'p1', voterName: 'Hina' },
+      );
+    });
+
+    it('skips citations produced by the uploader asking about their own resource', async () => {
+      const { listener, notifications } = build();
+
+      await listener.onResourceCited({
+        resourceId: 'r1',
+        uploaderId: 'u1',
+        citedForUserId: 'u1',
+      });
+      expect(notifications.record).not.toHaveBeenCalled();
+
+      await listener.onResourceCited({
+        resourceId: 'r1',
+        uploaderId: 'u1',
+        citedForUserId: 'u2',
+      });
+      expect(notifications.record).toHaveBeenCalledWith(
+        'u1',
+        NotificationType.RESOURCE_CITED,
+        { resourceId: 'r1' },
+      );
+    });
+
+    it('tells the mentor their rating', async () => {
+      const { listener, notifications } = build({ senderName: 'Zara' });
+
+      await listener.onMentorshipRated({
+        mentorshipId: 'm1',
+        mentorId: 'u1',
+        menteeId: 'u2',
+        rating: 5,
+      });
+
+      expect(notifications.record).toHaveBeenCalledWith(
+        'u1',
+        NotificationType.MENTORSHIP_RATED,
+        { menteeName: 'Zara', rating: 5 },
+      );
+    });
+  });
 });

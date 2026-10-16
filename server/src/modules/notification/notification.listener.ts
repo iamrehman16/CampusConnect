@@ -6,7 +6,11 @@ import {
   MentorshipAcceptedEvent,
   MentorshipCompletedEvent,
   MentorshipDeclinedEvent,
+  MentorshipRatedEvent,
   MentorshipRequestedEvent,
+  PostCommentedEvent,
+  PostUpvotedEvent,
+  ResourceCitedEvent,
   ChatMessageReceivedEvent,
   DomainEvents,
   ResourceApprovedEvent,
@@ -131,6 +135,42 @@ export class NotificationListener {
   onUserWarned(event: UserWarnedEvent) {
     return this.notify(event.userId, NotificationType.ACCOUNT_WARNING, {
       note: event.note,
+    });
+  }
+
+  @OnEvent(DomainEvents.POST_COMMENTED, { async: true })
+  async onPostCommented(event: PostCommentedEvent) {
+    if (event.commenterId === event.authorId) return;
+    return this.notify(event.authorId, NotificationType.POST_COMMENTED, {
+      postId: event.postId,
+      commenterName: await this.nameOf(event.commenterId),
+      preview: event.preview,
+    });
+  }
+
+  @OnEvent(DomainEvents.POST_UPVOTED, { async: true })
+  async onPostUpvoted(event: PostUpvotedEvent) {
+    if (event.voterId === event.authorId) return;
+    return this.notify(event.authorId, NotificationType.POST_UPVOTED, {
+      postId: event.postId,
+      voterName: await this.nameOf(event.voterId),
+    });
+  }
+
+  /** Not for citations in the uploader's own questions. */
+  @OnEvent(DomainEvents.RESOURCE_CITED, { async: true })
+  onResourceCited(event: ResourceCitedEvent) {
+    if (event.citedForUserId === event.uploaderId) return;
+    return this.notify(event.uploaderId, NotificationType.RESOURCE_CITED, {
+      resourceId: event.resourceId,
+    });
+  }
+
+  @OnEvent(DomainEvents.MENTORSHIP_RATED, { async: true })
+  async onMentorshipRated(event: MentorshipRatedEvent) {
+    return this.notify(event.mentorId, NotificationType.MENTORSHIP_RATED, {
+      menteeName: await this.nameOf(event.menteeId),
+      rating: event.rating,
     });
   }
 

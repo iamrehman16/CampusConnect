@@ -8,6 +8,7 @@ export const DomainEvents = {
   RESOURCE_REJECTED: 'resource.rejected',
   RESOURCE_REMOVED: 'resource.removed',
   POST_UPVOTED: 'post.upvoted',
+  POST_COMMENTED: 'post.commented',
   RESOURCE_CITED: 'resource.cited',
   CONTRIBUTOR_APPLICATION_APPROVED: 'contributor_application.approved',
   CONTRIBUTOR_APPLICATION_REJECTED: 'contributor_application.rejected',
@@ -53,6 +54,14 @@ export interface PostUpvotedEvent {
   postId: string;
   authorId: string;
   voterId: string;
+}
+
+/** Someone other than the author commented on a post. */
+export interface PostCommentedEvent {
+  postId: string;
+  authorId: string;
+  commenterId: string;
+  preview: string;
 }
 
 /** Emitted only when the receiver is NOT currently viewing the conversation. */

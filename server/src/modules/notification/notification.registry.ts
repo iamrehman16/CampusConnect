@@ -38,6 +38,14 @@ export interface NotificationPayloads {
     recipientRole: 'mentor' | 'mentee';
   };
   [NotificationType.ACCOUNT_WARNING]: { note?: string };
+  [NotificationType.POST_COMMENTED]: {
+    postId: string;
+    commenterName: string;
+    preview: string;
+  };
+  [NotificationType.POST_UPVOTED]: { postId: string; voterName: string };
+  [NotificationType.RESOURCE_CITED]: { resourceId: string };
+  [NotificationType.MENTORSHIP_RATED]: { menteeName: string; rating: number };
 }
 
 export interface NotificationContent {
@@ -55,6 +63,8 @@ export interface NotificationContent {
 
 export const newMessageDedupeKey = (conversationId: string): string =>
   `${NotificationType.NEW_MESSAGE}:${conversationId}`;
+
+const postLink = (postId: string): string => `/community?post=${postId}`;
 
 type Builders = {
   [T in NotificationType]: (
@@ -124,5 +134,30 @@ export const notificationBuilders: Builders = {
       ? `A report about your conduct was upheld: ${note}`
       : 'A report about your conduct was upheld. Please follow the community guidelines.',
     link: '/faq',
+  }),
+  [NotificationType.POST_COMMENTED]: ({ postId, commenterName, preview }) => ({
+    title: `${commenterName} replied to your post`,
+    body: preview,
+    link: postLink(postId),
+    dedupeKey: `${NotificationType.POST_COMMENTED}:${postId}`,
+  }),
+  // Grouped per post/resource: the row's count carries "how many", so the
+  // body names only the latest actor instead of one row per vote/citation.
+  [NotificationType.POST_UPVOTED]: ({ postId, voterName }) => ({
+    title: 'Your post was upvoted',
+    body: `${voterName} found your post helpful.`,
+    link: postLink(postId),
+    dedupeKey: `${NotificationType.POST_UPVOTED}:${postId}`,
+  }),
+  [NotificationType.RESOURCE_CITED]: ({ resourceId }) => ({
+    title: 'Your resource helped someone',
+    body: 'The AI assistant cited your resource in an answer.',
+    link: `/resources/${resourceId}`,
+    dedupeKey: `${NotificationType.RESOURCE_CITED}:${resourceId}`,
+  }),
+  [NotificationType.MENTORSHIP_RATED]: ({ menteeName, rating }) => ({
+    title: 'New mentorship rating',
+    body: `${menteeName} rated your mentorship ${rating}/5.`,
+    link: '/mentors/mentoring?section=past',
   }),
 };
