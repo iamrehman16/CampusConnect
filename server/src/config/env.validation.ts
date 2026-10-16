@@ -28,6 +28,13 @@ const PRODUCTION_RECOMMENDED = [
   'GOOGLE_CALLBACK_URL',
 ] as const;
 
+// Not required: without them notifications stay in-app (no OS-level push).
+const PUSH_RECOMMENDED = [
+  'VAPID_PUBLIC_KEY',
+  'VAPID_PRIVATE_KEY',
+  'VAPID_SUBJECT',
+] as const;
+
 export interface EnvValidationResult {
   errors: string[];
   warnings: string[];
@@ -90,6 +97,11 @@ export function checkEnv(config: Record<string, unknown>): EnvValidationResult {
     for (const key of PRODUCTION_RECOMMENDED) {
       if (isBlank(config[key])) {
         warnings.push(`${key} is not set: Google sign-in will be unavailable`);
+      }
+    }
+    for (const key of PUSH_RECOMMENDED) {
+      if (isBlank(config[key])) {
+        warnings.push(`${key} is not set: push notifications will be disabled`);
       }
     }
   }

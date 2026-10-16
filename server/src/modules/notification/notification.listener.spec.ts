@@ -2,6 +2,7 @@ import { NotificationListener } from './notification.listener';
 import { NotificationService } from './notification.service';
 import { NotificationGateway } from './notification.gateway';
 import { UserService } from '../user/user.service';
+import { WebPushService } from './web-push.service';
 import { NotificationType } from './enums/notification-type.enum';
 
 function build(opts: { recordError?: Error; senderName?: string } = {}) {
@@ -21,12 +22,14 @@ function build(opts: { recordError?: Error; senderName?: string } = {}) {
     findOne: jest.fn().mockResolvedValue({ name: opts.senderName ?? 'Sara' }),
     findActiveIdsInSemester: jest.fn().mockResolvedValue(['u2', 'u3']),
   };
+  const webPush = { send: jest.fn().mockResolvedValue(undefined) };
   const listener = new NotificationListener(
     notifications as unknown as NotificationService,
     gateway as unknown as NotificationGateway,
     userService as unknown as UserService,
+    webPush as unknown as WebPushService,
   );
-  return { listener, notifications, gateway, userService, dto };
+  return { listener, notifications, gateway, userService, webPush, dto };
 }
 
 describe('NotificationListener', () => {
@@ -47,6 +50,24 @@ describe('NotificationListener', () => {
       { resourceId: 'r1', title: 'Notes' },
     );
     expect(gateway.push).toHaveBeenCalledWith('u1', dto);
+  });
+
+  it('also sends the stored notification as a web push', async () => {
+    const { listener, webPush, dto } = build();
+
+    await listener.onUserWarned({ userId: 'u1' });
+
+    expect(webPush.send).toHaveBeenCalledWith([
+      { userId: 'u1', notification: dto },
+    ]);
+  });
+
+  it('sends no web push when the notification could not be stored', async () => {
+    const { listener, webPush } = build({ recordError: new Error('db down') });
+
+    await listener.onUserWarned({ userId: 'u1' });
+
+    expect(webPush.send).not.toHaveBeenCalled();
   });
 
   it('resolves the sender name for message notifications', async () => {
@@ -342,7 +363,8 @@ describe('NotificationListener', () => {
     };
 
     it('fans out to active members of the semester, excluding the uploader', async () => {
-      const { listener, notifications, gateway, userService, dto } = build();
+      const { listener, notifications, gateway, userService, webPush, dto } =
+        build();
 
       await listener.onResourceApprovedForSemester(event);
 
@@ -363,6 +385,10 @@ describe('NotificationListener', () => {
       );
       expect(gateway.push).toHaveBeenCalledWith('u2', dto);
       expect(gateway.push).toHaveBeenCalledWith('u3', dto);
+      expect(webPush.send).toHaveBeenCalledWith([
+        { userId: 'u2', notification: dto },
+        { userId: 'u3', notification: dto },
+      ]);
     });
 
     it('logs and swallows a lookup failure without pushing', async () => {

@@ -17,6 +17,9 @@ const productionEnv = {
   CLIENT_ID: 'id',
   CLIENT_SECRET: 'secret',
   GOOGLE_CALLBACK_URL: 'https://api.example.com/api/auth/google/callback',
+  VAPID_PUBLIC_KEY: 'pub',
+  VAPID_PRIVATE_KEY: 'priv',
+  VAPID_SUBJECT: 'mailto:admin@example.com',
 };
 
 describe('checkEnv', () => {
@@ -97,6 +100,15 @@ describe('checkEnv', () => {
 
     expect(result.errors).toEqual([]);
     expect(result.warnings).toHaveLength(1);
+  });
+
+  it('only warns about missing VAPID keys in production', () => {
+    const result = checkEnv({ ...productionEnv, VAPID_PRIVATE_KEY: '' });
+
+    expect(result.errors).toEqual([]);
+    expect(result.warnings).toEqual([
+      'VAPID_PRIVATE_KEY is not set: push notifications will be disabled',
+    ]);
   });
 
   it('requires only the local Mongo URI and JWT secrets in development', () => {

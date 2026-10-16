@@ -26,6 +26,7 @@ import {
 } from './notification.registry';
 import { UserService } from '../user/user.service';
 import { NotificationDto } from './dto/notification.dto';
+import { WebPushService } from './web-push.service';
 
 /** Upper bound on one approval's "new in your semester" fan-out. */
 const SEMESTER_FANOUT_LIMIT = 2000;
@@ -43,6 +44,7 @@ export class NotificationListener {
     private readonly notifications: NotificationService,
     private readonly gateway: NotificationGateway,
     private readonly userService: UserService,
+    private readonly webPush: WebPushService,
   ) {}
 
   @OnEvent(DomainEvents.RESOURCE_APPROVED, { async: true })
@@ -91,6 +93,7 @@ export class NotificationListener {
     for (const { userId, notification } of recorded) {
       this.pushSafely(userId, notification);
     }
+    await this.webPush.send(recorded);
   }
 
   @OnEvent(DomainEvents.RESOURCE_REJECTED, { async: true })
@@ -270,6 +273,7 @@ export class NotificationListener {
     }
 
     this.pushSafely(userId, notification);
+    await this.webPush.send([{ userId, notification }]);
   }
 
   /**

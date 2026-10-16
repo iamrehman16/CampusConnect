@@ -62,3 +62,9 @@ services:
         sync: false
       - key: GOOGLE_CALLBACK_URL # https://<render-host>/api/auth/google/callback
         sync: false
+      - key: VAPID_PUBLIC_KEY # optional web push; npx web-push generate-vapid-keys
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT # e.g. mailto:you@example.com
+        sync: false
