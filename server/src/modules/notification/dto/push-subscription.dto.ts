@@ -1,6 +1,8 @@
 import { Type } from 'class-transformer';
 import {
+  IsInt,
   IsNotEmpty,
+  IsOptional,
   IsString,
   IsUrl,
   MaxLength,
@@ -30,4 +32,9 @@ export class PushSubscriptionDto extends PushEndpointDto {
   @ValidateNested()
   @Type(() => PushKeysDto)
   keys: PushKeysDto;
+
+  /** Always sent by `toJSON()` (usually null); unused, push services expire via 404/410. */
+  @IsOptional()
+  @IsInt()
+  expirationTime?: number | null;
 }
