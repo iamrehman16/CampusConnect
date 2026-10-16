@@ -5,7 +5,7 @@ Effort scale: `3` = half a day to a day, `5` = one to two days, `8` = three-plus
 days. Anything smaller goes straight into a commit. Detail of finished work lives in `git log`.
 
 Goal: a consumer-usable app for the FYP demo/defense (~Oct/Nov 2026).
-Last cleaned: 2026-10-08. Code health, features and UX polish are done; what remains is
+Last cleaned: 2026-10-16. Deadline: 22 October 2026. Code health, features and UX polish are done; what remains is
 verification on the deployed app, manual dashboard steps, and the FYP documents.
 
 ---
@@ -19,9 +19,8 @@ verification on the deployed app, manual dashboard steps, and the FYP documents.
    `_demo` Qdrant collections and Cloudinary files, so run it deliberately; it waits for ingestion (5–15 min).
 2. **Render dashboard:** delete `REDIS_UPSTASH_URL` (ignored now); Health Check Path `/api/health/live`; Auto-Deploy "After CI checks pass"
    (the blueprint only applies if synced); confirm Render and the Atlas cluster share a region (local-to-Atlas was 200–700 ms/query).
-3. **Web push keys on Render:** run `npx web-push generate-vapid-keys` once and set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`,
-   `VAPID_SUBJECT` (`mailto:…`). Without them the server logs a warning, push stays off and Settings hides the toggle. Then on a phone:
-   Settings → "Notifications on this device", close the app, send it a message from a second account (iOS: installed PWA only).
+3. **Web push:** VAPID keys are set on Render (2026-10-16) and push was confirmed working on a real device. Before the demo, turn on
+   the bell's "Turn on" prompt on the demo devices.
 4. **Google Cloud:** production redirect URI registered and consent screen published (I2); set `CLIENT_ID`, `CLIENT_SECRET`,
    `GOOGLE_CALLBACK_URL`, `FRONTEND_URL` on Render.
 5. **Run `docs/deploy-smoke-test.md` end to end on the deployed app** and `scripts/warm-demo.sh <api-origin>` 5 minutes before the demo.
@@ -74,4 +73,7 @@ Redis returns only if the app goes multi-instance, gets heavy/scheduled jobs, or
 - **J1–J5 — UX polish & robustness.** Skeleton audit, 390px mobile pass, read-only offline mode (+ three auth/refresh bugs), socket reconnect/resync, Ask AI header/landing CTA fixes and discoverable PWA install (iOS guidance).
 - **K1 — Notifications completed** (2026-10-16): replies, upvotes, AI citations, mentorship ratings and "new notes for your semester"
   now notify; opt-in OS-level Web Push per device (VAPID, service worker), verified in Chrome through FCM.
+- **K2 — Live fixes from real use** (2026-10-16): API GETs network-first (service-worker SWR made every refetch one step stale),
+  Mentoring tab reads the user's own profile, bell-popover prompt for device notifications, 8px accent dot badges on the
+  collapsed rail, chat socket WebSocket-first (Chrome/Linux looped on polling 400s every ~2 s), socket disconnect reasons logged.
 - **Also shipped:** cold-load shell from the cached profile (no "Checking authentication…" screen), login unknown email answers 401 not 404, Mongoose debug logging opt-in.
