@@ -31,9 +31,15 @@ export default defineConfig(({ mode }) => {
             {
               // RegExp routes match GET requests only (Workbox's default method).
               urlPattern: apiPattern,
-              handler: "StaleWhileRevalidate",
+              // NetworkFirst, not StaleWhileRevalidate: SWR answers every GET
+              // with the previous response, so a refetch after a change (e.g.
+              // turning mentoring on) still showed the old value. The cache is
+              // only for the read-only offline mode, so use it only when the
+              // network fails or is slower than the timeout (Render cold start).
+              handler: "NetworkFirst",
               options: {
                 cacheName: "api-get-cache",
+                networkTimeoutSeconds: 10,
                 expiration: {
                   maxEntries: 100,
                   maxAgeSeconds: 60 * 60 * 24,
