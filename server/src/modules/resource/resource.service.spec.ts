@@ -86,6 +86,8 @@ describe('ResourceService moderation events', () => {
       resourceId: resourceId.toString(),
       title: 'Data Structures Notes',
       uploaderId: uploaderId.toString(),
+      subject: 'DS',
+      semester: 3,
     });
   });
 

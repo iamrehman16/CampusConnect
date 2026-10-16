@@ -23,6 +23,8 @@ describe('ReputationListener', () => {
       resourceId: 'r1',
       title: 'Notes',
       uploaderId: 'u1',
+      subject: 'DS',
+      semester: 3,
     });
 
     expect(reputation.award).toHaveBeenCalledWith(
@@ -76,6 +78,8 @@ describe('ReputationListener', () => {
         resourceId: 'r1',
         title: 'Notes',
         uploaderId: 'u1',
+        subject: 'DS',
+        semester: 3,
       }),
     ).resolves.toBeUndefined();
   });

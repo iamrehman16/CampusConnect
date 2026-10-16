@@ -352,6 +352,8 @@ export class ResourceService implements OnModuleInit {
       resourceId: resource._id.toString(),
       title: resource.title,
       uploaderId: populatedUploaderId(resource),
+      subject: resource.subject,
+      semester: resource.semester,
     } satisfies ResourceApprovedEvent);
 
     return resource;

@@ -233,6 +233,31 @@ export class UserService {
     return user.toObject();
   }
 
+  /**
+   * Active, non-admin members in a semester (for "new resource" fan-out),
+   * at most `limit`, excluding one user (the uploader).
+   */
+  async findActiveIdsInSemester(
+    semester: number,
+    excludeId: string,
+    limit: number,
+  ): Promise<string[]> {
+    const rows = await this.userModel
+      .find(
+        {
+          semester,
+          _id: { $ne: new Types.ObjectId(excludeId) },
+          role: { $ne: Roles.ADMIN },
+          accountStatus: UserStatus.ACTIVE,
+        },
+        { _id: 1 },
+      )
+      .limit(limit)
+      .lean()
+      .exec();
+    return rows.map((r) => r._id.toString());
+  }
+
   /** Highest-reputation active members, for Community's rail. */
   async findTopContributors(limit: number): Promise<TopContributorDto[]> {
     const users = await this.userModel

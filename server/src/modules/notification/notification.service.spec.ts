@@ -157,3 +157,63 @@ describe('NotificationService#markRead', () => {
     expect(filter._id.toString()).toBe(id);
   });
 });
+
+describe('NotificationService#recordMany', () => {
+  const payload = {
+    resourceId: 'r1',
+    title: 'OS Notes',
+    subject: 'Operating Systems',
+    semester: 5,
+  };
+
+  it('inserts one row per user in a single call and maps them back to users', async () => {
+    const ids = [new Types.ObjectId(), new Types.ObjectId()];
+    const insertMany = jest.fn().mockResolvedValue(
+      ids.map((user) => {
+        const d = doc({ user, type: NotificationType.NEW_SEMESTER_RESOURCE });
+        return { user, toObject: () => d };
+      }),
+    );
+    const service = build({ insertMany });
+
+    const result = await service.recordMany(
+      ids.map(String),
+      NotificationType.NEW_SEMESTER_RESOURCE,
+      payload,
+    );
+
+    expect(insertMany).toHaveBeenCalledTimes(1);
+    const [[rows]] = insertMany.mock.calls as Array<
+      [Array<Record<string, unknown>>]
+    >;
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({
+      type: NotificationType.NEW_SEMESTER_RESOURCE,
+      title: 'New in Operating Systems',
+      link: '/resources/r1',
+    });
+    expect(result.map((r) => r.userId)).toEqual(ids.map(String));
+  });
+
+  it('skips the write entirely for an empty audience', async () => {
+    const insertMany = jest.fn();
+    const service = build({ insertMany });
+
+    await expect(
+      service.recordMany([], NotificationType.NEW_SEMESTER_RESOURCE, payload),
+    ).resolves.toEqual([]);
+    expect(insertMany).not.toHaveBeenCalled();
+  });
+
+  it('refuses grouped types, which need the per-user upsert', async () => {
+    const service = build({ insertMany: jest.fn() });
+
+    await expect(
+      service.recordMany([userId], NotificationType.NEW_MESSAGE, {
+        conversationId: 'c1',
+        senderName: 'Sara',
+        preview: 'hi',
+      }),
+    ).rejects.toThrow('grouped type');
+  });
+});

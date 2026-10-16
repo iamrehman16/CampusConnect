@@ -96,6 +96,30 @@ export class NotificationService {
     }
   }
 
+  /**
+   * One identical notification for many users in a single insert (fan-out).
+   * Types with a dedupeKey are grouped per user and must use `record`.
+   */
+  async recordMany<T extends NotificationType>(
+    userIds: string[],
+    type: T,
+    payload: NotificationPayloads[T],
+  ): Promise<Array<{ userId: string; notification: NotificationDto }>> {
+    if (userIds.length === 0) return [];
+    const { dedupeKey, ...content } = notificationBuilders[type](payload);
+    if (dedupeKey) {
+      throw new Error(`recordMany does not support grouped type ${type}`);
+    }
+
+    const docs = await this.notificationModel.insertMany(
+      userIds.map((id) => ({ user: new Types.ObjectId(id), type, ...content })),
+    );
+    return docs.map((doc) => ({
+      userId: doc.user.toString(),
+      notification: toDto(doc.toObject()),
+    }));
+  }
+
   async list(
     userId: string,
     dto: NotificationQueryDto,

@@ -9,6 +9,7 @@ import { mentorshipKeys } from "@/features/mentorship/hooks/mentorship.hooks";
 import { mentorKeys } from "@/features/contributors/hooks/mentor.hooks";
 import { chatKeys } from "@/features/chat/hooks/chat-keys";
 import { profileKeys } from "@/features/user/hooks/profile-keys";
+import { resourceKeys } from "@/features/resources/hooks/resource.keys";
 import { notificationKeys } from "./notification.keys";
 import type { NotificationType } from "../types/notification.dto";
 
@@ -50,6 +51,9 @@ export function useNotificationSync(): void {
         if (notification.type === "mentorship_accepted") {
           queryClient.invalidateQueries({ queryKey: chatKeys.conversations() });
         }
+      }
+      if (notification.type === "new_semester_resource") {
+        queryClient.invalidateQueries({ queryKey: resourceKeys.lists() });
       }
       if (!SILENT_TYPES.has(notification.type)) {
         toast(`${notification.title}: ${notification.body}`, { icon: "🔔" });

@@ -46,6 +46,12 @@ export interface NotificationPayloads {
   [NotificationType.POST_UPVOTED]: { postId: string; voterName: string };
   [NotificationType.RESOURCE_CITED]: { resourceId: string };
   [NotificationType.MENTORSHIP_RATED]: { menteeName: string; rating: number };
+  [NotificationType.NEW_SEMESTER_RESOURCE]: {
+    resourceId: string;
+    title: string;
+    subject: string;
+    semester: number;
+  };
 }
 
 export interface NotificationContent {
@@ -159,5 +165,15 @@ export const notificationBuilders: Builders = {
     title: 'New mentorship rating',
     body: `${menteeName} rated your mentorship ${rating}/5.`,
     link: '/mentors/mentoring?section=past',
+  }),
+  [NotificationType.NEW_SEMESTER_RESOURCE]: ({
+    resourceId,
+    title,
+    subject,
+    semester,
+  }) => ({
+    title: `New in ${subject}`,
+    body: `"${title}" was just added for semester ${semester}.`,
+    link: `/resources/${resourceId}`,
   }),
 };

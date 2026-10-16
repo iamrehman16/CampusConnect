@@ -26,6 +26,9 @@ export interface ResourceApprovedEvent {
   resourceId: string;
   title: string;
   uploaderId: string;
+  /** Targeting for the "new in your semester" fan-out. */
+  subject: string;
+  semester: number;
 }
 
 export interface ResourceRejectedEvent {

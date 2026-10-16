@@ -12,10 +12,14 @@ function build(opts: { recordError?: Error; senderName?: string } = {}) {
     record: opts.recordError
       ? jest.fn().mockRejectedValue(opts.recordError)
       : jest.fn().mockResolvedValue(dto),
+    recordMany: jest.fn((ids: string[]) =>
+      Promise.resolve(ids.map((userId) => ({ userId, notification: dto }))),
+    ),
   };
   const gateway = { push: jest.fn(), pushUnreadCount: jest.fn() };
   const userService = {
     findOne: jest.fn().mockResolvedValue({ name: opts.senderName ?? 'Sara' }),
+    findActiveIdsInSemester: jest.fn().mockResolvedValue(['u2', 'u3']),
   };
   const listener = new NotificationListener(
     notifications as unknown as NotificationService,
@@ -33,6 +37,8 @@ describe('NotificationListener', () => {
       resourceId: 'r1',
       title: 'Notes',
       uploaderId: 'u1',
+      subject: 'DS',
+      semester: 3,
     });
 
     expect(notifications.record).toHaveBeenCalledWith(
@@ -92,6 +98,8 @@ describe('NotificationListener', () => {
         resourceId: 'r1',
         title: 'Notes',
         uploaderId: 'u1',
+        subject: 'DS',
+        semester: 3,
       }),
     ).resolves.toBeUndefined();
 
@@ -321,6 +329,52 @@ describe('NotificationListener', () => {
         NotificationType.MENTORSHIP_RATED,
         { menteeName: 'Zara', rating: 5 },
       );
+    });
+  });
+
+  describe('new resource in your semester', () => {
+    const event = {
+      resourceId: 'r1',
+      title: 'OS Notes',
+      uploaderId: 'u1',
+      subject: 'Operating Systems',
+      semester: 5,
+    };
+
+    it('fans out to active members of the semester, excluding the uploader', async () => {
+      const { listener, notifications, gateway, userService, dto } = build();
+
+      await listener.onResourceApprovedForSemester(event);
+
+      expect(userService.findActiveIdsInSemester).toHaveBeenCalledWith(
+        5,
+        'u1',
+        expect.any(Number),
+      );
+      expect(notifications.recordMany).toHaveBeenCalledWith(
+        ['u2', 'u3'],
+        NotificationType.NEW_SEMESTER_RESOURCE,
+        {
+          resourceId: 'r1',
+          title: 'OS Notes',
+          subject: 'Operating Systems',
+          semester: 5,
+        },
+      );
+      expect(gateway.push).toHaveBeenCalledWith('u2', dto);
+      expect(gateway.push).toHaveBeenCalledWith('u3', dto);
+    });
+
+    it('logs and swallows a lookup failure without pushing', async () => {
+      const { listener, gateway, userService } = build();
+      userService.findActiveIdsInSemester.mockRejectedValue(
+        new Error('db down'),
+      );
+
+      await expect(
+        listener.onResourceApprovedForSemester(event),
+      ).resolves.toBeUndefined();
+      expect(gateway.push).not.toHaveBeenCalled();
     });
   });
 });

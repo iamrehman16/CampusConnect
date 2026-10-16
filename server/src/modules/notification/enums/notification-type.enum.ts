@@ -13,4 +13,5 @@ export enum NotificationType {
   POST_UPVOTED = 'post_upvoted',
   RESOURCE_CITED = 'resource_cited',
   MENTORSHIP_RATED = 'mentorship_rated',
+  NEW_SEMESTER_RESOURCE = 'new_semester_resource',
 }

@@ -25,6 +25,10 @@ import {
   newMessageDedupeKey,
 } from './notification.registry';
 import { UserService } from '../user/user.service';
+import { NotificationDto } from './dto/notification.dto';
+
+/** Upper bound on one approval's "new in your semester" fan-out. */
+const SEMESTER_FANOUT_LIMIT = 2000;
 
 /**
  * Thin domain-event -> notification adapter. Producers never call the
@@ -47,6 +51,46 @@ export class NotificationListener {
       resourceId: event.resourceId,
       title: event.title,
     });
+  }
+
+  /**
+   * "New notes for your semester": the only targeting signal both sides
+   * share (users have no subject list; departments don't map to subjects).
+   */
+  @OnEvent(DomainEvents.RESOURCE_APPROVED, { async: true })
+  async onResourceApprovedForSemester(
+    event: ResourceApprovedEvent,
+  ): Promise<void> {
+    const type = NotificationType.NEW_SEMESTER_RESOURCE;
+    let recorded: Awaited<ReturnType<NotificationService['recordMany']>>;
+    try {
+      const recipients = await this.userService.findActiveIdsInSemester(
+        event.semester,
+        event.uploaderId,
+        SEMESTER_FANOUT_LIMIT,
+      );
+      if (recipients.length === SEMESTER_FANOUT_LIMIT) {
+        this.logger.warn(
+          `Semester ${event.semester} fan-out for resource ${event.resourceId} hit the ${SEMESTER_FANOUT_LIMIT}-recipient cap; the rest were not notified`,
+        );
+      }
+      recorded = await this.notifications.recordMany(recipients, type, {
+        resourceId: event.resourceId,
+        title: event.title,
+        subject: event.subject,
+        semester: event.semester,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Failed to fan out ${type} for resource ${event.resourceId} (semester ${event.semester})`,
+        err instanceof Error ? err.stack : String(err),
+      );
+      return;
+    }
+
+    for (const { userId, notification } of recorded) {
+      this.pushSafely(userId, notification);
+    }
   }
 
   @OnEvent(DomainEvents.RESOURCE_REJECTED, { async: true })
@@ -225,14 +269,20 @@ export class NotificationListener {
       return;
     }
 
-    // Separate from the write above: the notification is already stored and
-    // will show on the next fetch, so a failed realtime push must not be
-    // reported as a failed notification.
+    this.pushSafely(userId, notification);
+  }
+
+  /**
+   * Separate from the write: the notification is already stored and will
+   * show on the next fetch, so a failed realtime push must not be reported
+   * as a failed notification.
+   */
+  private pushSafely(userId: string, notification: NotificationDto): void {
     try {
       this.gateway.push(userId, notification);
     } catch (err) {
       this.logger.warn(
-        `Stored ${type} notification for user ${userId} but realtime push failed: ${err instanceof Error ? err.message : String(err)}`,
+        `Stored ${notification.type} notification for user ${userId} but realtime push failed: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   }

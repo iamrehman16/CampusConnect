@@ -12,7 +12,8 @@ export type NotificationType =
   | "post_commented"
   | "post_upvoted"
   | "resource_cited"
-  | "mentorship_rated";
+  | "mentorship_rated"
+  | "new_semester_resource";
 
 export interface Notification {
   id: string;
