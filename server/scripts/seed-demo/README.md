@@ -21,6 +21,9 @@ DEMO_MONGO_URI="mongodb+srv://<user>:<pass>@<cluster>/campusconnect_demo?appName
 
 - **The database name must end in `_demo`.** The script drops that whole
   database and refuses to run against anything else.
+- `QDRANT_COLLECTION_SUFFIX` (default `_demo`) and `SEED_CLOUDINARY_TAG` (default
+  `campusconnect_demo`) can be overridden to seed a second, isolated demo (e.g. a
+  local Mongo) without wiping the deployed demo's vectors and files.
 - Uses the Qdrant, Cloudinary,
   LlamaParse, Gemini and Groq credentials from `server/.env`.
 - It is idempotent. Every run drops the demo DB, deletes the demo Qdrant

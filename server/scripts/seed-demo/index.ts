@@ -19,7 +19,9 @@ import * as path from 'path';
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const DEMO_DB_SUFFIX = '_demo';
-const CLOUDINARY_DEMO_TAG = 'campusconnect_demo';
+// Overridable so a local seed doesn't delete the deployed demo's files.
+const CLOUDINARY_DEMO_TAG =
+  process.env.SEED_CLOUDINARY_TAG ?? 'campusconnect_demo';
 const INGESTION_TIMEOUT_MS = 25 * 60 * 1000;
 
 const log = (msg: string) => console.log(`[seed] ${msg}`);
