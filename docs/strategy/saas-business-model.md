@@ -220,7 +220,67 @@ private university):
 If no one describes a painful, budgeted problem, institutions aren't the buyer and the model must stand on students,
 employers and sponsors alone.
 
+## 10. Cost model brainstorm — user-powered AI (bring your own key)
+
+Status: **brainstorm**, 2026-10-22. Not a decision. Goal: push the per-student marginal cost towards zero so the student
+app can stay free forever (supports option 1, §9).
+
+### Strongest candidate: BYOK for LLM inference
+Students connect their own model account; CampusConnect handles retrieval, prompts, citations and history.
+
+**Ruled out:** piggybacking on free *consumer* chat apps (ChatGPT, Gemini web). They aren't APIs; automating a logged-in
+session breaks their terms, breaks whenever the site changes, and means handling students' account sessions. That would end
+any chance of institutional trust.
+
+**Viable routes**
+
+| Route | Student experience | Notes |
+| --- | --- | --- |
+| **OpenRouter OAuth (PKCE)** | Click "Connect OpenRouter" → sign in / approve → back in the app. No key copying | The app receives a user-controlled key billed to the student's account; a per-key credit `limit` can be set. Free (`:free`) models: 20 req/min; **50 req/day** if the account has bought < 10 credits, **1,000 req/day** after buying ≥ 10 credits (official docs, verify). Limits are per account, not per key. One question can use 2 requests (contextualise + answer), so roughly 25 questions/day on the zero-spend tier |
+| **Gemini API key** (Google AI Studio) | Create a key, paste it once | Generous free tier, but limits change without notice and free-tier content may be used by Google to improve products |
+| **Groq / OpenAI key** | Paste key | Groq has a free tier; OpenAI is effectively pay-as-you-go |
+| **On-device AI** (Chrome built-in model, in-browser models) | Nothing to set up on supported devices | Free, but small models; fine for summarise/rephrase, weak for grounded answers |
+
+**Key never touches our server (preferred wiring)**
+1. Server does retrieval (tenant- and access-filtered) and returns the assembled prompt and citation list to the browser.
+2. Browser calls the provider directly with the student's key, kept in the browser (IndexedDB), never stored server-side.
+3. Browser streams the answer to the UI and posts the final text back for persistence and memory.
+
+Citations still come from retrieved chunks, not model text (`CLAUDE.md` §4), so they survive any model. The assembled prompt is
+visible to the student, which is acceptable: they already have access to that material. If server-side keys are ever needed
+(background jobs), encrypt at rest with a KMS-managed key and never log them.
+
+**Tier shape this enables**
+- **Free:** bring-your-own AI with no limit from us, plus a small house allowance for students who don't connect.
+- **Plus / institution:** house AI, consistent quality, no training on data, no setup.
+
+**Open problems:** onboarding friction (BYOK must stay optional); quality variance across models (keep a tested
+allow-list of models); support load ("my key stopped working" → clear 429/401 messages); free tiers drain during exam week;
+privacy and copyright when institutional material is sent to free tiers that may train on it (institution plans should
+disable BYOK or restrict it to no-training providers); dependence on free tiers that can be cut at any time.
+
+### Offloading the rest
+
+| Cost | Offload idea | Catch |
+| --- | --- | --- |
+| **Parsing** | Text PDFs (most lecture notes) extracted in the uploader's browser with pdf.js; only scanned/complex files go to LlamaParse | Quality check on extracted text |
+| **Embeddings** | Small open embedding model in the browser (transformers.js) or on our own server CPU instead of the Gemini API | One model per index, so this means re-indexing; client-computed vectors can be poisoned, so spot-check server-side |
+| **Vector search** | Ship a per-course quantised index to the device (~5–15 MB) and search locally; enables offline AI search | Larger PWA payload; access control is per course, not per document |
+| **Vector DB** | Or consolidate into MongoDB Atlas Vector Search and drop Qdrant | Migration and re-indexing |
+| **File storage** | Uploader's Google Drive (`drive.file` scope) or the institution's Workspace / OneDrive; our own storage on Cloudflare R2 (no egress fees); dedupe by hash | Link rot when the uploader deletes the file or leaves |
+| **Hosting** | Can't be offloaded: auth, messenger, moderation, sync stay server-side. Paying institutions could self-host (AGPL). Cache more in the app | — |
+
+End state: a thin server (accounts, metadata, moderation, messaging, sync) with heavy work on student devices and student
+model accounts. Near-zero marginal cost per student is the differentiator, and also the main risk (trust in client-computed
+data, uneven quality, free-tier dependency).
+
+### Suggested order to try
+1. Browser-side text extraction for text PDFs (cheapest, lowest risk).
+2. Optional BYOK via OpenRouter OAuth, with the key kept in the browser; Gemini key as the second route.
+3. Self-hosted embeddings and on-device course search, after measuring retrieval quality.
+
 ## Sources (pricing, October 2026)
 - Groq `gpt-oss-120b` pricing: [morphllm.com/groq-pricing](https://www.morphllm.com/groq-pricing), [getmaxim.ai Groq calculator](https://www.getmaxim.ai/bifrost/llm-cost-calculator/provider/groq/model/gpt-oss-120b), [flexprice.io/pricing-index/groq](https://flexprice.io/pricing-index/groq)
 - LlamaParse credits: [developers.llamaindex.ai/llamaparse/general/pricing](https://developers.llamaindex.ai/llamaparse/general/pricing/)
 - Qdrant multitenancy: [qdrant.tech/documentation/manage-data/multitenancy](https://qdrant.tech/documentation/manage-data/multitenancy/), [Qdrant 1.11 release](https://qdrant.tech/blog/qdrant-1.11.x/)
+- OpenRouter limits and OAuth: [openrouter.ai/docs/api/reference/limits](https://openrouter.ai/docs/api/reference/limits), [OpenRouter OAuth (SDK reference)](https://openrouter.ai/docs/sdks/python/api-reference/oauth)
