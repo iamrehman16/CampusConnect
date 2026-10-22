@@ -1,5 +1,7 @@
 # Academic Resource Management & AI Chat System (Server)
 
+The backend of [CampusConnect](../README.md). Setup for the whole monorepo is in the root [README](../README.md#getting-started).
+
 A robust, enterprise-grade NestJS backend designed for academic resource sharing, moderation, and AI-powered document intelligence. This system integrates advanced Retrieval-Augmented Generation (RAG) capabilities to allow users to interact with uploaded academic materials through a conversational interface.
 
 ---
@@ -96,8 +98,8 @@ src/
 
 1. **Clone the repository**:
    ```bash
-   git clone <repository-url>
-   cd server
+   git clone https://github.com/iamrehman16/CampusConnect.git
+   cd CampusConnect/server
    ```
 
 2. **Install dependencies**:
@@ -151,4 +153,4 @@ npm run test:cov
 ---
 
 ## 📜 License
-[UNLICENSED](LICENSE)
+[AGPL-3.0](../LICENSE). See the root [README](../README.md#license).

@@ -1,0 +1,86 @@
+name: Bug report
+description: Something is broken or behaves unexpectedly.
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Search [existing issues](https://github.com/iamrehman16/CampusConnect/issues) first to avoid duplicates.
+        **Security vulnerabilities must not be reported here.** See [SECURITY.md](https://github.com/iamrehman16/CampusConnect/blob/main/SECURITY.md).
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the app is affected?
+      options:
+        - Auth / onboarding
+        - Library / resources
+        - Ask AI / RAG
+        - Messenger
+        - Community
+        - Mentorship / reputation
+        - Notifications
+        - Admin console
+        - PWA / offline
+        - Deployment / infrastructure
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: side
+    attributes:
+      label: Client or server?
+      options:
+        - Client (client/)
+        - Server (server/)
+        - Both / not sure
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Sign in as a student
+        2. Open Library
+        3. Click ...
+        4. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Browser and version, device/OS, or Node version for server issues. Local or deployed?
+      placeholder: Chrome 130 on Android 14, deployed demo
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and screenshots
+      description: Browser console output, server logs or screenshots. Remove tokens, keys and personal data.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: I removed secrets and personal data from logs and screenshots.
+          required: true
