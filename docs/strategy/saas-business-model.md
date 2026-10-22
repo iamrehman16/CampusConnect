@@ -1,6 +1,6 @@
 # CampusConnect SaaS — business model and multi-tenancy brainstorm
 
-Status: **exploration draft**, 2026-10-22, right after the FYP open house. Not a decision record;
+Status: **exploration draft**, 2026-10-22, right after the FYP open house. Business model options are collected in §9. Not a decision record;
 decisions it leads to get their own file in `docs/decisions/`. Repo visibility is handled in
 [`0002-repository-visibility.md`](../decisions/0002-repository-visibility.md).
 
@@ -19,6 +19,10 @@ Check them against each vendor before committing to a price. Currency assumption
 4. **Solo founder.** Sales cycles, support load and operations must stay small until revenue exists.
 
 ## 2. Who gets value and who pays
+
+> **Challenged 2026-10-22:** "institutions pay so students get it free" is a benefit to students, not to the institution,
+> and nobody signs a purchase order for that. The revised model is **Business model option 1** in §9. §2–§5 below are kept
+> as the original draft; read them together with §9.
 
 | Party | Value | Pays? |
 | --- | --- | --- |
@@ -174,6 +178,47 @@ from the plan and checked server-side. Start with manual invoicing for instituti
 4. Instrument AI usage per user/tenant (questions, tokens, cost) so pricing is based on data.
 5. Line up the QAU department pilot for next semester.
 6. Draft terms of service, privacy policy and contributor terms.
+
+## 9. Business model options
+
+### Option 1 — Bottom-up adoption, then sell the institutional layer
+
+**Premise.** A university pays only for something that moves *its own* numbers. Making things free for students
+isn't one of them. So the student app is not the institution's product; the **admin, analytics and compliance layer on top of
+student usage** is.
+
+**What institutions actually pay for**
+
+| Institutional need | How CampusConnect serves it | Exists today? |
+| --- | --- | --- |
+| **Accreditation evidence** (NCEAC, PEC, HEC QA reviews ask for proof of student advising, mentoring and support; gathering it is manual every cycle) | Mentorship logs, ratings, resource coverage per course, engagement, exported as accreditation-ready reports | Data yes, reports no |
+| **Retention** (at private universities a dropout or repeat failure is lost fee revenue) | Engagement-drop early warning for advisors | No |
+| **Admissions marketing** | "An AI tutor trained on our course material, for every student", branded per campus | Mostly |
+| **Faculty workload** | AI answers repetitive pre-exam questions from approved material with citations; "ask a human" to the author | Yes |
+| **Governance of AI use** (students already use ChatGPT and WhatsApp groups the university can't see) | AI limited to moderated material, institutional data control, admin oversight | Partly |
+
+**Sequence**
+1. **Free, bottom-up adoption by students.** Costs covered by Student Plus, employer internship postings, and sponsors
+   (telecoms, banks with student programmes). Grow the way Slack and Notion did, without waiting on procurement.
+2. **Sell the institutional layer once a campus has real usage:** analytics, accreditation reports, at-risk alerts, SSO,
+   branding, data export. The pitch: "N% of your students already use this; here's what they're doing, and
+   here are your accreditation reports."
+3. **Private universities before public ones.** They have tuition revenue, a stake in retention and marketing, and faster purchasing.
+   Public universities have constrained budgets and slow procurement.
+4. **Departments remain a small but real buyer.** A head of department with an accreditation visit coming has a concrete problem.
+
+**Product work this option implies:** accreditation/report exports, engagement analytics and at-risk alerts, institutional
+admin roles, SSO, LMS (Moodle) integration.
+
+**Unvalidated: test before building.** Interview 5–10 people (QA directors, heads of department, admissions/student affairs at a
+private university):
+- What is the most painful part of preparing for accreditation?
+- How do you identify struggling students today?
+- What is your policy on students using ChatGPT?
+- Have you ever paid for student-facing software, and who approved the budget?
+
+If no one describes a painful, budgeted problem, institutions aren't the buyer and the model must stand on students,
+employers and sponsors alone.
 
 ## Sources (pricing, October 2026)
 - Groq `gpt-oss-120b` pricing: [morphllm.com/groq-pricing](https://www.morphllm.com/groq-pricing), [getmaxim.ai Groq calculator](https://www.getmaxim.ai/bifrost/llm-cost-calculator/provider/groq/model/gpt-oss-120b), [flexprice.io/pricing-index/groq](https://flexprice.io/pricing-index/groq)
