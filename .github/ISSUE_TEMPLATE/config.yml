@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/iamrehman16/CampusConnect/security/advisories/new
+    about: Report vulnerabilities privately. Do not open a public issue.
+  - name: Contributing guide
+    url: https://github.com/iamrehman16/CampusConnect/blob/main/CONTRIBUTING.md
+    about: How to set up the project, branch, commit and open a pull request.
