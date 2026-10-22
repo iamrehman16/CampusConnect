@@ -1,6 +1,6 @@
 # CampusConnect Client
 
-This repository contains the client-side application for the CampusConnect FYP project. It is built with React, TypeScript, Vite, and Material UI, and is designed to work with a separate backend server repository.
+The frontend of [CampusConnect](../README.md), built with React, TypeScript, Vite and Material UI. It talks to the NestJS API in [`../server`](../server).
 
 ## Overview
 
@@ -14,7 +14,7 @@ CampusConnect is a campus-focused student collaboration platform with:
 - Community and contributor discovery pages
 - Admin analytics and moderation tools
 
-This client repo manages the frontend experience only. The backend/server implementation lives in a separate repository.
+This folder holds the frontend only. The backend lives in [`../server`](../server) in the same monorepo.
 
 ## Key Technologies
 
@@ -138,12 +138,13 @@ The app assumes a backend server available under the configured API base URL.
 
 - Node.js 20+ recommended
 - npm or a compatible package manager
-- Backend server running separately
+- The API from [`../server`](../server) running locally (see the root [README](../README.md#getting-started))
 
 ### Local Install
 
 ```bash
-cd CampusConnect-Client
+cd client
+cp .env.example .env
 npm install
 ```
 
@@ -175,13 +176,14 @@ npm run lint
 
 This client uses Vite environment variables. At minimum, configure:
 
-- `VITE_API_BASE_URL` — backend base URL, such as `http://localhost:4000`
+- `VITE_API_BASE_URL` — server origin without `/api`, such as `http://localhost:3100`
+
+See [`.env.example`](.env.example) for the optional variables.
 
 During development, the application uses the Vite proxy and `/api` endpoint prefix to avoid CORS issues.
 
 ## Notes
 
-- The frontend is designed to work with a separate backend repo; this repository contains only the client.
 - Routes are implemented with React Router v7 and lazy loading for page-level chunks.
 - Shared state is managed via React Query and lightweight local state hooks.
 - UI uses Material UI for responsive layout and design consistency.
@@ -197,3 +199,7 @@ During development, the application uses the Vite proxy and `/api` endpoint pref
 - `src/features/` — feature module implementations
 
 ---
+
+## License
+
+[AGPL-3.0](../LICENSE). See the root [README](../README.md#license).
